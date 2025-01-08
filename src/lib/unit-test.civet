@@ -48,8 +48,8 @@ isString := (x) =>
  * In a unit test, checks if  value is deeply equal to
  * the expected value. Reports line number of the test.
  *
- * @param value {any} - any JavaScript value
- * @param expected {any} - any JavaScript value
+ * @param {any} value - any JavaScript value
+ * @param {any} expected - any JavaScript value
  * @returns {void} - nothing
  *
  * @example
@@ -71,7 +71,7 @@ export equal := (value: any, expected: any) : void =>
  * In a unit test, tests if value is truthy
  * Reports line number of the test.
 
- * @param value {any} - any JavaScript value
+ * @param {any} value - any JavaScript value
  * @returns {void} - nothing
  *
  * @example
@@ -93,7 +93,7 @@ export truthy := (value: any) =>
  * In a unit test, tests if value is falsy
  * Reports line number of the test.
  *
- * @param value {any} - any JavaScript value
+ * @param {any} value - any JavaScript value
  * @returns {void} - nothing
  *
  * @example
@@ -115,7 +115,7 @@ export falsy := (value) =>
  * In a unit test, tests if calling the provided function
  * throws an exception. Reports line number of the test.
  *
- * @param func {any => any} - any JavaScript function
+ * @param {any => any} func - any JavaScript function
  * @returns {void} - nothing
  *
  * @example
@@ -141,7 +141,7 @@ export fails := (func): void =>
  * runs without throwing an exception.
  * Reports line number of the test.
  *
- * @param func {any => any} - any JavaScript function
+ * @param {any => any} func - any JavaScript function
  * @returns {void} - nothing
  *
  * @example
@@ -165,8 +165,8 @@ export succeeds := (func): void =>
  * matches either a substring or a regular expression.
  * Reports line number of the test.
  *
- * @param value {any} - any JavaScript value
- * @param expected {any} - any JavaScript value
+ * @param {any} value - any JavaScript value
+ * @param {any} expected - any JavaScript value
  * @returns {void} - nothing
  *
  * @example
@@ -207,8 +207,8 @@ export matches := (value, expected) =>
  * same position has.
  * Reports line number of the test.
  *
- * @param value {array | object} - any JavaScript value
- * @param expected {array | object} - any JavaScript value
+ * @param {array | object} value - any JavaScript value
+ * @param {array | object} expected - any JavaScript value
  * @returns {void} - nothing
  *
  * @example
@@ -246,8 +246,8 @@ export like := (value, expected) =>
  * includes the expected value.
  * Reports line number of the test
  *
- * @param value {array} - an array
- * @param expected {any} - any JavaScript value
+ * @param {Array<any>} value - an array
+ * @param {any} expected - any JavaScript value
  * @returns {void} - nothing
  *
  * @example
@@ -271,8 +271,8 @@ export includes := (value, expected) =>
  * includes all of the items in the expected array.
  * Reports line number of the test
  *
- * @param value {array} - an array
- * @param expected {array} - an array
+ * @param {Array<any>} value - an array
+ * @param {Array<any>} expected - an array
  * @returns {void} - nothing
  *
  * @example

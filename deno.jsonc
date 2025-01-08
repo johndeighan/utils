@@ -3,7 +3,7 @@
 	"tasks": {
 		"cleanup": "
 			   civet --js -o .js --inline-map -c src/bin/cleanup.civet
-			&& deno install -fgA src/bin/cleanup.js
+			&& deno install -fgA -c deno.jsonc src/bin/cleanup.js
 			&& bash cleanup
 			",
 
@@ -35,22 +35,22 @@
 			"civet --js -o .js --inline-map -c src/bin/compile.civet",
 
 		"install:compiler":
-			"deno install -fgA --config ./deno.jsonc src/bin/compile.js",
+			"deno install -fgA -c ./deno.jsonc src/bin/compile.js",
 
 		"build:run-unit-test":
 			"civet --js -o .js --inline-map -c src/bin/run-unit-test.civet",
 
 		"install:run-unit-test": "
-			   deno install -fgA src/bin/run-unit-test.js
-			&& deno install -fgA -n rut src/bin/run-unit-test.js
+			   deno install -fgA -c deno.jsonc src/bin/run-unit-test.js
+			&& deno install -fgA -c deno.jsonc -n rut src/bin/run-unit-test.js
 			",
 
 		"build:run-temp-file":
 			"civet --js -o .js --inline-map -c src/bin/run-temp-file.civet",
 
 		"install:run-temp-file": "
-			   deno install -fgA src/bin/run-temp-file.js
-			&& deno install -fgA -n rtf src/bin/run-temp-file.js
+			   deno install -fgA -c deno.jsonc src/bin/run-temp-file.js
+			&& deno install -fgA -c deno.jsonc -n rtf src/bin/run-temp-file.js
 			",
 
 		"bootstrap":      "clear
@@ -79,7 +79,6 @@
 
 		"docs": "
 		      clear
-			&& compile unit-test
 			&& deno doc --html --name=\"@jdeighan/utils/unit-test\" src/lib/unit-test.js
 			",
 		},

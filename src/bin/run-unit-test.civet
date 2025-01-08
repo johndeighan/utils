@@ -2,11 +2,11 @@
 
 import {
 	DBG, LOG, WARN, ERR,
-	} from '../lib/logger.js'
+	} from '@jdeighan/utils/logger.js'
 import {
 	assert, execCmd, getCmdArgs, OL, relpath,
 	compileAllFiles, runUnitTest, runAllUnitTests,
-	} from '../lib/llutils.js'
+	} from '@jdeighan/utils/llutils.js'
 
 {_, watch, compile} := getCmdArgs Deno.args, {
 	hArgs: {

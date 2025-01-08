@@ -2,10 +2,10 @@
 
 import {
 	DBG, LOG, WARN, ERR,
-	} from '../lib/logger.js'
+	} from '@jdeighan/utils/logger.js'
 import {
 	getCmdArgs,
-	} from '../lib/llutils.js'
+	} from '@jdeighan/utils/llutils.js'
 
 {noColor} := getCmdArgs Deno.args, {
 	hArgs: {

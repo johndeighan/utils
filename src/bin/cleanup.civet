@@ -1,7 +1,7 @@
 # cleanup.civet
 
-import {expandGlobSync} from 'jsr:@std/fs/expand-glob'
-import pathLib from 'node:path'
+import {expandGlobSync} from '@std/fs/expand-glob'
+import pathLib from 'path'
 
 # ---------------------------------------------------------------------------
 

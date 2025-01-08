@@ -4,7 +4,7 @@ import {
 	undef, defined, notdefined, pass, OL, assert, croak,
 	getCmdArgs, compileFile, compileAllFiles,
 	DBG, LOG, WARN, ERR,
-	} from '../lib/llutils.js'
+	} from '@jdeighan/utils/llutils.js'
 
 let numCompiled = 0
 
