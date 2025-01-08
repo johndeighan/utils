@@ -1,0 +1,222 @@
+# utils.test.civet
+
+import * as lib from '../src/lib/utils.js'
+Object.assign(globalThis, lib)
+import * as lib2 from '../src/lib/unit-test.js'
+Object.assign(globalThis, lib2)
+
+# ---------------------------------------------------------------------------
+
+truthy defined(42)
+truthy defined('abc')
+truthy defined([1,2])
+truthy defined({a: 13})
+truthy not defined(undefined)
+falsy defined(undef)
+
+truthy notdefined(undef)
+truthy notdefined(null)
+
+fails () => croak("Bad")
+succeeds () => return 42
+
+equal normalizeStr("abc\r\ndef\r\n"), "abc\ndef"
+
+truthy isString('')
+truthy isString('abc')
+falsy isString(42)
+truthy not isString(42)
+truthy not isString(undef)
+truthy not isString({a: 2})
+
+falsy isNonEmptyString('')
+truthy isNonEmptyString('abc')
+falsy isNonEmptyString(42)
+truthy not isNonEmptyString(42)
+truthy not isNonEmptyString(undef)
+truthy not isNonEmptyString({a: 2})
+
+truthy isHash({a:1, b:2})
+truthy isHash({})
+falsy isHash(42)
+falsy isHash('abc')
+falsy isHash(undef)
+
+truthy isNonEmptyHash({a:1, b:2})
+falsy isNonEmptyHash({})
+falsy isNonEmptyHash(42)
+falsy isNonEmptyHash('abc')
+falsy isNonEmptyHash(undef)
+
+truthy isArray([1,2,3])
+truthy isArray([])
+falsy isArray(42)
+falsy isArray('abc')
+falsy isArray(undef)
+
+truthy isNonEmptyArray([1,2,3])
+falsy isNonEmptyArray([])
+falsy isNonEmptyArray(42)
+falsy isNonEmptyArray('abc')
+falsy isNonEmptyArray(undef)
+
+truthy isArrayOfStrings(['abc','def'])
+truthy isArrayOfStrings([])
+falsy isArrayOfStrings(42)
+falsy isArrayOfStrings(['abc', 42])
+falsy isArrayOfStrings(['abc', ['def']])
+
+truthy isFunction(() => return 42)
+truthy isFunction(() -> return 42)
+falsy isFunction(42)
+
+truthy isNumber(42)
+truthy isNumber(3.144159)
+falsy isNumber('42')
+
+truthy isInteger(42)
+falsy isInteger(3.14159)
+falsy isInteger('42')
+
+equal normalizeStr('abc\r\ndef\r\n'), 'abc\ndef'
+
+falsy isNonEmptyString('')
+truthy isNonEmptyString('abc')
+falsy isNonEmptyString(42)
+
+truthy isHash({a:1})
+falsy isHash('abc')
+
+truthy isArray([1,2])
+falsy isArray('abc')
+
+truthy isFunction(() => return 42)
+falsy isFunction(42)
+
+truthy isInteger(42)
+truthy isInteger(42, {min: 0, max: 100})
+falsy isInteger('42')
+falsy isInteger(42, {min: 0, max: 10})
+
+falsy isPromise(42)
+
+truthy isEmpty(undef)
+truthy isEmpty(null)
+truthy isEmpty('')
+truthy isEmpty('   ')
+truthy isEmpty('\t\t')
+truthy isEmpty([])
+truthy isEmpty({})
+
+truthy nonEmpty('x')
+truthy nonEmpty(' x  ')
+truthy nonEmpty('\tx\t')
+truthy nonEmpty([1])
+truthy nonEmpty({a:1})
+
+equal blockToArray("""
+	abc
+	def
+	"""), ['abc','def']
+
+equal toArray('abc\ndef'), ['abc','def']
+equal toArray('abc\r\ndef'), ['abc','def']
+equal toArray(''), []
+equal toArray('abc'), ['abc']
+
+equal arrayToBlock(['abc','def']), "abc\ndef"
+
+equal toBlock([]), ''
+equal toBlock(['abc']), 'abc'
+equal toBlock(['abc','def']), 'abc\ndef'
+
+equal splitPrefix('\t\tabc'), ['\t\t', 'abc']
+equal splitPrefix('  abc'), ['  ', 'abc']
+equal splitPrefix(''), ['', '']
+
+equal substrCount('ababab', 'a'), 3
+equal substrCount('ababab', 'ab'), 3
+equal substrCount('ababab', 'abc'), 0
+
+equal substrCount('abcaa', 'a'), 3
+equal substrCount('abcxyzabc', 'abc'), 2
+
+equal words('abc d e'), ['abc','d','e']
+
+falsy isClassInstance(42)
+
+equal keys({a:1, b:2}), ['a','b']
+
+truthy hasKey({a:1, b:2}, 'a')
+falsy hasKey({a:1, b:2}, 'c')
+
+equal CWS("a    b"), "a b"
+
+equal chomp('abc\n'), 'abc'
+equal chomp('abc\r\n'), 'abc'
+
+equal behead("""
+	abc
+	def
+	ghi
+	"""), ['abc', 'def\nghi']
+
+equal wsSplit("abc  def\t\tghi"), ['abc','def','ghi']
+
+equal execCmdSync("echo", ["hello"]).code, 0
+
+equal addDefaults({a:1, b:2}, {a:3, c:5}), {a:1, b:2, c:5}
+
+equal strToHash('test !debug'), {test: true, debug: false}
+
+equal getOptions({}, {c:5}), {c:5}
+equal getOptions({a:1, c:3}, {c:5}), {a:1, c:3}
+equal getOptions({a:1, b:3}, {c:5}), {a:1, b:3, c:5}
+equal getOptions('a=1', {c:5}), {a:1, c:5}
+equal getOptions('a=do', {c:5}), {a:'do', c:5}
+equal getOptions('a', {c:5}), {a:true, c:5}
+equal getOptions('!a', {c:5}), {a:false, c:5}
+
+equal OL(undef),      'undef'
+equal OL(null),       'null'
+equal OL(42),         '42'
+equal OL('a b c'),    '"a˳b˳c"'
+equal OL([1, 2]),     '[1,2]'
+equal OL(['a','b']),  '["a","b"]'
+equal OL({a:1, b:2}), '{"a":1,"b":2}'
+equal OL([1, 2], 'short'),     'ARRAY'
+equal OL(['a','b'], 'short'),  'ARRAY'
+equal OL({a:1, b:2}, 'short'), 'HASH'
+
+equal tabify("""
+	abc
+	  def
+	    ghi
+	"""), """
+	abc
+	\tdef
+	\t\tghi
+	"""
+
+equal untabify("""
+	abc
+	\tdef
+	\t\tghi
+	"""), """
+	abc
+	   def
+	      ghi
+	"""
+
+equal untabify("""
+	abc
+	\tdef
+	\t\tghi
+	""", 'numSpaces=4'), """
+	abc
+	    def
+	        ghi
+	"""
+
+equal escapeStr(" \t\n"), "˳→↓"
+equal escapeStr(" \t\n", {hEsc: 'escNoNL'}), "˳→\n"

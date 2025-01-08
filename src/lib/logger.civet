@@ -1,0 +1,245 @@
+# logger.civet
+
+import {assert} from '@std/assert'
+import pathLib from 'path'
+import {sprintf} from '@std/fmt/printf'
+import {
+	ConsoleHandler, FileHandler, setup, getLogger,
+	} from "@std/log"
+
+defined := (x) => (x != undefined) && (x != null)
+
+# ---------------------------------------------------------------------------
+
+export logFileName := "./logs/logs.txt"
+
+export sepdash := '-'.repeat(32)
+export sepeq   := '='.repeat(32)
+isSep := (str) => (str == sepdash) || (str == sepeq)
+
+let indent = 0
+prefix := () => '   '.repeat(indent)
+
+# --- Used when current logger is 'profile'
+let prevMS = 0
+let prevFileMS = 0
+let headerOutput = false
+let fileHeaderOutput = false
+
+hFileLabel := {
+	DEBUG: 'D '
+	INFO:  'I '
+	WARN:  'W '
+	ERROR: 'ERROR: '
+	}
+
+hConsoleLabel := {
+	DEBUG: ''
+	INFO:  ''
+	WARN:  ''
+	ERROR: ''
+	}
+
+# ---------------------------------------------------------------------------
+
+export hLoggerConfig := {
+	handlers:
+
+		profile: new ConsoleHandler('DEBUG', {
+			formatter: ((rec) =>
+				{datetime, msg, levelName} := rec
+				msStr := sprintf("%5d", datetime - prevMS)
+				prevMS = datetime
+				label := hConsoleLabel[levelName]
+				if not headerOutput
+					headerOutput = true
+					return "ms\n-----\n#{msStr} #{label}#{prefix()}#{msg}"
+				else
+					return "#{msStr} #{label}#{prefix()}#{msg}"
+				)
+			})
+
+		pfile: new FileHandler('DEBUG', {
+			filename: pathLib.resolve(logFileName)
+			mode: 'a'
+			useColors: false
+			formatter: (rec) =>
+				{datetime, msg, levelName} := rec
+				msStr := sprintf("%5d", datetime - prevFileMS)
+				prevFileMS = datetime
+				label := hFileLabel[levelName]
+				if not fileHeaderOutput
+					fileHeaderOutput = true
+					return "ms\n-----\n#{msStr} #{label}#{prefix()}#{msg}"
+				else
+					return "#{msStr} #{label}#{prefix()}#{msg}"
+			})
+
+		console: new ConsoleHandler('DEBUG', {
+			formatter: ((rec) =>
+				{levelName, msg} := rec
+				label := hConsoleLabel[levelName]
+				assert defined(label), "No label for #{levelName}"
+				return "#{label}#{prefix()}#{msg}"
+				)
+			})
+
+		file: new FileHandler('DEBUG', {
+			filename: logFileName
+			mode: 'a'
+			useColors: false
+			formatter: (rec) =>
+				{levelName, msg} := rec
+				if isSep(msg)
+					return msg
+				else
+					label := hFileLabel[levelName]
+					assert defined(label), "No label for #{levelName}"
+					return "#{label}#{prefix()}#{msg}"
+				})
+
+	# --- assign handlers to loggers
+	#     must include:
+	#        'profile', 'debug', 'info', 'warn', 'error', 'file' and 'silent'
+	loggers: {
+		profile: {
+			level: "DEBUG"
+			num: 1
+			handlers: ["profile", "pfile"]
+			}
+		debug: {
+			level: "DEBUG"
+			num: 2
+			handlers: ["console", "file"]
+			}
+		info: {
+			level: "INFO"
+			num: 3
+			handlers: ["console", "file"]
+			}
+		warn: {
+			level: "WARN",
+			num: 4
+			handlers: ["console", "file"]
+			}
+		error: {
+			level: "ERROR"
+			num: 5
+			handlers: ["console", "file"]
+			}
+		file: {
+			level: "DEBUG",
+			num: 6
+			handlers: ["file"]
+			}
+		silent: {
+			level: "ERROR"
+			num: 7
+			handlers: []
+			}
+		}
+	}
+
+await setup(hLoggerConfig)
+
+export INDENT := 'MOKaHenzkyZNbNWmUYijCNoqmIrIemFh'
+export UNDENT := 'MXrveSEaCkCfQjEgPdMIaEDFMIWMtHqz'
+export CLEAR  := '2EYCEu1v7xs0i4L3o5rAV1ZNLFkQYNHh'
+
+# ---------------------------------------------------------------------------
+# levels: profile, debug, info, warn, error, file, silent
+
+class LoggerEx
+
+	constructor: () ->
+		@hConfig = hLoggerConfig
+		@hLoggers := @hConfig.loggers
+		defLevel := Deno.env.get('DEFAULT_LOGGER') || 'info'
+		@check defLevel
+		@lLoggerStack := [defLevel]
+		let @silent = false
+
+	curLevel: () ->
+		return @lLoggerStack.at(-1)
+
+	levelChanged: () ->
+		switch @curLevel()
+			when 'profile'
+				# --- NOTE: These are package global variables
+				prevMS = prevFileMS = Date.now()
+				headerOutput = false
+				fileHeaderOutput = false
+		return
+
+	setLevel: (level) ->
+		@check level
+		@lLoggerStack[@lLoggerStack.length-1] = level
+		@levelChanged()
+		return
+
+	pushLevel: (level) ->
+		@check level
+		@lLoggerStack.push level
+		@levelChanged()
+		return
+
+	popLevel: () ->
+		assert (@lLoggerStack.length > 0), "Empty logger stack"
+		level := @lLoggerStack.pop()
+		@levelChanged()
+		return level
+
+	isActive: (level) ->
+		@check level
+		curNum := @hLoggers[@curLevel()].num
+		lvlNum := @hLoggers[level].num
+		return (lvlNum >= curNum)
+
+	output: (level, lItems) ->
+		if @isActive(level)
+			for item of lItems
+				switch item
+					when INDENT
+						indent += 1
+					when UNDENT
+						indent = (indent==0) ? 0 : indent-1
+					when CLEAR
+						@clearLog()
+					else
+						getLogger(@curLevel())[level] item
+		return
+
+	flush: () ->
+		@hConfig.handlers.file.flush()
+		@hConfig.handlers.pfile.flush()
+		return
+
+	clearLog: () ->
+		@flush()
+		Deno.writeTextFile logFileName, ''
+		prevMS = prevFileMS = Date.now()
+		return
+
+	getLog: () ->
+		@flush()
+		return Deno.readTextFileSync(logFileName).trim()
+
+	check: (level) ->
+		assert @hLoggers[level], "Bad logger level: '#{level}'"
+
+export logger := new LoggerEx()
+
+# ---------------------------------------------------------------------------
+
+export DBG  := (...lItems) => logger.output 'debug', lItems
+export LOG  := (...lItems) => logger.output 'info', lItems
+export WARN := (...lItems) => logger.output 'warn', lItems
+export ERR  := (...lItems) => logger.output 'error', lItems
+
+export curLogLevel  := () => return logger.curLevel()
+export setLogLevel  := (level) => logger.setLevel(level)
+export pushLogLevel := (level) => logger.pushLevel(level)
+export popLogLevel  := () => return logger.popLevel()
+export clearLog     := () => return logger.clearLog()
+export getLog       := () => return logger.getLog()
+export flushLog     := () => logger.flush()

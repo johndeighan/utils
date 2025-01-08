@@ -1,0 +1,331 @@
+# llutils.test.civet
+
+import * as lib from '../src/lib/llutils.js'
+Object.assign(globalThis, lib)
+import * as lib2 from '../src/lib/unit-test.js'
+Object.assign(globalThis, lib2)
+
+# ---------------------------------------------------------------------------
+
+succeeds () => assert(2+2 == 4, "bad")
+fails () => assert(2+2 == 5, "bad")
+fails () => croak("Bad")
+
+truthy defined(42)
+truthy defined('abc')
+truthy defined([1,2])
+truthy defined({a: 13})
+truthy not defined(undefined)
+falsy defined(undef)
+
+truthy notdefined(undef)
+truthy notdefined(null)
+
+equal wsSplit("abc def"), ["abc", "def"]
+equal wsSplit("abc"), ["abc"]
+equal wsSplit(""), []
+equal wsSplit("  "), []
+equal wsSplit("\t"), []
+equal wsSplit("  abc  def\t\t"), ["abc", "def"]
+
+equal words("abc def"), ["abc", "def"]
+equal words("abc"), ["abc"]
+equal words(""), []
+equal words("  "), []
+equal words("\t"), []
+equal words("  abc  def\t\t"), ["abc", "def"]
+equal words("abc", "def"), ["abc", "def"]
+
+equal Array.from(range(3)), [0, 1, 2]
+
+truthy isString('abc')
+truthy isString('')
+falsy isString(42)
+falsy isString(undef)
+falsy isString([1,2])
+falsy isString({a:1, b:2})
+falsy isString(/\s/)
+
+truthy isNonEmptyString('a')
+falsy  isNonEmptyString('')
+falsy  isNonEmptyString(undef)
+falsy  isNonEmptyString(42)
+
+truthy isNumber(42)
+truthy isNumber(new Number(42))
+falsy isNumber('abc')
+
+truthy isArray([1,2])
+falsy isArray('abc')
+
+truthy isArrayOfStrings(['abc','def'])
+falsy isArrayOfStrings(42)
+falsy isArrayOfStrings([1,2])
+
+truthy isHash({a:1, b:2})
+falsy isHash(42)
+
+truthy isObject({})
+falsy isObject(42)
+
+equal OL({a:1, b:2}), '{"a":1,"b":2}'
+
+equal normalizeStr("abc\r\ndef\r\n"), "abc\ndef"
+equal normalizeStr("  abc\r\ndef  "), "abc\ndef"
+
+equal spaces(3), '   '
+
+equal tabs(3), '\t\t\t'
+
+equal getNExtra('abcd', 10), 6
+equal getNExtra('abcd', 2), 0
+
+equal strToHash('debug'), {debug: true}
+equal strToHash('debug force'), {
+	debug: true
+	force: true
+	}
+
+truthy isInteger(42)
+truthy isInteger(new Number(3))
+falsy isInteger(1.149)
+falsy isInteger('42')
+
+equal rpad('abcd', 10, '-'), 'abcd------'
+
+equal lpad('abcd', 10, '-'), '------abcd'
+
+equal centered('abcd', 12, '-'), '--  abcd  --'
+
+equal alignString('abc', 5, 'left'), 'abc  '
+equal alignString('abc', 5, 'center'), ' abc '
+equal alignString('abc', 5, 'right'), '  abc'
+equal alignString('abc', 5, 'l'), 'abc  '
+equal alignString('abc', 5, 'c'), ' abc '
+equal alignString('abc', 5, 'r'), '  abc'
+
+equal zpad(23, 5), '00023'
+
+equal escapeStr('abc'), 'abc'
+
+equal addDefaults({debug: true}, {force: true}), {
+	debug: true
+	force: true
+	}
+
+equal getOptions({debug: true}), {debug: true}
+equal getOptions({debug: true}, {force: false}), {
+	debug: true
+	force: false
+	}
+equal getOptions('debug'), {debug: true}
+equal getOptions('!debug'), {debug: false}
+equal getOptions('debug', {force: false}), {
+	debug: true
+	force: false
+	}
+
+# --- file system functions
+
+truthy isFile('./deno.jsonc')
+truthy isFile('deno.jsonc')
+falsy isFile('./src/lib/notafile.txt')
+
+truthy isDir('test')
+falsy isDir('nosuchdir')
+
+equal fileExt('c:/Users/johnd/utils/deno.jsonc'), '.jsonc'
+
+equal withExt('deno.jsonc', '.txt'), 'deno.txt'
+
+equal tla('three-letter-acronym'), 'tla'
+equal tla('something'), undef
+
+like Array.from(globFiles('**/test/llutils/file*.txt')), [
+	{name: 'file1.txt', isFile: true, isDirectory: false}
+	{name: 'file2.txt', isFile: true, isDirectory: false}
+	]
+
+like Array.from(globFiles('**/test/llutils/file*.txt', {parse: true})), [
+	{stub: 'file1', ext: '.txt'}
+	{stub: 'file2', ext: '.txt'}
+	]
+
+like Array.from(globFiles('**/test/llutils/file*.txt', 'parse')), [
+	{stub: 'file1', ext: '.txt'}
+	{stub: 'file2', ext: '.txt'}
+	]
+
+lLines := []
+for await line of allLinesIn('./test/llutils/file1.txt')
+	lLines.push line
+
+equal lLines, [
+	'line1'
+	'line2'
+	'line3'
+	]
+
+like parsePath(import.meta.url), {
+	type: 'file'
+	fileName: 'llutils.test.js'
+	stub: 'llutils'
+	purpose: 'test'
+	ext: '.js'
+	relPath: 'test/llutils.test.js'
+	relDir: 'test'
+	}
+
+equal pathSubDirs("c:/Users/johnd/llutils/deno.jsonc"), {
+	root: "c:/"
+	lParts: ['Users', 'johnd', 'llutils']
+	}
+
+equal normalizePath('C:\\Users\\johnd'), 'c:/Users/johnd'
+
+equal mkpath('c:\\', 'Users', 'johnd'), 'c:/Users/johnd'
+
+equal relpath('c:/Users/johnd/utils/deno.jsonc'), 'deno.jsonc'
+
+equal slurp('./test/llutils/file1.txt'), """
+	line1
+	line2
+	line3
+	"""
+
+contents := """
+	\t\t
+	abc
+
+	xyz
+	\t\t
+	"""
+testpath := './test/llutils/barfed.txt'
+barf contents, testpath
+equal slurp(testpath), """
+	abc
+
+	xyz
+	"""
+
+buffer := new ArrayBuffer(3)
+view := new Int8Array(buffer)
+
+view[0] = 97
+view[1] = 98
+view[2] = 99
+
+equal mkstr('abc'), 'abc'
+equal mkstr(buffer), 'abc'
+equal mkstr(view), 'abc'
+
+equal execCmdSync("echo", ["hello"], 'nolog').code, 0
+
+like getConfig(), {
+	hCompilers: {
+		{'.cielo': {outExt: '.js'}}
+		{'.civet': {outExt: '.js'}}
+		{'.coffee': {outExt: '.js'}}
+		{'.ts': {outExt: '.js'}}
+		}
+	hPostProcessors: {
+		{lib: {}}
+		{bin: {}}
+		}
+	}
+
+like hConfig, {
+	hCompilers: {
+		{'.cielo': {outExt: '.js'}}
+		{'.civet': {outExt: '.js'}}
+		{'.coffee': {outExt: '.js'}}
+		{'.ts': {outExt: '.js'}}
+		}
+	hPostProcessors: {
+		{lib: {}}
+		{bin: {}}
+		}
+	}
+
+like hCompilers, {
+	{'.cielo': {outExt: '.js'}}
+	{'.civet': {outExt: '.js'}}
+	{'.coffee': {outExt: '.js'}}
+	{'.ts': {outExt: '.js'}}
+	}
+
+like hPostProcessors, {
+	{lib: {}}
+	{bin: {}}
+	}
+
+path := findSourceFile('lib', 'llutils').path
+equal relpath(path), 'src/lib/llutils.civet'
+
+like getSrcInfo(['lib', 'llutils']), {
+	relPath: 'src/lib/llutils.civet'
+	dirspec: 'lib'
+	stub: 'llutils'
+	purpose: undef
+	ext: '.civet'
+	}
+
+like getSrcInfo('src/lib/llutils.civet'), {
+	relPath: 'src/lib/llutils.civet'
+	dirspec: 'lib'
+	stub: 'llutils'
+	purpose: undef
+	ext: '.civet'
+	}
+
+equal getPattern(), "**/*{.cielo,.civet,.coffee,.ts}"
+
+equal getCmdArgs(['-abc']), {
+	_: []
+	a: true
+	b: true
+	c: true
+	}
+
+equal getCmdArgs(['-abc=xyz']), {
+	_: []
+	abc: 'xyz'
+	}
+
+equal getCmdArgs(['-abc=xyz', 'table']), {
+	_: ['table']
+	abc: 'xyz'
+	}
+
+# --- commmand 'compile' allows the following options:
+#        -d  - turn on debugging
+#        -f  - force compilation
+#        -w  - watch for file changes
+#        -n  - suppress post processing
+#        -dirspec=<spec>  - 'bin' or 'lib'
+#     plus any number of non-options
+#     (but we pretend it must be 1, 2 or 3)
+
+hArgs := {
+	d: {type: 'boolean'}
+	f: {type: 'boolean'}
+	w: {type: 'boolean'}
+	n: {type: 'boolean'}
+	dirspec: {type: ['lib','bin']}
+	}
+hArgOptions := {
+	hArgs
+	nonOptions: [1, 3]
+	}
+
+equal getCmdArgs(['-df']), {
+	_: []
+	d: true
+	f: true
+	}
+
+fails () => getCmdArgs(['-daf', 'file1'], hArgOptions)
+fails () => getCmdArgs(['-dirspec=42', 'file1'], hArgOptions)
+fails () => getCmdArgs(['-dirspec=blib', 'file1'], hArgOptions)
+fails  () => getCmdArgs(['-df'], hArgOptions)
+fails  () => getCmdArgs(['-df', 'a', 'b', 'c', 'd'], hArgOptions)

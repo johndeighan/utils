@@ -1,0 +1,23 @@
+# test-logger.civet
+
+import {
+	DBG, LOG, WARN, ERR,
+	} from '../lib/logger.js'
+import {
+	getCmdArgs,
+	} from '../lib/llutils.js'
+
+{noColor} := getCmdArgs Deno.args, {
+	hArgs: {
+		n: {alias: 'noColor'}
+		}
+	doSetLogger: true
+	}
+
+# ---------------------------------------------------------------------------
+
+Deno.env.set 'NO_COLOR', 'YES'
+DBG  "debug message"
+LOG  "log message"
+WARN "warning message"
+ERR  "error message"

@@ -1,0 +1,49 @@
+# fs.test.civet
+
+import {undef} from '../src/lib/llutils.js'
+import * as lib from '../src/lib/fs.js'
+Object.assign(globalThis, lib)
+import * as lib2 from '../src/lib/unit-test.js'
+Object.assign(globalThis, lib2)
+
+# ---------------------------------------------------------------------------
+
+equal  fileExt("C:/temp/file.txt"), ".txt"
+equal  fileExt("c:\\temp/to/file.txt"), ".txt"
+equal  fileExt("c:\\temp/to/file.flag.txt"), ".txt"
+
+equal  withExt("C:/temp/file.txt", ".js"), "C:/temp/file.js"
+equal  withExt("c:\\temp/to/file.txt", ".js"), "c:\\temp/to/file.js"
+equal  withExt("c:\\temp/to/file.flag.txt", ".js"), "c:\\temp/to/file.flag.js"
+
+equal  normalizePath("C:/temp/file.txt"), "c:/temp/file.txt"
+equal  normalizePath("C:\\temp/to/file.txt"), "c:/temp/to/file.txt"
+equal  normalizePath("C:\\temp/to/file.flag.txt"), "c:/temp/to/file.flag.txt"
+
+equal  mkpath("C:/temp/file.txt"), "c:/temp/file.txt"
+equal  mkpath("C:/temp", "file.txt"), "c:/temp/file.txt"
+equal  mkpath("C:\\temp/to/file.txt"), "c:/temp/to/file.txt"
+equal  mkpath("C:\\temp/to/file.flag.txt"), "c:/temp/to/file.flag.txt"
+
+equal  mkpath("C:/temp", "file.txt"), "c:/temp/file.txt"
+equal  mkpath("C:\\temp/to", "file.txt"), "c:/temp/to/file.txt"
+equal  mkpath("C:\\temp", "to/file.flag.txt"), "c:/temp/to/file.flag.txt"
+
+like  parsePath("c:/temp/file.txt"), {
+	path: "c:/temp/file.txt"
+	type: 'missing'
+	root: 'c:/'
+	dir: 'c:/temp'
+	fileName: 'file.txt'
+	stub: 'file'
+	purpose: undef
+	ext: '.txt'
+	relPath: "../../../temp/file.txt"
+	relDir: "../../../temp"
+	}
+
+truthy isFile("./test/fs/dummy.txt")
+falsy  isFile("./test/fs")
+
+truthy isDir("./test/fs")
+falsy  isDir("./test/fs/dummy.txt")

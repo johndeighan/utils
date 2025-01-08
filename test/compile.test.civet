@@ -1,0 +1,12 @@
+# compile.test.civet
+
+import {
+	undef, globFiles, compileFile, compileAllFiles,
+	} from '../src/lib/llutils.js'
+
+import * as lib2 from '../src/lib/unit-test.js'
+Object.assign(globalThis, lib2)
+
+# ---------------------------------------------------------------------------
+
+equal 2+2, 4

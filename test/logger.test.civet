@@ -1,0 +1,89 @@
+# logger.test.civet
+
+import * as lib from '../src/lib/logger.js'
+Object.assign(globalThis, lib)
+import * as lib2 from '../src/lib/unit-test.js'
+Object.assign(globalThis, lib2)
+
+# ---------------------------------------------------------------------------
+
+logAll := () =>
+	clearLog()
+	DBG "debug"
+	LOG "info"
+	WARN "warning"
+	ERR "error"
+	return getLog()
+
+# ---------------------------------------------------------------------------
+
+(() =>
+	curLog := logAll()
+	equal curLog, """
+		I info
+		W warning
+		ERROR: error
+		"""
+	)()
+
+(() =>
+	setLogLevel 'debug'
+	curLog := logAll()
+	truthy curLog.startsWith("""
+		D debug
+		I info
+		W warning
+		ERROR: error
+		""")
+	)()
+
+(() =>
+	setLogLevel 'error'
+	curLog := logAll()
+	truthy curLog.startsWith("""
+		ERROR: error
+		""")
+	)()
+
+(() =>
+	clearLog()
+	setLogLevel 'info'
+	LOG "info", INDENT, "stuff", UNDENT
+	LOG "done"
+	curLog := getLog()
+	equal curLog, """
+		I info
+		I    stuff
+		I done
+		"""
+	)()
+
+(() =>
+	clearLog()
+	setLogLevel 'info'
+	LOG "info", INDENT, "stuff", UNDENT
+	LOG "finished"
+	curLog := getLog()
+	equal curLog, """
+		I info
+		I    stuff
+		I finished
+		"""
+	)()
+
+(() =>
+	clearLog()
+	setLogLevel 'profile'
+	LOG "info", INDENT, "stuff", UNDENT
+	LOG "done"
+
+	curLog := getLog()
+	matches curLog, ///^
+		ms \n
+		-{5} \n
+		\s* \d+ \s I \s info \n
+		\s* \d+ \s I \s{4} stuff
+		\s* \d+ \s I \s done
+		$///
+	)()
+

@@ -1,0 +1,44 @@
+# v8-module.coffee
+
+import * as lib from '../../src/lib/v8-stack.js'
+Object.assign(globalThis, lib)
+
+# ---------------------------------------------------------------------------
+
+export getBoth := () ->
+
+	return secondFunc('both')
+
+# ---------------------------------------------------------------------------
+
+export getDirect := () ->
+
+	return secondFunc('direct')
+
+# ---------------------------------------------------------------------------
+
+export getOutside := () ->
+
+	return secondFunc('outside')
+
+# ---------------------------------------------------------------------------
+
+secondFunc := (type) ->
+
+	return thirdFunc(type)
+
+# ---------------------------------------------------------------------------
+
+thirdFunc := (type) ->
+
+	# --- direct caller should be 'secondFunc'
+	#     outside caller should be the function that called getCaller()
+	switch type
+		when 'both'
+			return [getMyCaller(), getMyCaller()]
+		when 'direct'
+			return getMyCaller()
+		when 'outside'
+			return getMyCaller()
+		else
+			croak "Unknown type: #{type}"

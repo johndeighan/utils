@@ -1,0 +1,215 @@
+# v8-stack.civet
+
+import pathLib from 'path'
+import fs from 'fs'
+import sms from 'source-map-support'
+import {sprintf} from '@std/fmt/printf'
+
+import {
+	undef, defined, notdefined, isEmpty, nonEmpty,
+	assert, croak, hasKey, OL, ML, getOptions,
+	isString, isNonEmptyString, isInteger, rpad, centered,
+	isFile, mkpath, fileExt, withExt, normalizePath, relpath,
+	DBG, LOG, WARN, ERR, INDENT, UNDENT,
+	} from '@jdeighan/utils/llutils.js'
+
+sms.install()
+mapSourcePosition := sms.mapSourcePosition
+width := 40
+
+# ---------------------------------------------------------------------------
+# Stack Frames have keys:
+#    type         - eval | native | constructor | method | function | script
+#    source
+#    line
+#    column
+#    name          - name of function or method
+#    isConstructor - true if a constructor function
+#    isAsync       - true if an async function/method
+#    objTye        - if type == 'method'
+
+# ---------------------------------------------------------------------------
+
+export getV8Stack = () =>
+	# --- ignores any stack frames from this module
+	#     *.js files will be mapped to original source files
+	#        if a source map is available
+
+	try
+		oldLimit := Error.stackTraceLimit
+		oldPreparer := Error.prepareStackTrace
+
+		Error.stackTraceLimit = Infinity
+		Error.prepareStackTrace = (error, lFrames) =>
+			lResultFrames := []
+			DBG "getV8Stack(): #{lFrames.length} stack frames"
+			for frame,i of lFrames
+
+				DBG "FRAME #{i}", INDENT
+
+				# --- Call functions on the frame
+				fileName      := frame.getFileName()
+				functionName  := frame.getFunctionName()
+				functionObj   := frame.getFunction()
+				methodName    := frame.getMethodName()
+				line          := frame.getLineNumber()
+				column        := frame.getColumnNumber()
+				isTopLevel    := frame.isToplevel()
+				isAsync       := frame.isAsync()
+				isEval        := frame.isEval()
+				isNative      := frame.isNative()
+				isConstructor := frame.isConstructor()
+				typeName      := frame.getTypeName()
+
+				DBG centered('from V8', width, '-')
+				DBG "fileName = #{OL(fileName)}"
+				DBG "functionName = #{OL(functionName)}"
+				DBG "defined(functionObj) = #{OL(defined(functionObj))}"
+				DBG "methodName = #{OL(methodName)}"
+				DBG "line = #{OL(line)}"
+				DBG "column = #{OL(column)}"
+				DBG "isTopLevel = #{OL(isTopLevel)}"
+				DBG "isAsync = #{OL(isAsync)}"
+				DBG "isEval = #{OL(isEval)}"
+				DBG "isNative = #{OL(isNative)}"
+				DBG "isConstructor = #{OL(isConstructor)}"
+				DBG "typeName = #{OL(typeName)}"
+				DBG '-'.repeat(width)
+
+				source := fileName
+				if defined(source) && (source.indexOf('v8-stack.js')  >= 0)
+					DBG "SKIP: source = '#{source}'", UNDENT
+					continue
+
+				h := {
+					source
+					line
+					column
+					}
+
+				if defined(functionName)
+					h.name = functionName
+				else if defined(functionObj)
+					h.name = '<anonymous>'
+
+				if defined(methodName)
+					h.name = methodName
+
+				# --- Set type
+				h.type = (
+					  isEval                  ? 'eval'
+					: isNative                ? 'native'
+					: isConstructor           ? 'constructor'
+					: defined(methodName)   ? 'method'
+					: defined(functionName) ? 'function'
+					: isTopLevel              ? 'script'
+					:                           croak('Unknown frame type')
+					)
+
+				if isConstructor
+					h.isConstructor = true
+
+				if isAsync
+					h.isAsync = true
+
+				if (h.type == 'method')
+					h.objType = typeName
+
+				# --- fix a bug in the V8 engine where calls inside a
+				#     top level anonymous function is reported as
+				#     being from the top level, i.e. type 'script'
+
+				if (lResultFrames.length > 0)
+					tos := lResultFrames.at(-1)    # --- i.e. previous frame
+					if (h.type == 'script') && (tos.type == 'script')
+						DBG "Patch current TOS (currently #{lResultFrames.length} frames)"
+						tos.type = 'function'
+						tos.name = '<anonymous>'
+
+				DBG centered('return frame', width, '-')
+				DBG ML(h)
+				DBG '-'.repeat(width)
+
+				# --- Ignore this entry and any before it
+				if (h.objType == 'ModuleJob')
+					DBG "objType is 'ModuleJob' - stop processing"
+					break
+
+				lResultFrames.push h
+				DBG UNDENT
+
+			DBG '-'.repeat(width)
+			return lResultFrames
+
+		errObj := new Error()
+		lStack := errObj.stack
+
+		# --- reset to previous values
+		Error.stackTraceLimit = oldLimit
+		Error.prepareStackTrace = oldPreparer
+
+		for h of lStack
+			DBG "before mapping, h = #{ML(h)}"
+			{source, line, column, name, type} := h
+			hNew := mapSourcePosition {
+				source
+				line
+				column
+				}
+			newExt := fileExt(hNew.source)
+			if (newExt == fileExt(h.source))
+				DBG "Not mapped - returning original position"
+				h.source = relpath(h.source)
+			else
+				DBG "got, hNew = #{ML(hNew)}"
+				h.source = relpath(withExt(h.source, newExt))
+				h.line = hNew.line
+				h.column = hNew.column
+				DBG "after mapping, h = #{ML(h)}"
+
+		return lStack
+	catch e
+		ERR e.message
+		return []
+
+# ---------------------------------------------------------------------------
+
+export getV8StackStr := (hOptions={}) =>
+	# --- ignores any stack frames from this module
+	#     *.js files will be mapped to original source files
+	#        if a source map is available
+
+	lLines := getV8Stack().map((h) =>
+		typeStr := sprintf("%-11s", h.type)
+		return "[#{typeStr}] #{h.source}:#{h.line}:#{h.column}"
+		)
+	return lLines.join('\n')
+
+# ---------------------------------------------------------------------------
+
+export getMyCaller := () =>
+
+	try
+		lStack := getV8Stack()
+		return lStack[1]
+	catch err
+		console.log "ERROR in getV8Stack(): #{err.message}"
+		return undef
+
+# ---------------------------------------------------------------------------
+
+export getMyOutsideCaller := () =>
+
+	try
+		lStack := getV8Stack()
+		DBG "Call stack has #{lStack.length} items"
+		source := lStack[0].source
+		DBG "source = #{source}"
+		for frame,i of lStack
+			DBG "frame[#{i}].source = #{frame.source}"
+			if (frame.source != source)
+				return frame
+		return undef
+	catch err
+		console.log "ERROR in getV8Stack(): #{err.message}"
+		return undef

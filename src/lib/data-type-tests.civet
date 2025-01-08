@@ -1,0 +1,75 @@
+# data-type-tests.civet
+
+defined := (x) => return (x != undefined) && (x != null)
+
+# ---------------------------------------------------------------------------
+
+export isString := (item) =>
+
+	return (typeof item == 'string') || (item instanceof String)
+
+# ---------------------------------------------------------------------------
+
+export isNonEmptyString := (str) =>
+
+	return isString(str) && (str.length > 0)
+
+# ---------------------------------------------------------------------------
+
+export isBoolean := (item) =>
+
+	return (typeof item == 'boolean') || (item instanceof Boolean)
+
+# ---------------------------------------------------------------------------
+
+export isNumber := (x) =>
+
+	type := typeof x
+	return (type == 'bigint') || (type == 'number') || (x instanceof Number)
+
+# ---------------------------------------------------------------------------
+
+export isInteger := (x, hOptions={}) =>
+
+	# --- test if it's a number or integer
+	if not isNumber(x) || not Number.isInteger(x.valueOf())
+		return false
+
+	# --- possible range check
+	{min, max} := hOptions
+	if defined(min) && (x < min)
+		return false
+	if defined(max) && (x > max)
+		return false
+	return true
+
+# ---------------------------------------------------------------------------
+
+export isArray := (item) =>
+
+	return Array.isArray(item)
+
+# ---------------------------------------------------------------------------
+
+export isArrayOfStrings := (lItems) =>
+
+	if not isArray(lItems)
+		return false
+	for item of lItems
+		if not isString(item)
+			return false
+	return true
+
+# ---------------------------------------------------------------------------
+
+export isHash := (item) =>
+
+	return (typeof item == 'object') && not isArray(item)
+
+# ---------------------------------------------------------------------------
+
+export isObject := (item) =>
+
+	return (typeof item == 'object')
+
+# ---------------------------------------------------------------------------

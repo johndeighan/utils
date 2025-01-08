@@ -1,0 +1,34 @@
+# unit-test.test.civet
+
+import * as lib from '../src/lib/unit-test.js'
+Object.assign(globalThis, lib)
+
+# ---------------------------------------------------------------------------
+
+equal    2+2, 4
+equal    'abc'+'def', 'abcdef'
+equal    'abc   '.trim(), 'abc'
+equal    {a:1, b:2}, {b:2, a:1}
+
+truthy   42
+truthy   'abc'
+truthy   '   '
+
+falsy    false
+falsy    undefined
+falsy    null
+falsy    ''
+
+fails    () => throw new Error("bad")
+
+succeeds () => return 'me'
+
+like     {a:1, b:2, c:3}, {a:1, c:3}
+
+matches  "this is a long sentence", "long"
+matches  "another 42 lines", /\d+/
+matches  "abcdef", "abc"
+
+includes ['a','b','c'], 'b'
+
+includesAll ['a','b','c'], ['a', 'c']

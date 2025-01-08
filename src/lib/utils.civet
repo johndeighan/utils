@@ -1,0 +1,369 @@
+# utils.civet
+
+import fs from 'node:fs'
+import {
+	assert, croak, undef, defined, notdefined,
+	normalizeStr, execCmd, pass,
+	rpad, lpad, centered, spaces, tabs, LOG,
+	isString, isBoolean, strToHash, addDefaults, getOptions,
+	isNumber, isInteger, isArray, isNonEmptyString,
+	isArrayOfStrings, wsSplit, words, keys, hasKey,
+	isEmpty, nonEmpty,
+	} from './llutils.js'
+
+export {
+	assert, croak, undef, defined, notdefined,
+	normalizeStr, execCmd, pass,
+	rpad, lpad, centered, spaces, tabs, LOG,
+	isString, isBoolean, strToHash, addDefaults, getOptions,
+	isNumber, isInteger, isArray, isNonEmptyString,
+	isArrayOfStrings, wsSplit, words, keys, hasKey,
+	isEmpty, nonEmpty,
+	}
+
+# ---------------------------------------------------------------------------
+#       BASIC - only use other BASIC functions
+# ---------------------------------------------------------------------------
+
+export add_s := (n) =>
+
+	return (n==1) ? '' : 's'
+
+# ---------------------------------------------------------------------------
+
+export isHash := (x) =>
+
+	return (typeof x == 'object')
+
+# ---------------------------------------------------------------------------
+
+export isNonEmptyHash := (x) =>
+
+	if not isHash(x)
+		return false
+	return (Object.keys(x).length > 0)
+
+# ---------------------------------------------------------------------------
+
+export isNonEmptyArray := (x) =>
+
+	if not isArray(x)
+		return false
+	return (x.length > 0)
+
+# ---------------------------------------------------------------------------
+
+export isFunction := (x) =>
+
+	if (typeof x != 'function') && not (x instanceof Function)
+		return false
+	return not (x.toString().startsWith('class'))
+
+# ---------------------------------------------------------------------------
+
+export isPromise := (x) =>
+
+	if (typeof x != 'object') || (x == null)
+		return false
+	return (typeof x.then == 'function')
+
+# ---------------------------------------------------------------------------
+
+export blockToArray := (block) =>
+
+	assert isString(block), "block is: #{typeof block}"
+	if isEmpty(block)
+		return []
+	else
+		return block.split(/\r?\n/)
+
+# ---------------------------------------------------------------------------
+
+export toArray := (strOrArray) =>
+
+	if isArray(strOrArray)
+		return strOrArray
+	else
+		return blockToArray(strOrArray)
+
+# ---------------------------------------------------------------------------
+
+export arrayToBlock := (lLines) =>
+
+	assert isArray(lLines), "lLines is not an array"
+	lFiltered := lLines.filter((line) => defined(line))
+	return lFiltered.join("\n")
+
+# ---------------------------------------------------------------------------
+
+export toBlock := (strOrArray) =>
+
+	if isString(strOrArray)
+		return strOrArray
+	else
+		return arrayToBlock(strOrArray)
+
+# ---------------------------------------------------------------------------
+
+export splitPrefix := (line) =>
+
+	assert isString(line), "non-string: #{typeof line}"
+	lMatches := line.match(/^(\s*)(.*)$/)
+	if defined(lMatches)
+		return [lMatches[1], lMatches[2]]
+	else
+		# --- should be impossible, but it happened
+		return ['', '']
+
+# ---------------------------------------------------------------------------
+
+export substrCount := (str, substr) =>
+
+	return (str.match(///#{substr}///g)||[]).length
+
+# ---------------------------------------------------------------------------
+
+export isClassInstance := (x, lReqKeys=undef) =>
+
+	if isEmpty(x)
+		return false
+	if (typeof x != 'object')
+		return false
+	if ((x instanceof String)
+			|| (x instanceof Number)
+			|| (x instanceof Boolean)
+			|| (x instanceof RegExp)
+			|| (x instanceof Function)
+			|| isArray(x)
+			|| isHash(x)
+			|| isPromise(x)
+			)
+		return false
+	if defined(lReqKeys)
+		lNeededKeys := isString(lReqKeys) ? words(lReqKeys) : lReqKeys
+		assert isArray(lNeededKeys), "lReqKeys not an array"
+		for keyStr of lNeededKeys
+			if lMatches := keyStr.match(///^ \& (.*) $///)
+				[_, key] := lMatches
+				if notdefined(x[key]) || not isFunction(x[key])
+					return false
+			else
+				if notdefined(x[keyStr])
+					return false
+	return true
+
+# ---------------------------------------------------------------------------
+
+export CWS := (str) =>
+
+	assert isString(str), "CWS(): parameter not a string"
+	return str.trim().replace(/\s+/sg, ' ')
+
+# ---------------------------------------------------------------------------
+
+export chomp := (str) =>
+	# --- Remove trailing \n if present
+
+	len := str.length
+	if (str[len-1] == '\n')
+		if (str[len-2] == '\r')
+			return str.substring(0, len-2)
+		else
+			return str.substring(0, len-1)
+	else
+		return str
+
+# ---------------------------------------------------------------------------
+
+export behead := (block) ->
+
+	nlPos := block.indexOf("\n")
+	if  (nlPos == -1)
+		return [block, '']
+	return [
+		chomp(block.substring(0, nlPos))
+		chomp(block.substring(nlPos+1))
+		]
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+export toSync := (asyncFunc, lArgs=[]) =>
+
+	isFinished := false
+	promise = asyncFunc(lArgs...)
+	promise.then(() => {isFinished = true})
+	while (!isFinished) {
+		execSync('sleep 0.1')
+		}
+	return
+
+# ---------------------------------------------------------------------------
+
+export OL := (obj, hOptions={}) =>
+
+	if (obj == undef)
+		return 'undef'
+
+	if (obj == null)
+		return 'null'
+
+	{esc, short} := getOptions hOptions, {
+		esc: true
+		short: false
+		}
+
+	if short
+		if isArray(obj)
+			return 'ARRAY'
+		if isHash(obj)
+			return 'HASH'
+		if isFunction(obj)
+			return 'FUNCTION'
+		if isClassInstance(obj)
+			return 'CLASS INSTANCE'
+
+	myReplacer := (key, value) =>
+		if notdefined(value)
+			return '«undef»'
+		type := typeof value
+		switch type
+			when 'symbol'
+				return '«Symbol»'
+			when 'bigint'
+				return "«BigInt #{value.toString()}»"
+			when 'function'
+				tag := value.toString().startsWith('class') ? 'Class' : 'Function'
+				return defined(value.name) ? "«#{tag} #{value.name}»" : "«#{tag}»"
+			when 'string'
+				# --- NOTE: JSON.stringify will add quote chars
+				return esc ? escapeStr(value) : value
+			when 'object'
+				if value instanceof RegExp
+					return "«RegExp #{value.toString()}»"
+				if defined(value) && (typeof value.then == 'function')
+					return "«Promise»"
+				else
+					return value
+			else
+				return value
+
+	result := JSON.stringify(obj, myReplacer)
+
+	# --- Because JSON.stringify adds quote marks,
+	#     we remove them when using .
+	return result.replaceAll('"«','«').replaceAll('»"','»')
+
+# ---------------------------------------------------------------------------
+#    tabify - convert leading spaces to TAB characters
+#             if numSpaces is not defined, then the first
+#             line that contains at least one space sets it
+
+export tabify := (block, hOptions={}) =>
+
+	{numSpaces, strict} := getOptions hOptions, {
+		numSpaces: undef
+		strict: true
+		}
+	if defined(numSpaces)
+		assert isInteger(numSpaces), "bad numSpaces: #{OL(numSpaces)}"
+	lLines := []
+	let count = numSpaces
+	for str of toArray(block)
+		[prefix, theRest] := splitPrefix(str)
+		if (prefix.length == 0)
+			lLines.push theRest
+		else
+			if strict
+				assert (prefix.indexOf('\t') == -1), "unexpected TAB"
+			if notdefined(count)
+				count = substrCount(prefix, ' ')
+			spaces := ' '.repeat(count)
+			lLines.push "#{prefix.replaceAll(spaces, '\t')}#{theRest}"
+	return arrayToBlock(lLines)
+
+# ---------------------------------------------------------------------------
+#    untabify - convert TAB characters to spaces
+
+export untabify := (str, hOptions={}) =>
+
+	{numSpaces, strict} := getOptions hOptions, {
+		numSpaces: 3
+		strict: true
+		}
+	assert isInteger(numSpaces), "bad numSpaces: #{OL(numSpaces)}"
+	spaces := ' '.repeat(numSpaces)
+	lLines := []
+	for line of blockToArray(str)
+		[prefix, theRest] := splitPrefix(line)
+		if prefix.length == 0
+			lLines.push theRest
+		else
+			if strict
+				assert (prefix.indexOf(' ') == -1), "unexpected space char"
+			newPrefix := prefix.replaceAll("\t", spaces)
+			lLines.push "#{newPrefix}#{theRest}"
+	return arrayToBlock(lLines)
+
+# ---------------------------------------------------------------------------
+#   escapeStr - escape newlines, carriage return, TAB chars, etc.
+# --- NOTE: We can't use OL() inside here since it uses escapeStr()
+
+hEscNL := {
+	"\r": '←'
+	"\n": '↓'
+	"\t": '→'
+	" ": '˳'
+	}
+hEscNoNL := {
+	"\r": '←'
+	"\t": '→'
+	" ": '˳'
+	}
+
+# ---------------------------------------------------------------------------
+
+export escapeStr := (str, hOptions={}) =>
+	#     Valid options:
+	#        hEsc    - hash {<ch>: <replacement>, ...}
+	#        offset  - indicate position of offset
+	#        poschar - char to use to indicate position
+
+	assert isString(str), "not a string: #{typeof str}"
+	{hEsc, offset, poschar} := addDefaults hOptions, {
+		hEsc: hEscNL
+		offset: undef
+		poschar: '┊'
+		}
+
+	hReplace := if isString(hEsc)
+		switch hEsc
+			when 'esc'
+				hEscNL
+			when 'escNoNL'
+				hEscNoNL
+			else
+				{}
+	else
+		hEsc
+	assert isHash(hReplace), "not a hash #{typeof hReplace}"
+
+	let lParts = []
+	let i = 0
+	for ch of str
+		if defined(offset) && (i == offset)
+			lParts.push poschar
+		lParts.push hReplace[ch] || ch
+		i += 1
+	if (offset == str.length)
+		lParts.push poschar
+	return lParts.join('')
+
+# ---------------------------------------------------------------------------
+# --- ASYNC !
+
+export sleep = (sec) =>
+
+	await new Promise((r) => setTimeout(r, 1000 * sec))
+	return
+

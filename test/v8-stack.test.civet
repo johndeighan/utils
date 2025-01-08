@@ -1,0 +1,246 @@
+# v8-stack.test.civet
+
+import {
+	undef, defined, notdefined, assert, croak,
+	compileAllFiles, relpath,
+	} from '../src/lib/llutils.js'
+import * as lib from '../src/lib/v8-stack.js'
+Object.assign(globalThis, lib)
+import * as lib2 from '../src/lib/unit-test.js'
+Object.assign(globalThis, lib2)
+
+import {getBoth} from './v8-stack/v8-module.js'
+
+# ---------------------------------------------------------------------------
+
+(() ->
+	let stack1 = undef
+	let stack2 = undef
+
+	main := () ->
+		func1()
+		func2()
+
+	func1 := () ->
+		stack1 = getV8Stack()
+
+	func2 := () ->
+		stack2 = getV8Stack()
+		return
+
+	main()
+	like stack1, [
+		{
+			type: 'function'
+			name: 'func1'
+			source: 'test/v8-stack.test.civet'
+			line: 25
+			}
+		{
+			type: 'function'
+			name: 'main'
+			source: 'test/v8-stack.test.civet'
+			line: 21
+			}
+		{
+			type: 'function'
+			name: '<anonymous>'
+			source: 'test/v8-stack.test.civet'
+			line: 31
+			}
+		{
+			type: 'script'
+			source: 'test/v8-stack.test.civet'
+			line: 82
+			}
+		]
+	like stack2, [
+		{
+			type: 'function'
+			name: 'func2'
+			source: 'test/v8-stack.test.civet'
+			line: 28
+			}
+		{
+			type: 'function'
+			name: 'main'
+			source: 'test/v8-stack.test.civet'
+			line: 22
+			}
+		{
+			type: 'function'
+			name: '<anonymous>'
+			source: 'test/v8-stack.test.civet'
+			line: 31
+			}
+		{
+			type: 'script'
+			source: 'test/v8-stack.test.civet'
+			line: 82
+			}
+		]
+	)()
+
+# ---------------------------------------------------------------------------
+
+(() ->
+	let caller1 = undef
+	let caller2 = undef
+
+	main := () ->
+		func1()
+		func2()
+
+	func1 := () ->
+		caller1 = getMyCaller()
+
+	func2 := () ->
+		caller2 = getMyCaller()
+		return
+
+	main()
+	like caller1, {
+		type: 'function'
+		name: 'main'
+		source: 'test/v8-stack.test.civet'
+		}
+	like caller2, {
+		type: 'function'
+		name: 'main'
+		source: 'test/v8-stack.test.civet'
+		}
+	)()
+
+# ---------------------------------------------------------------------------
+
+(() ->
+	let hCaller = undef
+
+	main := () ->
+		func1()
+		func2()
+
+	func1 := () ->
+		return
+
+	func2 := () ->
+		hCaller = getMyCaller()
+		return
+
+	# ------------------------------------------------------------------------
+
+	main()
+
+	like hCaller, {
+		type: 'function'
+		name: 'main'
+		source: 'test/v8-stack.test.civet'
+		}
+
+	)()
+
+# ---------------------------------------------------------------------------
+
+(() ->
+	let lCallers1 = undef
+	let lCallers2 = undef
+
+	main := () ->
+		func1()
+		func2()
+
+	func1 := () ->
+		lCallers1 = getBoth()
+
+	func2 := () ->
+		lCallers2 = getBoth()
+		return
+
+	main()
+	like lCallers1[0], {
+		type: 'function'
+		name: 'secondFunc'
+		source: 'test/v8-stack/v8-module.civet'
+		}
+	like lCallers1[1], {
+		type: 'function'
+		name: 'secondFunc'
+		source: 'test/v8-stack/v8-module.civet'
+		}
+	like lCallers2[0], {
+		type: 'function'
+		name: 'secondFunc'
+		source: 'test/v8-stack/v8-module.civet'
+		}
+	like lCallers2[1], {
+		type: 'function'
+		name: 'secondFunc'
+		source: 'test/v8-stack/v8-module.civet'
+		}
+
+	)()
+
+# ---------------------------------------------------------------------------
+
+(() =>
+	func1 := () =>
+		return await func2()
+
+	func2 := () =>
+		return await getV8StackStr()
+
+	equal await func1(), """
+		[function   ] test/v8-stack.test.civet:190:15
+		[function   ] test/v8-stack.test.civet:187:15
+		[function   ] test/v8-stack.test.civet:192:13
+		[script     ] test/v8-stack.test.civet:199:3
+		"""
+
+	)()
+
+# ---------------------------------------------------------------------------
+
+(() =>
+	func1 := () =>
+		func2()
+		return await getV8StackStr()
+
+	func2 := () =>
+		return 2 * 2
+
+	equal await func1(), """
+		[function   ] test/v8-stack.test.civet:206:15
+		[function   ] test/v8-stack.test.civet:211:13
+		[script     ] test/v8-stack.test.civet:216:3
+		"""
+	)()
+
+# ---------------------------------------------------------------------------
+
+(() ->
+	let caller1 = undef
+	let caller2 = undef
+
+	main := () ->
+		func1()
+		func2()
+
+	func1 := () ->
+		caller1 = getMyCaller()
+
+	func2 := () ->
+		caller2 = getMyCaller()
+		return
+
+	main()
+	like caller1, {
+		type: 'function'
+		name: 'main'
+		source: 'test/v8-stack.test.civet'
+		}
+	like caller2, {
+		type: 'function'
+		name: 'main'
+		source: 'test/v8-stack.test.civet'
+		}
+	)()

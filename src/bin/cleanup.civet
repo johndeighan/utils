@@ -1,0 +1,43 @@
+# cleanup.civet
+
+import {expandGlobSync} from 'jsr:@std/fs/expand-glob'
+import pathLib from 'node:path'
+
+# ---------------------------------------------------------------------------
+
+relpath := (path) =>
+
+	npath := pathLib.relative('', path).replaceAll('\\', '/')
+	if (npath.charAt(1) == ':')
+		return npath.charAt(0).toLowerCase() + npath.substring(1)
+	else
+		return npath
+
+# ---------------------------------------------------------------------------
+
+rootDir :=  Deno.env.get('PROJECT_ROOT_DIR')
+if (rootDir == undefined)
+	console.log "Please set env var PROJECT_ROOT_DIR"
+	Deno.exit()
+
+for pattern of [
+		'src/**/*.js'
+		'src/**/*.temp.*'
+		'test/**/*.js'
+		'test/**/*.temp.*'
+		]
+	hGlobOptions := {
+		exclude: [
+			'node_modules/**'
+			'.git/**'
+			'src/bin/cleanup.js'
+			'test/base.test.js'
+			"#{rootDir}/.deno/bin/*.exe"
+			"#{rootDir}/.deno/bin/cleanup*"
+			]
+		includeDirs: false
+		}
+
+	for {path} of expandGlobSync(pattern, hGlobOptions)
+		console.log "REMOVE: #{relpath(path)}"
+		Deno.removeSync path

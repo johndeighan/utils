@@ -1,0 +1,15 @@
+export default {
+	parseOptions: {
+		implicitReturns: false
+		autoConst: false
+		autoLet: false
+		autoVar: false
+		coffeeBooleans: false
+		coffeeClasses: true
+		coffeeComment: true
+		coffeeDo: false
+		coffeeEq: true
+		coffeeInterpolation: true
+		coffeeOf: false
+		}
+	}

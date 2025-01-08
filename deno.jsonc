@@ -1,0 +1,111 @@
+{
+	// --- Comments and trailing commas allowed!
+	"tasks": {
+		"cleanup": "
+			   civet --js -o .js --inline-map -c src/bin/cleanup.civet
+			&& deno install -fgA src/bin/cleanup.js
+			&& bash cleanup
+			",
+
+		"build:base": "
+			   civet --js -o .js --inline-map -c src/lib/logger.civet
+			&& civet --js -o .js --inline-map -c src/lib/data-type-tests.civet
+			&& civet --js -o .js --inline-map -c src/lib/llutils.civet
+			&& civet --js -o .js --inline-map -c src/lib/v8-stack.civet
+			&& civet --js -o .js --inline-map -c src/lib/unit-test.civet
+			&& civet --js -o .js --inline-map -c src/lib/fs.civet
+		   ",
+
+		"test:base": "
+			   deno test -qA test/base.test.js
+			&& civet --js -o .js --inline-map -c test/logger.test.civet
+			&& deno test -qA test/logger.test.js
+			&& civet --js -o .js --inline-map -c test/llutils.test.civet
+			&& deno test -qA test/llutils.test.js
+			&& civet --js -o .js --inline-map -c test/unit-test.test.civet
+			&& deno test -qA test/unit-test.test.js
+			&& civet --js -o .js --inline-map -c test/fs.test.civet
+			&& deno test -qA test/fs.test.js
+			&& civet --js -o .js --inline-map -c test/v8-stack.test.civet
+			&& civet --js -o .js --inline-map -c test/v8-stack/v8-module.civet
+			&& deno test -qA test/v8-stack.test.js
+			",
+
+		"build:compiler":
+			"civet --js -o .js --inline-map -c src/bin/compile.civet",
+
+		"install:compiler":
+			"deno install -fgA --config ./deno.jsonc src/bin/compile.js",
+
+		"build:run-unit-test":
+			"civet --js -o .js --inline-map -c src/bin/run-unit-test.civet",
+
+		"install:run-unit-test": "
+			   deno install -fgA src/bin/run-unit-test.js
+			&& deno install -fgA -n rut src/bin/run-unit-test.js
+			",
+
+		"build:run-temp-file":
+			"civet --js -o .js --inline-map -c src/bin/run-temp-file.civet",
+
+		"install:run-temp-file": "
+			   deno install -fgA src/bin/run-temp-file.js
+			&& deno install -fgA -n rtf src/bin/run-temp-file.js
+			",
+
+		"bootstrap":      "clear
+			&& deno task cleanup
+			&& deno task build:base
+			&& deno task test:base
+			&& deno task build:compiler
+			&& deno task install:compiler
+			&& deno task build:run-unit-test
+			&& deno task install:run-unit-test
+			&& deno task build:run-temp-file
+			&& deno task install:run-temp-file
+			",
+
+		"lltemp": "
+			   clear
+			&& civet --js -o .js --inline-map -c test/temp.civet
+			&& deno run -A test/temp.js
+			",
+
+		"temp": "
+			   clear
+			&& bash compile
+			&& deno run -A test/temp.js
+			",
+
+		"docs": "
+		      clear
+			&& compile unit-test
+			&& deno doc --html --name=\"@jdeighan/utils/unit-test\" src/lib/unit-test.js
+			",
+		},
+	"imports": {
+		"@std/assert": "jsr:@std/assert@^1.0.8",
+		"@std/async": "jsr:@std/async@^1.0.9",
+		"@std/async/debounce": "jsr:@std/async@1.0.9/debounce",
+		"@std/cli": "jsr:@std/cli@^1.0.7",
+		"@std/fmt/printf": "jsr:@std/fmt@^1.0.3/printf",
+		"@std/fmt/colors": "jsr:@std/fmt@^1.0.3/colors",
+		"@std/fs": "jsr:@std/fs@^1.0.6",
+		"@std/fs/expand-glob": "jsr:@std/fs@^1.0.6/expand-glob",
+		"@std/log": "jsr:@std/log@^0.224.12",
+		"@std/path": "jsr:@std/path@^1.0.8",
+		"@std/streams": "jsr:@std/streams@^1.0.8",
+
+		"fs": "node:fs",
+		"path": "node:path",
+		"url": "node:url",
+		"stream/web": "node:stream/web",
+
+		"glob": "npm:glob@^11.0.0",
+		"source-map-js": "npm:source-map-js@^1.2.1",
+		"source-map-support": "npm:source-map-support@^0.5.21",
+		"@danielx/civet": "npm:@danielx/civet@^0.9.0",
+
+		"@jdeighan/utils/": "./src/lib/",
+		},
+	}

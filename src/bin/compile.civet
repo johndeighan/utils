@@ -1,0 +1,66 @@
+# compile.civet
+
+import {
+	undef, defined, notdefined, pass, OL, assert, croak,
+	getCmdArgs, compileFile, compileAllFiles,
+	DBG, LOG, WARN, ERR,
+	} from '../lib/llutils.js'
+
+let numCompiled = 0
+
+# ---------------------------------------------------------------------------
+
+logResult := (hResult) =>
+
+	{relPath, status, outPath} := hResult
+	switch status
+		when 'compiled'
+			LOG "==> #{OL(relPath)}"
+			numCompiled += 1
+		when 'exists'
+			pass()
+		else
+			ERR "Not compiled: #{OL(relPath)}"
+	return
+
+# ---------------------------------------------------------------------------
+
+{_, file, force, nopp, watch} := getCmdArgs Deno.args, {
+	hArgs: {
+		file: {type: 'string'}
+		f: {alias: 'force'}
+		n: {alias: 'nopp'}
+		w: {alias: 'watch'}
+		}
+	doSetLogger: true
+	}
+
+if (_.length == 0)
+	DBG "=====  Compiling all files  ====="
+	let nFiles = 0
+	for hResult of compileAllFiles(undef, {force, nopp})
+		logResult hResult
+
+else
+	# --- Files must be specified as <stub>,... or <dirspec>/<stub>,...
+
+	for str of _
+		if str.includes('/')
+			[dirspec, stubStr] := path.split('/')
+			for stub of stubStr.split(',')
+				DBG "compile #{OL(dirspec)}/#{OL(stub)}"
+				hResult := compileFile [dirspec, stub], {force, nopp}
+				logResult hResult
+		else
+			for stub of str.split(',')
+				DBG "compile stub #{OL(stub)}"
+				hResult := compileFile [undef, stub], {force, nopp}
+				logResult hResult
+
+if defined(file)
+	for path of file.split(',')
+		{relPath, status, outPath} := compileFile path, {force, nopp}
+		logResult status, outPath, relPath
+
+LOG "DONE (#{numCompiled} files compiled)"
+

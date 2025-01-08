@@ -1,0 +1,1428 @@
+# llutils.civet
+
+import {expandGlobSync} from '@std/fs/expand-glob'
+import fs from 'fs'
+import pathLib from 'path'
+import urlLib from 'url'
+import {TextLineStream} from '@std/streams'
+import {TextDecoderStream} from 'stream/web'
+import {compile} from '@danielx/civet'
+import {debounce} from "@std/async/debounce"
+import {stripAnsiCode} from "@std/fmt/colors"
+import {
+	setLogLevel, pushLogLevel, popLogLevel,
+	curLogLevel, clearLog,
+	INDENT, UNDENT, CLEAR,
+	DBG, LOG, WARN, ERR,
+	} from '@jdeighan/utils/logger.js'
+import {
+	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
+	isArray, isArrayOfStrings, isHash, isObject,
+	} from '@jdeighan/utils/data-type-tests.js'
+
+export {
+	setLogLevel, pushLogLevel, popLogLevel, clearLog,
+	INDENT, UNDENT, CLEAR,
+	DBG, LOG, WARN, ERR,
+	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
+	isArray, isArrayOfStrings, isHash, isObject,
+	}
+
+/**
+ * @module llutils - low level utilities
+ */
+
+textDecoder := new TextDecoder()
+export pass = () =>    # do nothing
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Outputs an error message to the logs,
+ * then throws an exception with the provided message
+ */
+
+export croak := (msg) =>
+
+	ERR msg
+	throw new Error(msg)
+
+# ---------------------------------------------------------------------------
+
+export assert := (cond, msg) =>
+
+	if !cond
+		croak msg
+	return
+
+# ---------------------------------------------------------------------------
+
+export undef := undefined
+
+# ---------------------------------------------------------------------------
+
+export defined := (...lValues) =>
+
+	for value of lValues
+		if (value == undef) || (value == null)
+			return false
+	return true
+
+# ---------------------------------------------------------------------------
+
+export notdefined := (value) =>
+
+	return not defined(value)
+
+# ---------------------------------------------------------------------------
+
+export wsSplit := (str) =>
+
+	newstr := str.trim()
+	if (newstr == '')
+		return []
+	else
+		return newstr.split(/\s+/)
+
+# ---------------------------------------------------------------------------
+
+export words := (...lStrings) =>
+
+	let lWords = []
+	for str of lStrings
+		for word of wsSplit(str)
+			lWords.push word
+	return lWords
+
+# ---------------------------------------------------------------------------
+# GENERATOR
+
+export range := (n) ->
+
+	let i = 0
+	while (i < n)
+		yield i
+		i = i + 1
+	return
+
+# ---------------------------------------------------------------------------
+
+export OL := (x) =>
+
+	return JSON.stringify(x)
+
+# ---------------------------------------------------------------------------
+
+export ML := (x) =>
+
+	return JSON.stringify(x, null, 3)
+
+# ---------------------------------------------------------------------------
+
+export keys := Object.keys
+
+# ---------------------------------------------------------------------------
+# --- true if hash has all keys
+
+export hasKey := (h, ...lKeys) =>
+
+	if notdefined(h)
+		return false
+	assert isHash(h), "h not a hash: #{OL(h)}"
+	for key of lKeys
+		assert isString(key), "key not a string: #{OL(key)}"
+		if not h.hasOwnProperty(key)
+			return false
+	return true
+
+export hasKeys := hasKey
+
+# ---------------------------------------------------------------------------
+#   isEmpty - one of:
+#      - string is whitespace
+#      - array has no elements
+#      - hash has no keys
+
+export isEmpty := (x) =>
+
+	if (x == undef) || (x == null)
+		return true
+	if isString(x)
+		return (x.match(/^\s*$/) != null)
+	if isArray(x)
+		return (x.length == 0)
+	if isHash(x)
+		return (keys(x).length == 0)
+	else
+		return false
+
+# ---------------------------------------------------------------------------
+#   nonEmpty - not isEmpty(x)
+
+export nonEmpty := (x) =>
+
+	return not isEmpty(x)
+
+# ---------------------------------------------------------------------------
+
+export merge := (...lObjects) =>
+
+	return Object.assign(lObjects...)
+
+# ---------------------------------------------------------------------------
+
+export normalizeStr := (x) =>
+
+	return x.toString().replaceAll('\r', '').trim()
+
+# ---------------------------------------------------------------------------
+
+export spaces = (n) =>
+
+	return " ".repeat(n)
+
+# ---------------------------------------------------------------------------
+
+export tabs = (n) =>
+
+	return "\t".repeat(n)
+
+# ---------------------------------------------------------------------------
+
+export getNExtra = (str: string, len) =>
+
+	extra := len - str.length
+	return (extra > 0) ? extra : 0
+
+# ---------------------------------------------------------------------------
+
+export strToHash := (str) =>
+
+	assert isNonEmptyString(str), "Bad string: #{OL(str)}"
+	h := {}
+	for word of str.split(/\s+/)
+		if lMatches := word.match(///^
+				(\!)?                    # negate value
+				([A-Za-z][A-Za-z_0-9]*)  # identifier
+				(?:
+					(=)
+					(.*)
+					)?
+				$///)
+			[_, neg, ident, eqSign, str] := lMatches
+			if isNonEmptyString(eqSign)
+				assert notdefined(neg) || (neg == ''),
+						"negation with string value"
+
+				# --- check if str is a valid number
+				num := parseFloat(str)
+				if Number.isNaN(num)
+					# --- TO DO: interpret backslash escapes
+					h[ident] = str
+				else
+					h[ident] = num
+			else if neg
+				h[ident] = false
+			else
+				h[ident] = true
+		else
+			croak "Invalid word #{OL(word)}"
+	return h
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+export rpad := (str: string, len, ch=' ') =>
+
+	assert (ch.length == 1), "Not a char"
+	extra := getNExtra(str, len)
+	return str + ch.repeat(extra)
+
+# ---------------------------------------------------------------------------
+
+export lpad := (str, len, ch=' ') =>
+
+	assert (ch.length == 1), "Not a char"
+	extra := getNExtra(str, len)
+	return ch.repeat(extra) + str
+
+# ---------------------------------------------------------------------------
+# --- valid options:
+#        char - char to use on left and right
+#        buffer - num spaces around text when char <> ' '
+
+export centered := (text, width, char=' ', numBuffer=2) =>
+
+	totSpaces := width - text.length
+	if (totSpaces <= 0)
+		return text
+	numLeft := Math.floor(totSpaces / 2)
+	numRight := totSpaces - numLeft
+	if (char == ' ')
+		return spaces(numLeft) + text + spaces(numRight)
+	else
+		buf := ' '.repeat(numBuffer)
+		left := char.repeat(numLeft - numBuffer)
+		right := char.repeat(numRight - numBuffer)
+		return left + buf + text + buf + right
+
+# ---------------------------------------------------------------------------
+
+export alignString := (str, width, align) ->
+
+	assert isString(str), "str not a string: #{OL(str)}"
+	assert isString(align), "align not a string: #{OL(align)}"
+	switch align
+		when 'left', 'l'
+			return rpad(str, width)
+		when 'center', 'c'
+			return centered(str, width)
+		when 'right', 'r'
+			return lpad(str, width)
+		else
+			croak "Unknown align: #{OL(align)}"
+
+# ---------------------------------------------------------------------------
+
+export zpad := (n, len) =>
+
+	return lpad(n.toString(), len, '0')
+
+# ---------------------------------------------------------------------------
+#   escapeStr - escape newlines, carriage return, TAB chars, etc.
+
+export hEscNL := {
+	"\r": '←'
+	"\n": '↓'
+	"\t": '→'
+	" ": '˳'
+	}
+
+export hEscNoNL := {
+	"\r": '←'
+	"\t": '→'
+	" ": '˳'
+	}
+
+# ---------------------------------------------------------------------------
+
+export escapeStr := (str, hReplace=hEscNL, hOptions={}) =>
+	#     Valid options:
+	#        offset  - indicate position of offset
+	#        poschar - char to use to indicate position
+
+	{offset, poschar} := getOptions hOptions, {
+		offset: undef
+		poschar: '┊'
+		}
+
+	assert isString(str), "not a string: #{OL(str)}"
+	assert isHash(hReplace), "not a hash: #{OL(hReplace)}"
+
+	lParts := []
+	for ch,i of str.split('')
+		if defined(offset) && (i == offset)
+			lParts.push poschar
+		newch := hReplace[ch]
+		if defined(newch)
+			lParts.push newch
+		else
+			lParts.push ch
+	if (offset == str.length)
+		lParts.push poschar
+	return lParts.join('')
+
+# ---------------------------------------------------------------------------
+#   escapeBlock
+#      - remove carriage returns
+#      - escape spaces, TAB chars
+
+export escapeBlock = (block, hReplace=hEscNoNL, hOptions) =>
+
+	return escapeStr(block, hReplace, hOptions)
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+export addDefaults := (hOptions, hDefaults) =>
+
+	assert isObject(hOptions), "hOptions not an object: #{OL(hOptions)}"
+	assert isObject(hDefaults), "hDefaults not an object: #{OL(hDefaults)}"
+
+	# --- Fill in defaults for missing values
+	for key of Object.keys(hDefaults)
+		value := hDefaults[key]
+		if not hOptions.hasOwnProperty(key) && defined(value)
+			hOptions[key] = value
+	return hOptions
+
+# ---------------------------------------------------------------------------
+
+export getOptions := (options=undef, hDefaults={}) =>
+
+	hOptions := (
+		  notdefined(options) ? {}
+		: isString(options)   ? strToHash(options)
+		: isObject(options)   ? options
+		:                       croak "Bad options: #{OL(options)}"
+		)
+	return addDefaults hOptions, hDefaults
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+export isFile := (path) =>
+
+	return fs.existsSync(path) && fs.lstatSync(path).isFile()
+
+# ---------------------------------------------------------------------------
+
+export isDir := (path) =>
+
+	return fs.existsSync(path) && fs.lstatSync(path).isDirectory()
+
+# ---------------------------------------------------------------------------
+
+export fileExt := (path) =>
+
+	if lMatches := path.match(/\.[^\.]+$/)
+		return lMatches[0]
+	else
+		return ''
+
+# ---------------------------------------------------------------------------
+
+export withExt := (path, ext) =>
+
+	assert ext.startsWith('.'), "Bad file extension: #{ext}"
+	lMatches := path.match(/^(.*)\.[^\.]+$/)
+	if defined(lMatches)
+		return "#{lMatches[1]}#{ext}"
+	croak "Bad path: '#{path}'"
+
+# ---------------------------------------------------------------------------
+# --- generate a 3 letter acronym if file stub is <str>-<str>-<str>
+
+export tla = (stub) =>
+
+	if lMatches := stub.match(///^
+			([a-z])(?:[a-z]*)
+			\-
+			([a-z])(?:[a-z]*)
+			\-
+			([a-z])(?:[a-z]*)
+			$///)
+		[_, a, b, c] := lMatches
+		return "#{a}#{b}#{c}"
+	else
+		return undef
+
+# ---------------------------------------------------------------------------
+
+export rmFile := (path) =>
+
+	fs.rmSync path, {force: true}   # no error if file doesn't exist
+	return
+
+# ---------------------------------------------------------------------------
+# --- GENERATOR: yields:
+# { path, name, isFile, isDirectory, isSymlink }
+#
+# --- Available options:
+#        root:           default = current directory
+#        exclude:        patterns to exclude, default = [
+#                           'node_modules/**'
+#                           '.git/**'
+#                           ]
+#        includeDirs:    default = false
+#        followSymlinks: default = false
+#        canonicalize:   default = true if followSymlinks is true
+
+export globFiles := (pat='*', hOptions={}) ->
+
+	{
+		root
+		includeDirs
+		exclude
+		followSymlinks
+		canonicalize
+		parse
+		} := getOptions hOptions, {
+			root: Deno.cwd()
+			includeDirs: false
+			exclude: []
+			followSymlinks: undef
+			canonicalize: undef
+			parse: false
+			}
+
+	hGlobOptions := {
+		root
+		followSymlinks
+		canonicalize
+		includeDirs: false
+		exclude: ['node_modules/**', '.git/**', exclude...]
+		}
+	for hFile of expandGlobSync(pat, hGlobOptions)
+		if parse
+			yield parsePath(hFile.path)
+		else
+			# --- has keys: path, name, isFile, isDirectory, isSymLink
+			hFile.path = relpath(hFile.path)
+			yield hFile
+	return
+
+# ---------------------------------------------------------------------------
+# ASYNC ITERABLE
+#
+# Example Usage in *.civet
+#
+#   import {allLinesIn} from './llutils.js'
+#
+#   for await line of allLinesIn('src/lib/temp.civet')
+# 	    console.log "LINE: #{line}"
+#   console.log "DONE"
+
+export allLinesIn := (path) ->
+
+	assert isFile(path), "No such file: #{OL(path)} (allLinesIn)"
+	f := await Deno.open(path)
+	readable := f.readable
+		.pipeThrough(new TextDecoderStream())
+		.pipeThrough(new TextLineStream())
+
+	for await line of readable
+		yield line
+	return
+
+# ---------------------------------------------------------------------------
+# ASYNC ITERABLE
+#
+# Example Usage in *.civet
+#
+#   import {watchFiles} from './llutils.js'
+#
+#   for await event of watchFiles('src/lib')
+# 	    console.log "EVENT: #{event.kind} #{event.paths[0]}"
+#   watcher.close()
+#   console.log "DONE"
+
+export watchFiles := (path) ->
+
+	console.log "WATCHING: #{path}"
+	watcher := Deno.watchFs(path)
+	for await event of watcher
+		console.log "WATCHER EVENT: #{OL(event)}"
+		yield event
+	watcher.close()
+
+# ---------------------------------------------------------------------------
+#     convert \ to /
+# --- convert "C:..." to "c:..."
+
+export normalizePath := (path) =>
+
+	npath := path.replaceAll('\\', '/')
+	if (npath.charAt(1) == ':')
+		return npath.charAt(0).toLowerCase() + npath.substring(1)
+	else
+		return npath
+
+# ---------------------------------------------------------------------------
+
+export mkpath := (lParts...) =>
+
+	path := pathLib.resolve(lParts...)
+	return normalizePath(path)
+
+# ---------------------------------------------------------------------------
+
+export relpath := (lParts...) =>
+
+	assert isArrayOfStrings(lParts), "Bad lParts: #{OL(lParts)}"
+	fullPath := pathLib.resolve lParts...
+	return normalizePath pathLib.relative('', fullPath)
+
+# ---------------------------------------------------------------------------
+
+export parsePath := (fileSpec, hOptions={}) =>
+	# --- NOTE: fileSpec may be a file URL, e.g. import.meta.url
+	#           fileSpec may be a relative path
+
+	assert isString(fileSpec), "fileSpec not a string #{OL(fileSpec)}"
+	{stats} := getOptions hOptions, {
+		stats: false
+		}
+
+	# --- mkpath() normalizes the path
+	path := mkpath(
+		defined(fileSpec.match(/^file\:\/\//))
+			? urlLib.fileURLToPath(fileSpec)
+			: fileSpec
+			)
+	assert isNonEmptyString(path), "Bad path: #{OL(path)}"
+	type := pathType path
+
+	{root, dir, base: fileName} := pathLib.parse(path)
+
+	lParts := fileName.split('.')
+	[stub, purpose, ext] := switch lParts.length
+		when 0
+			croak "Can't happen"
+		when 1
+			[fileName, undef, undef]
+		when 2
+			[lParts[0], undef, ".#{lParts[1]}"]
+		else
+			[
+				lParts.slice(0, -2).join('.'),
+				lParts.at(-2),
+				".#{lParts.at(-1)}"
+				]
+
+	# --- Grab everything up until the last path separator, if any
+	relPath := relpath path
+	lPathMatches := relPath.match(/^(.*)[\\\/][^\\\/]*$/)
+	relDir := defined(lPathMatches) ? lPathMatches[1] : '.'
+
+	hFile := {
+		path
+		type
+		root
+		dir
+		fileName
+		stub
+		purpose
+		ext
+		relPath
+		relDir
+		}
+	if stats && isFile(path)
+		Object.assign hFile, getFileStats(path)
+	return hFile
+
+# ---------------------------------------------------------------------------
+# --- returns one of:
+#        'missing'  - does not exist
+#        'dir'      - is a directory
+#        'file'     - is a file
+#        'unknown'  - exists, but not a file or directory
+
+export pathType := (path) =>
+
+	assert isString(path), "not a string: #{OL(path)}"
+	if fs.existsSync path
+		if isFile path
+			return 'file'
+		else if isDir path
+			return 'dir'
+		else
+			return 'unknown'
+	else
+		return 'missing'
+
+# ---------------------------------------------------------------------------
+
+export getFileStats := (path) =>
+
+	return fs.lstatSync(path)
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+export newerDestFileExists := (srcPath, destPath) =>
+
+	assert isFile(srcPath), "No such file: #{OL(srcPath)} (newerDestFileExists)"
+	if not fs.existsSync(destPath)
+		return false
+	srcModTime := fs.statSync(srcPath).mtimeMs
+	destModTime := fs.statSync(destPath).mtimeMs
+	return (destModTime > srcModTime)
+
+# ---------------------------------------------------------------------------
+
+export pathSubDirs = (path) =>
+
+	{root, dir} := pathLib.parse(path)
+	return {
+		root
+		lParts: dir.slice(root.length).split(/[\\\/]/)
+		}
+
+# ---------------------------------------------------------------------------
+
+export clearDir = (dirPath) =>
+
+	try
+		h := {withFileTypes: true, recursive: true}
+		for ent in fs.readdirSync(dirPath, h)
+			subEnt = mkpath(ent.path, ent.name)
+			if ent.isFile()
+				fs.rmSync subEnt
+			else if ent.isDirectory()
+				clearDir subEnt
+	catch err
+	return
+
+# ---------------------------------------------------------------------------
+
+export mkDir = (dirPath, hOptions={}) =>
+
+	{clear} := getOptions hOptions, {
+		clear: false
+		}
+
+	try
+		fs.mkdirSync dirPath
+		return true
+	catch err
+		if (err.code == 'EEXIST')
+			if clear
+				clearDir dirPath
+			return false
+		else
+			throw err
+
+# ---------------------------------------------------------------------------
+
+export mkDirsForFile = (filePath) =>
+
+	{root, lParts} := pathSubDirs(filePath)
+	let dir = root
+	for part of lParts
+		dir += "/#{part}"
+		if not isDir(dir)
+			mkDir(dir)
+	return
+
+# ---------------------------------------------------------------------------
+#   slurp - read a file into a string
+
+export slurp := (path) =>
+
+	assert isFile(path), "No such file: #{path} (slurp)"
+	return normalizeStr fs.readFileSync(path, 'utf8')
+
+# ---------------------------------------------------------------------------
+#   barf - write a string to a file
+#          will ensure that all necessary directories exist
+
+export barf := (contents, path) =>
+
+	mkDirsForFile(path)
+	fs.writeFileSync(path, normalizeStr(contents))
+	return
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+export mkstr := (item) =>
+
+	if defined(item)
+		if isString(item)
+			return stripAnsiCode(item)
+		else if isArray(item)
+			return stripAnsiCode(item.join(''))
+		else
+			return stripAnsiCode(textDecoder.decode(item))
+	else
+		return ''
+
+# ---------------------------------------------------------------------------
+
+export getCmdLine := (cmdName, lArgs) =>
+
+	assert isString(cmdName), "cmdName not a string: #{OL(cmdName)}"
+	assert isArrayOfStrings(lArgs), "not an array of strings: #{OL(lArgs)}"
+	return "#{cmdName} #{lArgs.join(' ')}"
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export execCmd := (cmdName, lArgs=[]) =>
+
+	cmdLine := getCmdLine(cmdName, lArgs)
+	DBG "EXEC: #{OL(cmdLine)}", INDENT
+	logger := curLogLevel()
+
+	cmd := new Deno.Command cmdName, {
+		args: lArgs,
+		env: {DEFAULT_LOGGER: logger}
+		}
+	{success, code, signal, stdout, stderr} := await cmd.output()
+	if (code != 0)
+		ERR "ERROR running #{cmdLine}, code=#{code}"
+
+	hRetVal := {
+		cmdLine
+		success
+		signal
+		code
+		}
+
+	if defined(stdout)
+		stdoutStr := mkstr(stdout)
+		if (stdoutStr.length > 0)
+			DBG "stdout =", stdoutStr
+			hRetVal.stdout = stdoutStr
+
+	if defined(stderr)
+		stderrStr := mkstr(stderr)
+		if (stderrStr.length > 0)
+			DBG "stderr =", stderrStr
+			hRetVal.stderr = stderrStr
+
+	DBG UNDENT
+	return hRetVal
+
+# ---------------------------------------------------------------------------
+
+export execCmdSync := (cmdName, lArgs=[]) =>
+
+	cmdLine := getCmdLine(cmdName, lArgs)
+	DBG "EXEC SYNC: #{OL(cmdLine)}", INDENT
+	logger := curLogLevel()
+
+	cmd := new Deno.Command cmdName, {
+		args: lArgs,
+		env: {DEFAULT_LOGGER: logger}
+		}
+	{success, code, signal, stdout, stderr} := cmd.outputSync()
+	if (code != 0)
+		ERR "ERROR running #{cmdLine}, code=#{code}"
+
+	hRetVal := {
+		cmdLine
+		success
+		signal
+		code
+		}
+
+	if defined(stdout)
+		stdoutStr := mkstr(stdout)
+		if (stdoutStr.length > 0)
+			DBG "stdout =", stdoutStr
+			hRetVal.stdout = stdoutStr
+
+	if defined(stderr)
+		stderrStr := mkstr(stderr)
+		if (stderrStr.length > 0)
+			DBG "stderr =", stderrStr
+			hRetVal.stderr = stderrStr
+
+	DBG UNDENT
+	return hRetVal
+
+# ---------------------------------------------------------------------------
+# --- will eventually pre-process the .cielo code
+
+export cielo2civet := (path, civetPath) =>
+
+	assert isFile(path), "No such file: #{OL(path)} (cielo2civet)"
+	assert (fileExt(path) == '.cielo'), "Not a cielo file: #{OL(path)}"
+	execCmdSync 'cp', [path, civetPath]
+	assert isFile(civetPath), "File not created: #{OL(civetPath)}"
+	return
+
+# ---------------------------------------------------------------------------
+
+export civet2js := (path, jsPath) =>
+
+	assert isFile(path), "No such file: #{OL(path)} (civet2js)"
+	assert (fileExt(path) == '.civet'), "Not a civet file: #{OL(path)}"
+
+	execCmdSync 'civet', [
+		'--js',
+		'-o',
+		jsPath,
+		'--inline-map',
+		'-c',
+		path
+		]
+
+	assert isFile(jsPath), "File not created: #{OL(jsPath)}"
+	return
+
+# ---------------------------------------------------------------------------
+
+export coffee2js := (path, jsPath) =>
+
+	assert isFile(path), "No such file: #{OL(path)} (coffee2js)"
+	assert (fileExt(path) == '.coffee'), "Not a CoffeeScript file: #{OL(path)}"
+	execCmdSync 'coffee', [
+		'-o',
+		jsPath,
+		'--inline-map',
+		'-c',
+		path
+		]
+	assert isFile(jsPath), "File not created: #{OL(jsPath)}"
+	return
+
+# ---------------------------------------------------------------------------
+
+export ts2js := (path, jsPath) =>
+
+	assert isFile(path), "No such file: #{OL(path)} (ts2js)"
+	assert (fileExt(path) == '.ts'), "Not a ts file: #{OL(path)}"
+	execCmdSync 'civet', [
+		'--js',
+		'-o',
+		jsPath,
+		'--inline-map',
+		'-c',
+		path
+		]
+	assert isFile(jsPath), "File not created: #{OL(jsPath)}"
+	return
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export installDenoCmd := (stub) =>
+
+	await execCmd 'deno', [
+		'install',
+		'-fgA',
+		"src/bin/#{stub}.js"
+		]
+	shortName := tla(stub)
+	if defined(shortName)
+		await execCmd 'deno', [
+			'install',
+			'-fgA',
+			'-n',
+			shortName,
+			"src/bin/#{stub}.js"
+			]
+	return
+
+# ---------------------------------------------------------------------------
+# --- TO DO: if file 'compile.config.js' exists
+#            in current dir, use that
+
+export getConfig := () =>
+
+	return {
+		hCompilers: {
+			'.cielo': {
+				outExt: '.js'
+				compiler: (path) =>
+					assert isFile(path), "No such file: #{OL(path)}"
+					civetPath := withExt(path, '.temp.civet')
+					rmFile civetPath
+					cielo2civet path, civetPath
+					civet2js civetPath, withExt(path, '.js')
+				}
+			'.civet': {
+				outExt: '.js'
+				compiler: (path) =>
+					civet2js path, withExt(path, '.js')
+				}
+			'.coffee': {
+				outExt: '.js'
+				compiler: (path) =>
+					coffee2js path, withExt(path, '.js')
+				}
+			'.ts': {
+				outExt: '.js'
+				compiler: (path) =>
+					ts2js path, withExt(path, '.js')
+				}
+			}
+		hPostProcessors: {
+			'test': {
+				dir: 'test'    # --- no post processing
+				}
+			'lib': {
+				dir: 'src/lib'
+				postProcessor: (stub, hOptions) =>
+					testPath := findSourceFile('test', stub, 'test').path
+					if defined(testPath)
+						{status} := compileFile(testPath, hOptions)
+				}
+			'bin': {
+				dir: 'src/bin'
+				postProcessor: (stub, hOptions) =>
+					LOG "- installing command #{stub}"
+					installDenoCmd stub, hOptions
+				}
+			}
+		}
+
+export hConfig := getConfig()
+export hCompilers := hConfig.hCompilers
+export lCompilerExtensions := Object.keys(hCompilers)
+export hPostProcessors := hConfig.hPostProcessors
+export lDirSpecs := Object.keys(hPostProcessors)
+
+# ---------------------------------------------------------------------------
+# --- returns [compiler, outExt]
+#     or [undef, undef] if there is no compiler
+
+export getCompiler := (ext) =>
+
+	h := hCompilers[ext]
+	if notdefined(h)
+		DBG "Not compiling - no compiler for #{ext} files"
+		return [undef, undef]
+
+	assert isHash(h), "hCompilers[#{ext}] not a hash: #{OL(h)}"
+	{outExt, compiler} := h
+	assert defined(compiler), "Missing compiler in config for #{OL(ext)}"
+	assert defined(outExt), "Missing outExt in config for #{OL(ext)}"
+	return [compiler, outExt]
+
+# ---------------------------------------------------------------------------
+
+export isStub := (str) =>
+
+	return notdefined(str.match(/[\.\\\/]/))
+
+# ---------------------------------------------------------------------------
+
+export isDirSpec := (dirspec) =>
+
+	return lDirSpecs.includes(dirspec)
+
+# ---------------------------------------------------------------------------
+# --- Returns {path, dirspec}
+
+export findSourceFile := (dirspec, stub, purpose) =>
+
+	assert isStub(stub), "Bad stub: #{OL(stub)}"
+	if defined(dirspec)
+		assert lDirSpecs.includes(dirspec), "Bad dirspec: #{OL(dirspec)}"
+		dir := hPostProcessors[dirspec].dir
+
+		# --- Try every supported file extension
+		for ext of lCompilerExtensions
+			path := (
+				defined(purpose)
+					? mkpath(dir, "#{stub}.#{purpose}#{ext}")
+					: mkpath(dir, "#{stub}#{ext}")
+				)
+			if isFile path
+				return {path, dirspec}
+		return {}
+	else
+		# --- If dirspec is undef, we search all possible dirspecs
+		#     but throw exception if it's found in more than one
+
+		let [foundPath, dspec] = [undef, undef]
+		for ds of lDirSpecs
+			h := findSourceFile ds, stub, purpose
+			if defined(h.path, h.dirspec)
+				if defined(foundPath)
+					croak "Ambiguous: [#{dirspec}, #{stub}]"
+				foundPath = h.path
+				dspec = h.dirspec
+		if defined(foundPath, dspec)
+			return {
+				path: foundPath,
+				dirspec: dspec
+				}
+		else
+			return {}
+
+
+# ---------------------------------------------------------------------------
+# --- returns {path, dirspec, stub, purpose, ext}
+#        returns {} if the file does not exist
+#        dirspec and stub are undef if file exists, but
+#           isn't in ./src/lib, ./src/bin or ./test folders
+
+export getSrcInfo := (src) =>
+
+	if isArray(src)
+		# -- NOTE: src can be [undef, <stub>], in which case
+		#          there can be only one dirspec that
+		#          results in an existing file
+
+		[dspec, stub, purpose] := src
+		{path, dirspec} := findSourceFile(dspec, stub, purpose)
+		if isFile path
+			{stub, purpose, ext, relPath} := parsePath(path)
+			return {
+				path
+				relPath
+				dirspec
+				stub
+				purpose
+				ext
+				}
+		else
+			return {}
+	else if isFile(src)
+		{stub, purpose, ext, relPath} := parsePath(src)
+		dirspec := (
+			relPath.startsWith('src/lib/')     ? 'lib'
+			: relPath.startsWith('./src/lib/') ? 'lib'
+			: relPath.startsWith('src/bin/')   ? 'bin'
+			: relPath.startsWith('./src/bin/') ? 'bin'
+			: relPath.startsWith('test/')      ? 'test'
+			: relPath.startsWith('./test/')    ? 'test'
+			:                                    undef)
+		return {
+			path: src
+			relPath
+			dirspec
+			stub: defined(dirspec) ? stub : undef
+			purpose
+			ext
+			}
+	else
+		return {}
+
+# ---------------------------------------------------------------------------
+# --- src can be a full path or [dirspec, stub, purpose]
+#        where dirspec can be 'lib', 'bin' or 'test'
+#     throws error if file does not exist
+#
+#     Possible status values:
+#        'temp'       - it was a temp file, not compiled
+#        'nocompiler' - has no compiler, not compiled
+#        'exists'     - newer compiled file already exists
+#        'failed'     - compiling failed
+#        'compiled'   - successfully compiled
+
+export compileFile := (src, hOptions={}) =>
+
+	DBG "COMPILE: #{OL(src)}", INDENT
+
+	{dirspec, stub, path, relPath, purpose, ext} := getSrcInfo src
+	if notdefined(relPath)
+		ERR "No such file: #{OL(relPath)} (compileFile)", UNDENT
+		return {
+			status: 'nofile'
+			}
+	if (purpose == 'temp')
+		DBG "Not compiling temp file #{OL(relPath)}", UNDENT
+		return {
+			path
+			relPath
+			status: 'temp'
+			}
+
+	[compiler, outExt] := getCompiler(ext)
+	if notdefined(compiler)
+		DBG "Not compiling - no compiler for #{ext}", UNDENT
+		return {
+			path
+			relPath
+			status: 'nocompiler'
+			}
+
+	{force, nopp} := getOptions hOptions, {
+		force: false
+		nopp: false
+		}
+
+	outPath := withExt(relPath, outExt)
+	if newerDestFileExists(relPath, outPath) && not force
+		DBG "Not compiling, newer #{outPath} exists", UNDENT
+		return {
+			path
+			relPath
+			status: 'exists'
+			outPath
+			}
+
+	DBG "No newer dest file exists"
+	if isFile(outPath)
+		DBG "removing older #{outPath}"
+		rmFile outPath
+	DBG "compiling #{OL(relPath)}"
+	compiler relPath     # produces file outPath, may throw
+
+	if isFile(outPath)
+		# --- If first line is a file name with original extension,
+		#     replace the file extension
+		contents := Deno.readTextFileSync outPath
+		lLines := contents.split "\n"
+		lLines[0].replace ext, outExt
+		Deno.writeTextFileSync outPath, lLines.join("\n")
+	else
+		ERR "Output file #{relpath(outPath)} not produced", UNDENT
+		return {
+			path
+			relPath
+			status: 'failed'
+			outPath
+			}
+
+	if defined(dirspec) && not nopp
+		postProc := hPostProcessors[dirspec].postProcessor
+		if defined(postProc)
+			DBG "post-processing file"
+			postProc stub, hOptions
+
+	DBG UNDENT
+	return {
+		path
+		relPath
+		status: 'compiled'
+		outPath
+		}
+
+# ---------------------------------------------------------------------------
+
+export getPattern := () =>
+
+	lKeys := Object.keys(hCompilers)
+	if (lKeys.length == 1)
+		return "**/*#{lKeys[0]}"
+	else
+		return "**/*{#{lKeys.join(',')}}"
+
+# ---------------------------------------------------------------------------
+# --- A generator - yields {path, status, outPath}
+
+export compileAllFiles := (pattern=undef, hOptions={}) ->
+
+	{force} := getOptions hOptions, {
+		force: false
+		}
+
+	hGlobOptions := {
+		exclude: [
+			'node_modules/**'
+			'.git/**'
+			'**/*.temp.*'  # --- don't compile temp files
+			]
+		}
+
+	globPattern := defined(pattern) ? pattern : getPattern()
+	DBG "compiling all files, force=#{force}, pat=#{OL(globPattern)}"
+	for {path} of globFiles(globPattern, hGlobOptions)
+		hResult := compileFile(path, hOptions)
+		if (hResult.status == 'compiled')
+			yield hResult
+	return
+
+# ---------------------------------------------------------------------------
+
+export runUnitTest := (stub, hCompileOptions={}) =>
+
+	DBG "Running unit test #{stub}"
+
+	# --- Check if there's a corresponding library file
+	libPath := findSourceFile('lib', stub).path
+	if defined(libPath)
+		if isFile(libPath)
+			# --- Make sure the library is compiled
+			{status, outPath} := compileFile libPath, hCompileOptions
+			if (status == 'failed')
+				WARN "Compile of lib #{relpath(libPath)} failed - #{status}"
+		else
+	else
+		DBG "No corresponding library file for #{OL(stub)}"
+
+	# --- Check if there's a corresponding binary file
+	binPath := findSourceFile('bin', stub).path
+	if isFile(binPath)
+		# --- Make sure the binary is compiled
+		{status, outPath} := compileFile binPath, hCompileOptions
+		if (status == 'failed')
+			WARN "Compile of bin #{relpath(binPath)} failed - #{status}"
+	else
+		DBG "No corresponding bin file for #{OL(stub)}"
+
+	# --- Make sure unit test file is compiled
+	#     NOTE: *.test.js file may exist without a *.test.civet file
+	#           e.g. base.test.js
+	testPath := findSourceFile('test', stub, 'test').path
+	let testOutPath = undef
+	if defined(testPath)
+		DBG "testPath = #{OL(testPath)}"
+		assert isFile(testPath), "No such file: #{OL(testPath)} (runUnitTest)"
+
+		{status, outPath} := compileFile testPath, hCompileOptions
+		if (status == 'failed')
+			croak "Compile of #{relpath(testPath)} failed"
+		testOutPath = outPath
+	else
+		testOutPath = "test/#{stub}.test.js"
+
+	# --- Compile all files in subdir if it exists
+	if isDir("test/#{stub}")
+		for {path, status, outPath} of compileAllFiles("test/#{stub}/*")
+			if notdefined(outPath)
+				WARN "File #{OL(path)} not compiled"
+
+	# --- Run the unit test, return return code
+	assert isFile(testOutPath), "No such file: #{OL(testOutPath)}"
+	return execCmdSync 'deno', [
+			'test',
+			'-qA',
+			testOutPath
+			]
+
+# ---------------------------------------------------------------------------
+# --- a generator
+
+export runAllUnitTests := (hCompileOptions={}) ->
+
+	hGlobOptions := {
+		exclude: ['node_modules/**', '.git/**']
+		}
+
+	pattern := 'test/*.test.js'
+	DBG "pattern = #{OL(pattern)}"
+	for {path} of globFiles(pattern, hGlobOptions)
+		{stub, ext, relDir} := parsePath(path)
+		DBG "TEST: #{path}"
+		yield runUnitTest(stub, hCompileOptions)
+	return
+
+# ---------------------------------------------------------------------------
+
+export getCmdArgs := (lArgs=Deno.args, hOptions={}) =>
+
+	assert isHash(hOptions), "hOptions not a hash: #{OL(hOptions)}"
+	{hArgs, nonOptions, doSetLogger} := getOptions hOptions, {
+		hArgs: undef
+		nonOptions: [0, Infinity]
+		doSetLogger: false
+		}
+
+	if doSetLogger && defined(hArgs)
+		assert not hasKey(hArgs, 'd'), "Arg key 'd' set"
+		assert not hasKey(hArgs, 'q'), "Arg key 'q' set"
+		assert not hasKey(hArgs, 'p'), "Arg key 'p' set"
+
+	[minNonOptions, maxNonOptions] := (
+		if isArray(nonOptions)
+			nonOptions
+		else
+			[nonOptions, nonOptions]
+		)
+
+	let hResult = {
+		_: []
+		}
+
+	# --- Pre-process lArgs, which makes it easier
+	#     to check if calls to DBG() should be logged,
+	#     even while parsing args
+
+	let loggerToSet = undef
+
+	lArgMatches := for str of lArgs
+		lMatches := str.match(///^
+			-
+			([A-Za-z0-9_-]*)
+			(?:
+				(=)
+				(.*)
+				)?
+			$///)
+		if defined(lMatches)
+			if doSetLogger && not lMatches[2]
+				if lMatches[1].includes('p')
+					hResult.p = true
+					loggerToSet = 'profile'
+				else if lMatches[1].includes('d')
+					hResult.d = true
+					loggerToSet = 'debug'
+				else if lMatches[1].includes('q')
+					hResult.q = true
+					loggerToSet = 'error'
+			lMatches
+		else
+			undef
+
+	if doSetLogger
+		setLogLevel(loggerToSet || 'info')
+
+	# --- Utility functions
+
+	add := (name: string, alias, value) =>
+		assert isString(name), "Not a string: #{OL(name)}"
+		if defined(alias)
+			assert isString(alias), "Not a string: #{OL(alias)}"
+		assert not hasKey(hResult, name), "dup key #{name}"
+		hResult[name] = value
+		if alias
+			assert not hasKey(hResult, alias), "dup key #{alias}"
+			hResult[alias] = value
+		return
+
+	addOption := (name, value) =>
+		if notdefined(hArgs)
+			hResult[name] = value
+			return
+
+		if doSetLogger && ['d','q','p'].includes(name)
+			return
+
+		errMsg := "Bad arg: #{OL(name)}"
+		assert defined(hArgs[name]), errMsg
+		{type, alias} := hArgs[name]
+
+		# --- type checking
+		if isArray(type)
+			assert type.includes(value)
+			add name, alias, value
+		else
+			switch type
+				when 'string'
+					add name, alias, value
+				when 'boolean', undef
+					if (value == 'true')
+						add name, alias, true
+					else if (value == 'false')
+						add name, alias, false
+					else
+						add name, alias, value
+				when 'number','float'
+					add name, alias, parseFloat(value)
+				when 'integer'
+					add name, alias, parseInt(value)
+		return
+
+	addNonOption := (str) =>
+		hResult._.push str
+
+	# --- lArgs is an array
+
+	for str,i of lArgs
+		# --- check if it's an option
+		lMatches := lArgMatches[i]
+		if defined(lMatches)
+			# --- it's an option
+			[_, optStr, eqStr, value] := lMatches
+			if eqStr
+				addOption optStr, value
+			else
+				lChars := optStr.split('')
+				for ch of optStr.split('')
+					addOption ch, true
+		else
+			# --- it's a non-option
+			addNonOption str
+
+	if defined(hArgs)
+		for name of Object.keys(hArgs)
+			if notdefined(hResult[name])
+				{alias, type, defaultVal} := hArgs[name]
+				if defined(defaultVal)
+					add name, alias, defaultVal
+				else if notdefined(type)
+					add name, alias, false
+
+	numNonArgs := hResult._.length
+	assert (numNonArgs >= minNonOptions),
+		"#{numNonArgs} non-args < min (#{minNonOptions})"
+	assert (numNonArgs <= maxNonOptions),
+		"#{numNonArgs} non-args > max (#{maxNonOptions})"
+	DBG "hResult = #{OL(hResult)}"
+	return hResult
+
+# ---------------------------------------------------------------------------
+# --- ASYNC !
+
+export sleep = (sec) =>
+
+	await new Promise((r) => setTimeout(r, 1000 * sec))
+	return

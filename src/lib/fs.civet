@@ -1,0 +1,118 @@
+# fs.civet
+
+import pathLib from 'path'
+import urlLib from 'url'
+import fs from 'fs'
+
+import {
+	undef, defined, notdefined, OL, getOptions,
+	assert, croak, words,
+	isString, isNonEmptyString, isArrayOfStrings,
+	isFile, isDir, normalizePath, mkpath, relpath,
+	fileExt, withExt, globFiles, allLinesIn, newerDestFileExists,
+	pathSubDirs, mkDirsForFile, slurp, barf,
+	pathType, getFileStats, parsePath,
+	} from '@jdeighan/utils/llutils.js'
+
+export {
+	isFile, isDir, normalizePath, mkpath, relpath,
+	fileExt, withExt, globFiles, allLinesIn, newerDestFileExists,
+	pathSubDirs, mkDirsForFile, slurp, barf,
+	pathType, getFileStats, parsePath,
+	}
+
+export lStatFields := words(
+	'dev ino mode nlink uid gid rdev size blksize blocks',
+	'atimeMs mtimeMs ctimeMs birthtimeMs',
+	'atime mtime ctime birthtime',
+	)
+
+# ---------------------------------------------------------------------------
+
+export mkDir := (dirPath, hOptions={}) =>
+
+	{clear} := getOptions hOptions, {
+		clear: false
+		}
+
+	try
+		fs.mkdirSync dirPath
+		return true
+	catch err
+		if (err.code == 'EEXIST')
+			if not clear
+				return false
+			try
+				clearDir dirPath
+				return true
+			catch err
+				return false
+		else
+			throw err
+
+# ---------------------------------------------------------------------------
+
+export clearDir := (dirPath) =>
+
+	hOptions := {
+		withFileTypes: true
+		recursive: true
+		}
+	for ent in fs.readdirSync(dirPath, hOptions)
+		if ent.isFile()
+			fs.rmSync mkpath(ent.path, ent.name)
+		else if ent.isDirectory()
+			clearDir mkpath(ent.path, ent.name)
+	return
+
+# ---------------------------------------------------------------------------
+
+export needDestFile := (srcPath, destPath) =>
+
+	return not newerDestFileExists(srcPath, destPath)
+
+# ---------------------------------------------------------------------------
+# --- Should be called like: myself(import.meta.url)
+#     returns full path of current file
+
+export myself := (url) =>
+
+	return normalizePath urlLib.fileURLToPath(url)
+
+# ---------------------------------------------------------------------------
+
+export allFilesMatching := (pattern='*', hOptions={}) ->
+	# --- yields hFile with keys:
+	#        path, filePath,
+	#        type, root, dir, base, fileName,
+	#        name, stub, ext, purpose
+	#        (if eager) hMetaData, lLines
+	# --- Valid options:
+	#        hGlobOptions - options to pass to globFiles
+	#        fileFilter - return path iff fileFilter(filePath) returns true
+	#        eager - read the file and add keys hMetaData, lLines
+	# --- Valid glob options:
+	#        ignore - glob pattern for files to ignore
+	#        dot - include dot files/directories (default: false)
+	#        cwd - change working directory
+
+	{fileFilter} := getOptions hOptions, {
+		fileFilter: (h) => return true
+		}
+
+	for h of globFiles(pattern)
+		path := h.path
+		hResult := parsePath(path)
+		if fileFilter(hResult)
+			yield hResult
+	return
+
+# ---------------------------------------------------------------------------
+# --- fileFilter, if defined, gets (filePath)
+
+export deleteFilesMatching := (pattern, hOptions={}) =>
+
+	assert (pattern != '*'), "Can't delete files matching '*'"
+	for {relPath} of allFilesMatching(pattern, hOptions)
+		fs.rmSync relPath
+	return

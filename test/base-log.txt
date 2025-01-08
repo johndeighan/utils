@@ -1,0 +1,4 @@
+DBG: debug
+LOG: log
+WARN: warning
+ERR: error
