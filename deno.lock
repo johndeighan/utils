@@ -1,13 +1,12 @@
 {
   "version": "4",
   "specifiers": {
-    "jsr:@std/assert@*": "1.0.8",
-    "jsr:@std/assert@^1.0.8": "1.0.8",
+    "jsr:@std/assert@^1.0.10": "1.0.10",
     "jsr:@std/async@*": "1.0.9",
     "jsr:@std/async@1.0.9": "1.0.9",
     "jsr:@std/async@^1.0.9": "1.0.9",
     "jsr:@std/bytes@^1.0.3": "1.0.4",
-    "jsr:@std/cli@^1.0.7": "1.0.7",
+    "jsr:@std/cli@^1.0.9": "1.0.9",
     "jsr:@std/fmt@*": "1.0.3",
     "jsr:@std/fmt@^1.0.3": "1.0.3",
     "jsr:@std/fs@*": "1.0.6",
@@ -21,10 +20,8 @@
     "jsr:@std/path@^1.0.8": "1.0.8",
     "jsr:@std/streams@*": "1.0.8",
     "jsr:@std/streams@^1.0.8": "1.0.8",
-    "npm:@danielx/civet@*": "0.9.0_typescript@5.6.3",
     "npm:@danielx/civet@0.8.15": "0.8.15_typescript@5.6.3",
-    "npm:@danielx/civet@0.9": "0.9.0_typescript@5.6.3",
-    "npm:@danielx/civet@0.9.0": "0.9.0_typescript@5.6.3",
+    "npm:@danielx/civet@~0.9.6": "0.9.6_typescript@5.6.3",
     "npm:@types/node@*": "22.5.4",
     "npm:glob@*": "11.0.0",
     "npm:glob@11": "11.0.0",
@@ -33,8 +30,8 @@
     "npm:source-map-support@~0.5.21": "0.5.21"
   },
   "jsr": {
-    "@std/assert@1.0.8": {
-      "integrity": "ebe0bd7eb488ee39686f77003992f389a06c3da1bbd8022184804852b2fa641b",
+    "@std/assert@1.0.10": {
+      "integrity": "59b5cbac5bd55459a19045d95cc7c2ff787b4f8527c0dd195078ff6f9481fbb3",
       "dependencies": [
         "jsr:@std/internal"
       ]
@@ -45,8 +42,8 @@
     "@std/bytes@1.0.4": {
       "integrity": "11a0debe522707c95c7b7ef89b478c13fb1583a7cfb9a85674cd2cc2e3a28abc"
     },
-    "@std/cli@1.0.7": {
-      "integrity": "98359df9df586a69015ba570305183b0cb9e7d53c05ea2016ef9a3e77e82c7cd"
+    "@std/cli@1.0.9": {
+      "integrity": "557e5865af000efbf3f737dcfea5b8ab86453594f4a9cd8d08c9fa83d8e3f3bc"
     },
     "@std/fmt@1.0.3": {
       "integrity": "97765c16aa32245ff4e2204ecf7d8562496a3cb8592340a80e7e554e0bb9149f"
@@ -100,16 +97,16 @@
         "@cspotcode/source-map-support",
         "@typescript/vfs",
         "typescript",
-        "unplugin"
+        "unplugin@1.16.0"
       ]
     },
-    "@danielx/civet@0.9.0_typescript@5.6.3": {
-      "integrity": "sha512-DjeJ2gAXPK2g2JlVPAspQkp1AWftofl6WgxDb10rYVJN3BTf7E4es4rHxP56lEengZMwAtxUFEbadjQIZhiiSg==",
+    "@danielx/civet@0.9.6_typescript@5.6.3": {
+      "integrity": "sha512-fQZ2gjJ3UbaIdXc12xckOEVnQcBWbgzMdmLJhYKUBQ5hYOH+5axCNmjcJF1MFENBugCq/Z1hkD8UKg71hKfj4g==",
       "dependencies": [
         "@cspotcode/source-map-support",
         "@typescript/vfs",
         "typescript",
-        "unplugin"
+        "unplugin@2.1.2"
       ]
     },
     "@isaacs/cliui@8.0.2": {
@@ -335,6 +332,13 @@
         "webpack-virtual-modules"
       ]
     },
+    "unplugin@2.1.2": {
+      "integrity": "sha512-Q3LU0e4zxKfRko1wMV2HmP8lB9KWislY7hxXpxd+lGx0PRInE4vhMBVEZwpdVYHvtqzhSrzuIfErsob6bQfCzw==",
+      "dependencies": [
+        "acorn",
+        "webpack-virtual-modules"
+      ]
+    },
     "webpack-virtual-modules@0.6.2": {
       "integrity": "sha512-66/V2i5hQanC51vBQKPH4aI8NMAcBW59FVBs+rC7eGHupMyfn34q7rZIE+ETlJ+XTevqfUhVVBgSUNSW2flEUQ=="
     },
@@ -383,16 +387,16 @@
   },
   "workspace": {
     "dependencies": [
-      "jsr:@std/assert@^1.0.8",
+      "jsr:@std/assert@^1.0.10",
       "jsr:@std/async@1.0.9",
       "jsr:@std/async@^1.0.9",
-      "jsr:@std/cli@^1.0.7",
+      "jsr:@std/cli@^1.0.9",
       "jsr:@std/fmt@^1.0.3",
       "jsr:@std/fs@^1.0.6",
       "jsr:@std/log@~0.224.12",
       "jsr:@std/path@^1.0.8",
       "jsr:@std/streams@^1.0.8",
-      "npm:@danielx/civet@0.9",
+      "npm:@danielx/civet@~0.9.6",
       "npm:glob@11",
       "npm:source-map-js@^1.2.1",
       "npm:source-map-support@~0.5.21"
