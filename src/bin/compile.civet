@@ -2,15 +2,30 @@
 
 import {
 	undef, defined, notdefined, pass, OL, assert, croak,
-	getCmdArgs, compileFile, compileAllFiles,
+	getCmdArgs, compileAllFiles, watchDir,
 	DBG, LOG, WARN, ERR,
-	} from '@jdeighan/utils/llutils.js'
+	isDirSpec, compileFile,
+	} from '../lib/utils.ts'
+import type {compileResult} from '../lib/utils.ts'
+
+{_, path, w: watch} := getCmdArgs {
+	path: "one or more file paths"
+	w:    "watch for and recompile files if they change"
+	_: """
+		files to compile, as one of the following:
+			'test/<stub>' - file <stub>.<ext> in ./test folder
+			'lib/<stub>'  - file <stub>.<ext> in ./src/lib folder
+			'bin/<stub>'  - file <stub>.<ext> in ./src/bin folder
+			'<stub>'      - search the above 3 for <stub>.<ext>
+		where <ext> is a valid extension to compile
+		"""
+	}
 
 let numCompiled = 0
 
 # ---------------------------------------------------------------------------
 
-logResult := (hResult) =>
+logResult := (hResult: compileResult): void =>
 
 	{relPath, status, outPath} := hResult
 	switch status
@@ -25,42 +40,36 @@ logResult := (hResult) =>
 
 # ---------------------------------------------------------------------------
 
-{_, file, force, nopp, watch} := getCmdArgs Deno.args, {
-	hArgs: {
-		file: {type: 'string'}
-		f: {alias: 'force'}
-		n: {alias: 'nopp'}
-		w: {alias: 'watch'}
-		}
-	doSetLogger: true
-	}
-
 if (_.length == 0)
 	DBG "=====  Compiling all files  ====="
-	let nFiles = 0
-	for hResult of compileAllFiles(undef, {force, nopp})
+	for hResult of compileAllFiles()
 		logResult hResult
 
 else
-	# --- Files must be specified as <stub>,... or <dirspec>/<stub>,...
+	# --- Files must be specified as <stub>, or <dirspec>/<stub>
 
 	for str of _
+		DBG "non-option: #{OL(str)}"
 		if str.includes('/')
-			[dirspec, stubStr] := path.split('/')
+			[dirspec, stubStr] := str.split('/')
+			assert isDirSpec(dirspec), "Bad dirspec: #{OL(dirspec)}"
 			for stub of stubStr.split(',')
 				DBG "compile #{OL(dirspec)}/#{OL(stub)}"
-				hResult := compileFile [dirspec, stub], {force, nopp}
+				hResult := compileFile [dirspec, stub]
 				logResult hResult
 		else
 			for stub of str.split(',')
 				DBG "compile stub #{OL(stub)}"
-				hResult := compileFile [undef, stub], {force, nopp}
+				hResult := compileFile [undef, stub]
 				logResult hResult
 
-if defined(file)
-	for path of file.split(',')
-		{relPath, status, outPath} := compileFile path, {force, nopp}
-		logResult status, outPath, relPath
+if defined(path)
+	for filePath of path.split(',')
+		hResult := compileFile filePath
+		logResult hResult
 
-LOG "DONE (#{numCompiled} files compiled)"
+LOG "(#{numCompiled} files compiled)"
 
+if watch
+	watchDir Deno.cwd(), (kind, path) =>
+		console.log "EVENT: #{kind} #{path}"

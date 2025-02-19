@@ -1,222 +1,279 @@
 # utils.test.civet
 
-import * as lib from '../src/lib/utils.js'
-Object.assign(globalThis, lib)
-import * as lib2 from '../src/lib/unit-test.js'
-Object.assign(globalThis, lib2)
+import {
+	undef, defined, notdefined,
+	wsSplit, words, range, normalizeStr, spaces, tabs,
+	getNExtra, rpad, lpad, centered, alignString, zpad,
+	blockToArray, toArray, arrayToBlock, toBlock,
+	removeLines, escapeStr, escapeBlock,
+	relpath, getPattern,
+	getCmdArgs,
+	} from '@jdeighan/utils'
+import {
+	equal, like, unlike, succeeds, fails, truthy, falsy,
+	} from '@jdeighan/utils/unit-test'
 
 # ---------------------------------------------------------------------------
 
-truthy defined(42)
-truthy defined('abc')
-truthy defined([1,2])
-truthy defined({a: 13})
-truthy not defined(undefined)
-falsy defined(undef)
+# --- wsSplit()
+equal wsSplit("abc def"), ["abc", "def"]
+equal wsSplit("abc"), ["abc"]
+equal wsSplit(""), []
+equal wsSplit("  "), []
+equal wsSplit("\t"), []
+equal wsSplit("  abc  def\t\t"), ["abc", "def"]
 
-truthy notdefined(undef)
-truthy notdefined(null)
+# --- words()
+equal words("abc def"), ["abc", "def"]
+equal words("abc"), ["abc"]
+equal words(""), []
+equal words("  "), []
+equal words("\t"), []
+equal words("  abc  def\t\t"), ["abc", "def"]
+equal words(" abc  def", "ghi j "), [
+	"abc"
+	"def"
+	"ghi"
+	"j"
+	]
 
-fails () => croak("Bad")
-succeeds () => return 42
+# --- range()
+equal Array.from(range(3)), [0, 1, 2]
+equal Array.from(range(5)), [0, 1, 2, 3, 4]
 
+# --- normalizeStr()
 equal normalizeStr("abc\r\ndef\r\n"), "abc\ndef"
+equal normalizeStr("  abc\r\ndef  "), "abc\ndef"
 
-truthy isString('')
-truthy isString('abc')
-falsy isString(42)
-truthy not isString(42)
-truthy not isString(undef)
-truthy not isString({a: 2})
+# --- spaces()
+equal spaces(3), '   '
 
-falsy isNonEmptyString('')
-truthy isNonEmptyString('abc')
-falsy isNonEmptyString(42)
-truthy not isNonEmptyString(42)
-truthy not isNonEmptyString(undef)
-truthy not isNonEmptyString({a: 2})
+# --- tabs()
+equal tabs(3), '\t\t\t'
 
-truthy isHash({a:1, b:2})
-truthy isHash({})
-falsy isHash(42)
-falsy isHash('abc')
-falsy isHash(undef)
+# --- getNExtra()
+equal getNExtra('abcd', 10), 6
+equal getNExtra('abcd', 2), 0
 
-truthy isNonEmptyHash({a:1, b:2})
-falsy isNonEmptyHash({})
-falsy isNonEmptyHash(42)
-falsy isNonEmptyHash('abc')
-falsy isNonEmptyHash(undef)
+# --- rpad()
+equal rpad('abcd', 10, '-'), 'abcd------'
 
-truthy isArray([1,2,3])
-truthy isArray([])
-falsy isArray(42)
-falsy isArray('abc')
-falsy isArray(undef)
+# --- lpad()
+equal lpad('abcd', 10, '-'), '------abcd'
 
-truthy isNonEmptyArray([1,2,3])
-falsy isNonEmptyArray([])
-falsy isNonEmptyArray(42)
-falsy isNonEmptyArray('abc')
-falsy isNonEmptyArray(undef)
+# --- centered()
+equal centered('abcd', 12, '-'), '--  abcd  --'
 
-truthy isArrayOfStrings(['abc','def'])
-truthy isArrayOfStrings([])
-falsy isArrayOfStrings(42)
-falsy isArrayOfStrings(['abc', 42])
-falsy isArrayOfStrings(['abc', ['def']])
+# --- alignString()
+equal alignString('abc', 5, 'left'), 'abc  '
+equal alignString('abc', 5, 'center'), ' abc '
+equal alignString('abc', 5, 'right'), '  abc'
+equal alignString('abc', 5, 'l'), 'abc  '
+equal alignString('abc', 5, 'c'), ' abc '
+equal alignString('abc', 5, 'r'), '  abc'
 
-truthy isFunction(() => return 42)
-truthy isFunction(() -> return 42)
-falsy isFunction(42)
+# --- zpad()
+equal zpad(23, 5), '00023'
 
-truthy isNumber(42)
-truthy isNumber(3.144159)
-falsy isNumber('42')
+# --- blockToArray()
+equal blockToArray('abc\ndef'), ['abc','def']
 
-truthy isInteger(42)
-falsy isInteger(3.14159)
-falsy isInteger('42')
-
-equal normalizeStr('abc\r\ndef\r\n'), 'abc\ndef'
-
-falsy isNonEmptyString('')
-truthy isNonEmptyString('abc')
-falsy isNonEmptyString(42)
-
-truthy isHash({a:1})
-falsy isHash('abc')
-
-truthy isArray([1,2])
-falsy isArray('abc')
-
-truthy isFunction(() => return 42)
-falsy isFunction(42)
-
-truthy isInteger(42)
-truthy isInteger(42, {min: 0, max: 100})
-falsy isInteger('42')
-falsy isInteger(42, {min: 0, max: 10})
-
-falsy isPromise(42)
-
-truthy isEmpty(undef)
-truthy isEmpty(null)
-truthy isEmpty('')
-truthy isEmpty('   ')
-truthy isEmpty('\t\t')
-truthy isEmpty([])
-truthy isEmpty({})
-
-truthy nonEmpty('x')
-truthy nonEmpty(' x  ')
-truthy nonEmpty('\tx\t')
-truthy nonEmpty([1])
-truthy nonEmpty({a:1})
-
-equal blockToArray("""
-	abc
-	def
-	"""), ['abc','def']
-
+# --- toArray()
 equal toArray('abc\ndef'), ['abc','def']
-equal toArray('abc\r\ndef'), ['abc','def']
-equal toArray(''), []
-equal toArray('abc'), ['abc']
+equal toArray(['abc','def']), ['abc','def']
 
-equal arrayToBlock(['abc','def']), "abc\ndef"
+# --- arrayToBlock()
+equal arrayToBlock(['abc','def']), 'abc\ndef'
 
-equal toBlock([]), ''
-equal toBlock(['abc']), 'abc'
+# --- toBlock()
 equal toBlock(['abc','def']), 'abc\ndef'
+equal toBlock('abc\ndef'), 'abc\ndef'
 
-equal splitPrefix('\t\tabc'), ['\t\t', 'abc']
-equal splitPrefix('  abc'), ['  ', 'abc']
-equal splitPrefix(''), ['', '']
+# --- removeLines()
+equal removeLines('abc\ndef', 'def'), 'abc'
+equal removeLines('abc\ndef', 'abc'), 'def'
 
-equal substrCount('ababab', 'a'), 3
-equal substrCount('ababab', 'ab'), 3
-equal substrCount('ababab', 'abc'), 0
+(() =>
+	block := """
+		D =====  test/temp.txt  =====
+		D debug
+		I info
+		D =====  test/temp2.txt  =====
+		D debug
+		I info
+		"""
+	equal removeLines(block, /^[A-Z] =====.*=====$/), """
+		D debug
+		I info
+		D debug
+		I info
+		"""
+	)()
 
-equal substrCount('abcaa', 'a'), 3
-equal substrCount('abcxyzabc', 'abc'), 2
+# --- escapeStr()
+equal escapeStr('abc'), 'abc'
+equal escapeStr('   abc'), '˳˳˳abc'
+equal escapeStr('\t\t\tabc'), '→→→abc'
+equal escapeStr('abc\r\ndef'), 'abc←↓def'
 
-equal words('abc d e'), ['abc','d','e']
-
-falsy isClassInstance(42)
-
-equal keys({a:1, b:2}), ['a','b']
-
-truthy hasKey({a:1, b:2}, 'a')
-falsy hasKey({a:1, b:2}, 'c')
-
-equal CWS("a    b"), "a b"
-
-equal chomp('abc\n'), 'abc'
-equal chomp('abc\r\n'), 'abc'
-
-equal behead("""
+# --- escapeBlock()
+equal escapeBlock('abc'), 'abc'
+equal escapeBlock('   abc'), '˳˳˳abc'
+equal escapeBlock('\t\t\tabc'), '→→→abc'
+equal escapeBlock('abc\r\ndef'), """
+	abc←
+	def
+	"""
+equal escapeBlock('abc\ndef'), """
 	abc
 	def
-	ghi
-	"""), ['abc', 'def\nghi']
-
-equal wsSplit("abc  def\t\tghi"), ['abc','def','ghi']
-
-equal execCmdSync("echo", ["hello"]).code, 0
-
-equal addDefaults({a:1, b:2}, {a:3, c:5}), {a:1, b:2, c:5}
-
-equal strToHash('test !debug'), {test: true, debug: false}
-
-equal getOptions({}, {c:5}), {c:5}
-equal getOptions({a:1, c:3}, {c:5}), {a:1, c:3}
-equal getOptions({a:1, b:3}, {c:5}), {a:1, b:3, c:5}
-equal getOptions('a=1', {c:5}), {a:1, c:5}
-equal getOptions('a=do', {c:5}), {a:'do', c:5}
-equal getOptions('a', {c:5}), {a:true, c:5}
-equal getOptions('!a', {c:5}), {a:false, c:5}
-
-equal OL(undef),      'undef'
-equal OL(null),       'null'
-equal OL(42),         '42'
-equal OL('a b c'),    '"a˳b˳c"'
-equal OL([1, 2]),     '[1,2]'
-equal OL(['a','b']),  '["a","b"]'
-equal OL({a:1, b:2}), '{"a":1,"b":2}'
-equal OL([1, 2], 'short'),     'ARRAY'
-equal OL(['a','b'], 'short'),  'ARRAY'
-equal OL({a:1, b:2}, 'short'), 'HASH'
-
-equal tabify("""
+	"""
+equal escapeBlock('abc\ndef'), """
 	abc
-	  def
-	    ghi
-	"""), """
-	abc
-	\tdef
-	\t\tghi
+	def
+	"""
+equal escapeBlock('   abc\n\t\t\tdef'), """
+	˳˳˳abc
+	→→→def
 	"""
 
-equal untabify("""
-	abc
-	\tdef
-	\t\tghi
-	"""), """
-	abc
-	   def
-	      ghi
-	"""
+equal getPattern(), "**/*{.dot,.cielo,.civet}"
 
-equal untabify("""
-	abc
-	\tdef
-	\t\tghi
-	""", 'numSpaces=4'), """
-	abc
-	    def
-	        ghi
-	"""
+# --- getCmdArgs() without hDesc
 
-equal escapeStr(" \t\n"), "˳→↓"
-equal escapeStr(" \t\n", {hEsc: 'escNoNL'}), "˳→\n"
+equal getCmdArgs(undef, ['-abc']), {
+	_: []
+	a: true
+	b: true
+	c: true
+	}
+
+equal getCmdArgs(undef, ['-abc=xyz']), {
+	_: []
+	abc: 'xyz'
+	}
+
+equal getCmdArgs(undef, ['-abc=xyz', 'table']), {
+	_: ['table']
+	abc: 'xyz'
+	}
+
+equal getCmdArgs(undef, ['-Df']), {
+	_: []
+	f: true
+	D: true
+	}
+
+# -------------------------------------------------------------
+# --- getCmdArgs() with hDesc
+
+(() =>
+	# --- commmand 'compile' allows the following options:
+	#        -f  - force compilation
+	#        -w  - watch for file changes
+	#        -n  - suppress post processing
+	#        -dirspec=<spec>  - 'binDir' or 'libDir'
+	#     plus any number of non-options
+	#     (but we pretend it must be 1, 2 or 3)
+
+	hDesc := {
+		f: {type: 'boolean'}
+		w: {type: 'boolean'}
+		n: {type: 'boolean'}
+		dirspec: {type: ['libDir','binDir']}
+		_: {range: [1, 3]}
+		}
+
+	# --- There is no flag named 'f'
+	fails () => getCmdArgs(hDesc, ['-daf', 'file1'])
+
+	# --- option 'dirspec' must be 'libDir' or 'binDir'
+	fails () => getCmdArgs(hDesc, ['-dirspec=42', 'file1'])
+	fails () => getCmdArgs(hDesc, ['-dirspec=blib', 'file1'])
+
+	# --- There must be at least one non-option, and no more than 3
+	fails  () => getCmdArgs(hDesc, ['-df'])
+	fails  () => getCmdArgs(hDesc, ['-df', 'a', 'b', 'c', 'd'])
+	)()
+
+(() =>
+	hDesc := {
+		file: {type: 'string'}
+		f: {type: 'boolean'}
+		n: {type: 'boolean'}
+		w: {type: 'boolean'}
+		}
+
+	equal getCmdArgs(hDesc, ['-wD']), {
+		_: []
+		D: true
+		f: false
+		n: false
+		w: true
+		}
+	equal getCmdArgs(hDesc, ['-wD', 'temp.txt']), {
+		_: ['temp.txt']
+		D: true
+		f: false
+		n: false
+		w: true
+		}
+	equal getCmdArgs(hDesc, ['-wD', '-file=temp.txt']), {
+		_: []
+		D: true
+		f: false
+		n: false
+		w: true
+		file: 'temp.txt'
+		}
+	)()
+
+(() =>
+	hDesc := {
+		file: {type: 'string'}
+		f: {type: 'boolean'}
+		n: {type: 'boolean'}
+		w: {type: 'boolean'}
+		}
+	lArgs := ['temp.txt', '-fw', 'temp2.txt', '-file=abc.txt']
+
+	{_, file, f: force, n: nopp, w: watch} := getCmdArgs hDesc, lArgs
+	equal _, ['temp.txt', 'temp2.txt']
+	equal file, 'abc.txt'
+	equal force, true
+	equal nopp, false
+	equal watch, true
+	)()
+
+(() =>
+	hDesc := {
+		file: {type: 'string'}
+		f: {}
+		n: {}
+		w: {}
+		}
+	lArgs := ['temp.txt', '-fw', 'temp2.txt', '-file=abc.txt']
+
+	{_, file, f: force, n: nopp, w: watch} := getCmdArgs hDesc, lArgs
+	equal _, ['temp.txt', 'temp2.txt']
+	equal file, 'abc.txt'
+	equal force, true
+	equal nopp, false
+	equal watch, true
+	)()
+
+(() =>
+	hDesc := {
+		file: {type: 'string'}
+		f: undef
+		n: undef
+		w: undef
+		}
+	lArgs := ['temp.txt', '-fw', 'temp2.txt', '-file=abc.txt']
+	{_, file, f: force, n: nopp, w: watch} := getCmdArgs hDesc, lArgs
+	equal _, ['temp.txt', 'temp2.txt']
+	equal file, 'abc.txt'
+	equal force, true
+	equal nopp, false
+	equal watch, true
+	)()

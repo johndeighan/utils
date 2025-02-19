@@ -1,0 +1,115 @@
+# compile-config.test.civet
+
+import {
+	undef, defined, notdefined,
+	isArray,
+	} from '../src/lib/datatypes.ts'
+import {
+	relpath,
+	} from '../src/lib/fs.ts'
+import {
+	isConfigHash, installDenoExe, isStub, isDirSpec,
+	findSourceFile,
+	isFileSpec, getSrcInfo, getCompiler, compileFile,
+	hDefaultConfig, userConfigPath, hCompilerConfig,
+	} from '../src/lib/compile-config.ts'
+import type {
+	configHash, foundSource, srcInfo, compileResult,
+	} from '../src/lib/compile-config.ts'
+import {
+	equal, like, unlike, succeeds, fails, truthy, falsy,
+	} from '@jdeighan/utils/unit-test'
+
+# ---------------------------------------------------------------------------
+
+# --- isConfigHash()
+truthy isConfigHash({
+	hCompilers: {
+		'.dot': {
+			outExt: '.js'
+			tester: () => true
+			compiler: () => 'result'
+			}
+		'.cielo': {
+			outExt: '.js'
+			tester: () => true
+			compiler: () => 'result'
+			}
+		'.civet': {
+			outExt: '.js'
+			tester: () => true
+			compiler: () => 'result'
+			}
+		}
+	hPostProcessors: {
+		'testDir': {}
+		'libDir': {}
+		'binDir': {}
+		}
+	})
+
+truthy isConfigHash(hCompilerConfig)
+truthy isConfigHash(hDefaultConfig)
+
+# --- installDenoExe()
+#     No unit test yet
+
+# --- isStub()
+truthy isStub('abc')
+falsy  isStub('.js')
+falsy  isStub('abc/deno')
+falsy  isStub('abc\\deno')
+
+# --- isDirSpec()
+truthy isDirSpec('testDir')
+truthy isDirSpec('libDir')
+truthy isDirSpec('binDir')
+falsy  isDirSpec('abc')
+
+# --- findSourceFile()
+hInfo := findSourceFile('libDir', 'llutils')
+truthy defined(hInfo)
+if (hInfo != undef)
+	equal relpath(hInfo.path), 'src/lib/llutils.civet'
+
+# --- isFileSpec()
+truthy isFileSpec(['abc', 'stub'])
+falsy  isFileSpec(undef)
+falsy  isFileSpec(42)
+falsy  isFileSpec('abc')
+falsy  isFileSpec(['abc'])
+falsy  isFileSpec(['abc', 'def', 'ghi'])
+
+# --- getSrcInfo()
+like getSrcInfo(['libDir', 'llutils']), {
+	relPath: 'src/lib/llutils.civet'
+	dirspec: 'libDir'
+	stub: 'llutils'
+	purpose: undef
+	ext: '.civet'
+	}
+
+like getSrcInfo('src/lib/llutils.civet'), {
+	relPath: 'src/lib/llutils.civet'
+	dirspec: 'libDir'
+	stub: 'llutils'
+	purpose: undef
+	ext: '.civet'
+	}
+
+# --- getCompiler()
+(() =>
+	lInfo := getCompiler('.civet')
+	truthy defined(lInfo)
+	truthy isArray(lInfo)
+	equal lInfo.length, 2
+	)()
+
+# --- compileFile()
+#     no unit tests yet
+
+# --- userConfigPath()
+(() =>
+	dir := Deno.cwd().replaceAll('\\','/')
+	equal userConfigPath, "#{dir}/compile.config.ts"
+	)()

@@ -1,9 +1,12 @@
 # logger.test.civet
 
-import * as lib from '../src/lib/logger.js'
-Object.assign(globalThis, lib)
-import * as lib2 from '../src/lib/unit-test.js'
-Object.assign(globalThis, lib2)
+import {
+	DBG, LOG, WARN, ERR, getLog, setLogLevel, clearLog,
+	INDENT, UNDENT,
+	} from '@jdeighan/utils'
+import {
+	equal, truthy, falsy, succeeds, fails, matches,
+	} from '@jdeighan/utils/unit-test'
 
 # ---------------------------------------------------------------------------
 
@@ -85,5 +88,4 @@ logAll := () =>
 		\s* \d+ \s I \s{4} stuff
 		\s* \d+ \s I \s done
 		$///
-	)()
-
+	) # ()

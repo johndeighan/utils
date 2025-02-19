@@ -1,49 +1,251 @@
 # fs.test.civet
 
-import {undef} from '../src/lib/llutils.js'
-import * as lib from '../src/lib/fs.js'
-Object.assign(globalThis, lib)
-import * as lib2 from '../src/lib/unit-test.js'
-Object.assign(globalThis, lib2)
+import {defined, hasKey} from '@jdeighan/utils'
+import {
+	isFile, isDir, fileExt, withExt,
+	rmFile, getPathType, getStats, parsePath,
+	allFilesMatching, allLinesIn, watchFile, watchDir,
+	normalizePath, mkpath, relpath, newerDestFileExists,
+	pathSubDirs, clearDir, mkDir, mkDirsForFile,
+	slurp, barf,
+	} from '@jdeighan/utils/fs'
+import {
+	equal, truthy, falsy, like, listLike,
+	} from '@jdeighan/utils/unit-test'
+import type {hash, optionspec} from '@jdeighan/utils/datatypes'
+
 
 # ---------------------------------------------------------------------------
 
-equal  fileExt("C:/temp/file.txt"), ".txt"
-equal  fileExt("c:\\temp/to/file.txt"), ".txt"
-equal  fileExt("c:\\temp/to/file.flag.txt"), ".txt"
+# --- isFile()
+truthy isFile('./deno.jsonc')
+truthy isFile('deno.jsonc')
+falsy isFile('./src/lib/notafile.txt')
+truthy isFile("./test/fs/dummy.txt")
+falsy  isFile("./test/fs")
 
-equal  withExt("C:/temp/file.txt", ".js"), "C:/temp/file.js"
-equal  withExt("c:\\temp/to/file.txt", ".js"), "c:\\temp/to/file.js"
-equal  withExt("c:\\temp/to/file.flag.txt", ".js"), "c:\\temp/to/file.flag.js"
+# --- isDir()
+truthy isDir('test')
+falsy isDir('nosuchdir')
+truthy isDir("./test/fs")
+falsy  isDir("./test/fs/dummy.txt")
 
-equal  normalizePath("C:/temp/file.txt"), "c:/temp/file.txt"
-equal  normalizePath("C:\\temp/to/file.txt"), "c:/temp/to/file.txt"
-equal  normalizePath("C:\\temp/to/file.flag.txt"), "c:/temp/to/file.flag.txt"
+# --- fileExt()
+equal fileExt('C:/Users/johnd/utils/deno.jsonc'), '.jsonc'
+equal fileExt("C:/temp/file.txt"), ".txt"
+equal fileExt("c:\\temp/to/file.txt"), ".txt"
+equal fileExt("c:\\temp/to/file.flag.txt"), ".txt"
 
-equal  mkpath("C:/temp/file.txt"), "c:/temp/file.txt"
-equal  mkpath("C:/temp", "file.txt"), "c:/temp/file.txt"
-equal  mkpath("C:\\temp/to/file.txt"), "c:/temp/to/file.txt"
-equal  mkpath("C:\\temp/to/file.flag.txt"), "c:/temp/to/file.flag.txt"
+# --- withExt()
+equal withExt('deno.jsonc', '.txt'), 'deno.txt'
+equal withExt("C:/temp/file.txt", ".js"), "C:/temp/file.js"
+equal withExt("c:\\temp/to/file.txt", ".js"), "c:\\temp/to/file.js"
+equal withExt("c:\\temp/to/file.flag.txt", ".js"), "c:\\temp/to/file.flag.js"
 
-equal  mkpath("C:/temp", "file.txt"), "c:/temp/file.txt"
-equal  mkpath("C:\\temp/to", "file.txt"), "c:/temp/to/file.txt"
-equal  mkpath("C:\\temp", "to/file.flag.txt"), "c:/temp/to/file.flag.txt"
+# --- rmFile()
+#     no unit tests yet
 
-like  parsePath("c:/temp/file.txt"), {
-	path: "c:/temp/file.txt"
+# --- getPathType()
+equal getPathType("./test"), 'dir'
+equal getPathType("./test/llutils.test.civet"), 'file'
+equal getPathType("C:/temp/file.txt"), 'missing'
+
+# --- getStats(path)
+truthy hasKey(getStats("deno.jsonc"), 'mtimeMs')
+
+# --- parsePath()
+like  parsePath("C:/temp/file.txt"), {
 	type: 'missing'
-	root: 'c:/'
-	dir: 'c:/temp'
+	path: "C:/temp/file.txt"
+	root: 'C:/'
+	dir: 'C:/temp'
 	fileName: 'file.txt'
 	stub: 'file'
-	purpose: undef
+	purpose: undefined
 	ext: '.txt'
 	relPath: "../../../temp/file.txt"
 	relDir: "../../../temp"
 	}
 
-truthy isFile("./test/fs/dummy.txt")
-falsy  isFile("./test/fs")
+like parsePath(import.meta.url), {
+	type: 'file'
+	fileName: 'fs.test.ts'
+	stub: 'fs'
+	purpose: 'test'
+	ext: '.ts'
+	relPath: 'test/fs.test.ts'
+	relDir: 'test'
+	}
 
-truthy isDir("./test/fs")
-falsy  isDir("./test/fs/dummy.txt")
+# --- allFilesMatching()
+listLike Array.from(allFilesMatching('**/test/llutils/file*.txt')), [
+	{
+		type: 'file'
+		root: 'C:/'
+		fileName: 'file1.txt',
+		stub: 'file1'
+		ext: '.txt'
+		relPath: 'test/llutils/file1.txt'
+		}
+	{
+		type: 'file'
+		root: 'C:/'
+		fileName: 'file2.txt',
+		stub: 'file2'
+		ext: '.txt'
+		relPath: 'test/llutils/file2.txt'
+		}
+	{
+		type: 'file'
+		root: 'C:/'
+		fileName: 'file3.flags.txt',
+		stub: 'file3'
+		purpose: 'flags'
+		ext: '.txt'
+		relPath: 'test/llutils/file3.flags.txt'
+		}
+	]
+
+# --- allFilesMatching()
+listLike Array.from(allFilesMatching('**/test/llutils/**', 'includeDirs')), [
+	{
+		type: 'dir'
+		fileName: 'llutils',
+		}
+	{
+		type: 'file'
+		fileName: 'barfed.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'file1.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'file2.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'file3.flags.txt',
+		}
+	{
+		type: 'dir'
+		fileName: 'subdir',
+		}
+	{
+		type: 'file'
+		fileName: 'new.txt',
+		}
+	]
+
+# --- allFilesMatching()
+(() =>
+	hOptions := {
+		includeDirs: true
+		filter: (hFile: hash) =>
+			if (hFile.type == 'dir')
+				return hFile.fileName != 'llutils'
+			else if (hFile.type == 'file')
+				return defined(hFile.fileName.match(/^[a-z0-9]+\.txt$/))
+			else
+				return false
+		}
+
+	listLike Array.from(allFilesMatching('**/test/llutils/**', hOptions)), [
+		{
+			type: 'file'
+			fileName: 'barfed.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'file1.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'file2.txt',
+			}
+		{
+			type: 'dir'
+			fileName: 'subdir',
+			}
+		{
+			type: 'file'
+			fileName: 'new.txt',
+			}
+		]
+	)()
+
+# --- allLinesIn()
+lLines := []
+for await line of allLinesIn('./test/llutils/file1.txt')
+	lLines.push line
+
+equal lLines, [
+	'line1'
+	'line2'
+	'line3'
+	]
+
+# --- watchFile()
+#     no unit tests yet
+
+# --- watchDir()
+#     no unit tests yet
+
+# --- normalizePath()
+equal normalizePath("C:/temp/file.txt"), "C:/temp/file.txt"
+equal normalizePath("C:\\temp/to/file.txt"), "C:/temp/to/file.txt"
+equal normalizePath("C:\\temp/to/file.flag.txt"), "C:/temp/to/file.flag.txt"
+equal normalizePath('C:\\Users\\johnd'), 'C:/Users/johnd'
+
+# --- mkpath()
+equal mkpath("C:/temp/file.txt"), "C:/temp/file.txt"
+equal mkpath("C:/temp", "file.txt"), "C:/temp/file.txt"
+equal mkpath("C:\\temp/to/file.txt"), "C:/temp/to/file.txt"
+equal mkpath("C:\\temp/to/file.flag.txt"), "C:/temp/to/file.flag.txt"
+equal mkpath("C:/temp", "file.txt"), "C:/temp/file.txt"
+equal mkpath("C:\\temp/to", "file.txt"), "C:/temp/to/file.txt"
+equal mkpath("C:\\temp", "to/file.flag.txt"), "C:/temp/to/file.flag.txt"
+equal mkpath('c:\\', 'Users', 'johnd'), 'C:/Users/johnd'
+
+# --- relpath(lParts...)
+equal relpath('C:/Users/johnd/utils/deno.jsonc'), 'deno.jsonc'
+
+# --- newerDestFileExists(srcPath, destPath)
+#     no unit tests yet
+
+# --- pathSubDirs(path)
+equal pathSubDirs("C:/Users/johnd/llutils/deno.jsonc"), {
+	root: "C:/"
+	lParts: ['Users', 'johnd', 'llutils']
+	}
+
+# --- clearDir(dir)
+#     no unit tests yet
+
+# --- mkdir(dirPath, hOptions)
+#     no unit tests yet
+
+# --- mkDirsForFile(path)
+#     no unit tests yet
+
+# --- slurp(path)
+equal slurp('./test/llutils/file1.txt'), """
+	line1
+	line2
+	line3\n
+	"""
+
+# --- barf(contents, path)
+contents := """
+	abc
+
+	xyz
+	"""
+testpath := './test/llutils/barfed.txt'
+barf contents, testpath
+equal slurp(testpath), """
+	abc
+
+	xyz
+	"""

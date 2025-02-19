@@ -1,6 +1,6 @@
 # unit-test.test.civet
 
-import * as lib from '../src/lib/unit-test.js'
+import * as lib from '@jdeighan/utils/unit-test'
 Object.assign(globalThis, lib)
 
 # ---------------------------------------------------------------------------
@@ -24,6 +24,9 @@ fails    () => throw new Error("bad")
 succeeds () => return 'me'
 
 like     {a:1, b:2, c:3}, {a:1, c:3}
+listLike [{a:1, b:2, c:3}], [{a:1, c:3}]
+
+unlike   {a:1, b:2}, {c: undefined, c: undefined}
 
 matches  "this is a long sentence", "long"
 matches  "another 42 lines", /\d+/

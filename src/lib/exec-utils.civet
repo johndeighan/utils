@@ -1,0 +1,194 @@
+# exec-utils.civet
+
+import {compile} from 'npm:@danielx/civet'
+import {stripAnsiCode} from "jsr:@std/fmt/colors"
+
+import {
+	undef, defined, notdefined,
+	isString, isArray, isArrayOfStrings,
+	hash, optionspec,
+	} from './datatypes.ts'
+import {
+	getOptions, croak, assert, OL,
+	} from './llutils.ts'
+import {
+	curLogLevel, pushLogLevel, popLogLevel,
+	INDENT, UNDENT,
+	DBG, LOG, WARN, ERR,
+	} from './logger.ts'
+
+textDecoder := new TextDecoder()
+
+# ---------------------------------------------------------------------------
+
+/**
+ * convert ArrayBuffer, Int8Array, etc. to a string
+ */
+
+export mkstr := (item: any): string =>
+
+	if defined(item)
+		if isString(item)
+			return stripAnsiCode(item)
+		else if isArray(item)
+			return stripAnsiCode(item.join(''))
+		else
+			return stripAnsiCode(textDecoder.decode(item))
+	else
+		return ''
+
+# ---------------------------------------------------------------------------
+
+/**
+ * build a command line from a command name and array of arguments
+ */
+
+export getCmdLine := (cmdName: string, lArgs: string[]): string =>
+
+	assert isString(cmdName), "cmdName not a string: #{OL(cmdName)}"
+	assert isArrayOfStrings(lArgs), "not an array of strings: #{OL(lArgs)}"
+	cmdLine := "#{cmdName} #{lArgs.join(' ')}"
+	DBG "cmdLine = #{OL(cmdLine)}"
+	return cmdLine
+
+# ---------------------------------------------------------------------------
+
+/**
+ * build result hash to be returned by execCmd() or execCmdSync()
+ */
+
+export type execCmdResult = {
+	success: boolean
+	code: number
+	signal: string?
+	stdout: string?
+	stderr: string?
+	}
+
+export getFinalResult := (
+	hResult: hash,
+	collect: boolean
+	): execCmdResult =>
+
+	hRes := if collect
+		{
+			success: hResult.success
+			code:    hResult.code
+			signal:  hResult.signal
+			stdout:  mkstr(hResult.stdout)
+			stderr:  mkstr(hResult.stderr)
+			}
+	else
+		{
+			success: hResult.success
+			code:    hResult.code
+			signal:  hResult.signal
+			stdout:  undef
+			stderr:  undef
+			}
+	DBG "hResult = #{OL(hRes)}"
+	return hRes
+
+# ---------------------------------------------------------------------------
+
+/**
+ * get options to pass to Deno.Command constructor
+ * 2nd argument determines whether stdout and stderr are
+ * sent to parent process's stdout and stderr or are
+ * collected to be returned to the caller
+ */
+
+export getProcOpt := (
+	lArgs: string[],
+	collect: boolean
+	): Deno.CommandOptions =>
+
+	hEnv: hash := {
+		DEFAULT_LOGGER: curLogLevel()
+		}
+
+	return if collect
+		{
+			args: lArgs,
+			env: hEnv
+			stdout: 'piped'
+			stderr: 'piped'
+			}
+	else
+		{
+			args: lArgs,
+			env: hEnv
+			stdout: 'inherit'
+			stderr: 'inherit'
+			}
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export execCmd := (
+	cmdName: string,
+	lArgs: string[] = [],
+	hOptions: optionspec = {}
+	): execCmdResult =>
+
+	{collect, nolog} := getOptions hOptions, {
+		collect: false
+		nolog: false
+		}
+	if nolog
+		pushLogLevel 'silent'
+	DBG "EXEC: #{OL(getCmdLine(cmdName, lArgs))}"
+	DBG INDENT
+	hProcOpt := getProcOpt(lArgs, collect)
+	child := new Deno.Command(cmdName, hProcOpt)
+	DBG UNDENT
+	hResult := await child.output()
+	hFinalResult := getFinalResult(hResult, collect)
+	if nolog
+		popLogLevel()
+	return hFinalResult
+
+# ---------------------------------------------------------------------------
+
+export execCmdSync := (
+	cmdName: string,
+	lArgs: string[] = [],
+	hOptions: optionspec = {}
+	): execCmdResult =>
+
+	{collect, nolog} := getOptions hOptions, {
+		collect: false
+		nolog: false
+		}
+	if nolog
+		pushLogLevel 'silent'
+	DBG "EXEC SYNC: #{OL(getCmdLine(cmdName, lArgs))}"
+	DBG INDENT
+	hProcOpt := getProcOpt(lArgs, collect)
+	child := new Deno.Command(cmdName, hProcOpt)
+	DBG UNDENT
+	hResult := child.outputSync()
+	hFinalResult := getFinalResult(hResult, collect)
+	if nolog
+		popLogLevel()
+	return hFinalResult
+
+# ---------------------------------------------------------------------------
+
+export cmdSucceeds := (
+	cmdName: string,
+	lArgs: string[] = [],
+	hOptions: optionspec = {}
+	): boolean =>
+
+	{quiet} := getOptions hOptions, {
+		quiet: true
+		}
+	try
+		h := quiet ? {collect: true, nolog: true} : {}
+		execCmdSync cmdName, lArgs, h
+		return true
+	catch err
+		return false
+
+# ---------------------------------------------------------------------------

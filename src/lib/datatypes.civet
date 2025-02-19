@@ -1,0 +1,156 @@
+# datatypes.civet
+
+/**
+ * An alias for TypeScript type 'object'
+ */
+
+export interface hash
+	[key: string]: any
+
+export type array = any[]
+
+/**
+ * specifying options for function getOptions()
+ */
+
+export type optionspec = hash | string
+
+# ---------------------------------------------------------------------------
+
+/**
+ * An alias for JavaScript's `undefined`
+ */
+
+export undef := undefined
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns true if the provided value is defined
+ * (i.e. not null or undefined), else returns false
+ * (see [unit tests](./test/llutils.test.civet))
+ */
+
+export defined := (x: any): boolean =>
+
+	return (x != undef) && (x != null)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Returns true if all the values provided are not defined
+ * (i.e. either null or undefined), else returns false
+ */
+
+export notdefined := (x: any): x is undefined =>
+
+	return (x == undefined) || (x == null)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns true if (typeof item == 'string') or item instanceof String
+ */
+
+export isString := (x: any): x is string =>
+
+	return (typeof x == 'string') || (x instanceof String)
+
+# ---------------------------------------------------------------------------
+
+export isNonEmptyString := (x: any): boolean =>
+
+	# --- must contain non-whitespace character
+	return isString(x) && defined(x.match(/\S/))
+
+# ---------------------------------------------------------------------------
+
+export isBoolean := (x: any): x is boolean =>
+
+	return (typeof x == 'boolean') || (x instanceof Boolean)
+
+# ---------------------------------------------------------------------------
+
+export isNumber := (x: any): x is number =>
+
+	type := typeof x
+	return (type == 'bigint') || (type == 'number') || (x instanceof Number)
+
+# ---------------------------------------------------------------------------
+
+export type integer = number
+
+export isInteger := (x: any): x is integer =>
+
+	return isNumber(x) && Number.isInteger(x.valueOf())
+
+# ---------------------------------------------------------------------------
+
+export isArray := (x: any): x is array =>
+
+	return Array.isArray(x)
+
+# ---------------------------------------------------------------------------
+
+export isArrayOfStrings := (x: any): boolean =>
+
+	if not Array.isArray(x)
+		return false
+	for item of x
+		if not isString(item)
+			return false
+	return true
+
+# ---------------------------------------------------------------------------
+
+type regexp = object
+
+export isRegExp := (item: any): item is regexp =>
+
+	return (item instanceof RegExp)
+
+# ---------------------------------------------------------------------------
+
+export isObject := (item: any): item is object =>
+
+	return (typeof item == 'object')
+
+# ---------------------------------------------------------------------------
+
+export isHash := (item: any): item is hash =>
+
+	return isObject(item) && not (isArray(item) || isRegExp(item))
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns true if any of these is true:
+ * 	- x is null or undef
+ * 	- x is a string consisting of only whitespace
+ * 	- x is an array of length 0
+ * 	- x is a hash that has no keys
+ * else returns false
+ */
+
+export isEmpty := (x: any): boolean =>
+
+	if (x == undef) || (x == null)
+		return true
+	if isString(x)
+		return (x.match(/^\s*$/) != null)
+	if isArray(x)
+		return (x.length == 0)
+	if isHash(x)
+		return (Object.keys(x).length == 0)
+	else
+		return false
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns ! isEmpty(x)
+ */
+
+export nonEmpty := (x: any): boolean =>
+
+	return not isEmpty(x)

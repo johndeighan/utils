@@ -1,8 +1,8 @@
 # v8-stack.civet
 
-import pathLib from 'path'
-import fs from 'fs'
-import sms from 'source-map-support'
+import {
+	install, mapSourcePosition,
+	} from 'npm:source-map-support'
 import {sprintf} from '@std/fmt/printf'
 
 import {
@@ -11,37 +11,56 @@ import {
 	isString, isNonEmptyString, isInteger, rpad, centered,
 	isFile, mkpath, fileExt, withExt, normalizePath, relpath,
 	DBG, LOG, WARN, ERR, INDENT, UNDENT,
-	} from '@jdeighan/utils/llutils.js'
+	} from './utils.ts'
+import type {hash, optionspec} from './datatypes.ts'
 
-sms.install()
-mapSourcePosition := sms.mapSourcePosition
+/**
+ * @module v8-stack - runtime stack utilities
+ */
+
+install()     # from source-map-support
 width := 40
 
 # ---------------------------------------------------------------------------
-# Stack Frames have keys:
-#    type         - eval | native | constructor | method | function | script
-#    source
-#    line
-#    column
-#    name          - name of function or method
-#    isConstructor - true if a constructor function
-#    isAsync       - true if an async function/method
-#    objTye        - if type == 'method'
+
+export type stackFrame = {
+	type: string    # eval | native | constructor | method | function | script
+	source: string  # source file name
+	line: number
+	column: number
+	name: string    # name of function or method
+	isConstructor: boolean
+	isAsync: boolean
+	objType: string?  # --- if type == 'method'
+	}
 
 # ---------------------------------------------------------------------------
 
-export getV8Stack = () =>
+/**
+ * Get the runtime stack from the v8 engine
+ * ignores any stack frames from this module
+ * files will be mapped to original source files
+ * 	if a source map is available
+ */
+
+export getV8Stack = (): stackFrame[] =>
 	# --- ignores any stack frames from this module
-	#     *.js files will be mapped to original source files
+	#     files will be mapped to original source files
 	#        if a source map is available
 
 	try
+		# @ts-ignore
 		oldLimit := Error.stackTraceLimit
+
+		# @ts-ignore
 		oldPreparer := Error.prepareStackTrace
 
+		# @ts-ignore
 		Error.stackTraceLimit = Infinity
+
+		# @ts-ignore
 		Error.prepareStackTrace = (error, lFrames) =>
-			lResultFrames := []
+			lResultFrames: stackFrame[] := []
 			DBG "getV8Stack(): #{lFrames.length} stack frames"
 			for frame,i of lFrames
 
@@ -76,51 +95,41 @@ export getV8Stack = () =>
 				DBG "typeName = #{OL(typeName)}"
 				DBG '-'.repeat(width)
 
-				source := fileName
-				if defined(source) && (source.indexOf('v8-stack.js')  >= 0)
+				source: string := fileName
+				if defined(source) && defined(source.match(/v8-stack\.(js|ts|civet)$/))
 					DBG "SKIP: source = '#{source}'", UNDENT
 					continue
 
 				h := {
+					type: (
+						  isEval                ? 'eval'
+						: isNative              ? 'native'
+						: isConstructor         ? 'constructor'
+						: defined(methodName)   ? 'method'
+						: defined(functionName) ? 'function'
+						: isTopLevel            ? 'script'
+						:                         'unknown'
+						)
 					source
 					line
 					column
+					name: (
+						  defined(functionName) ? functionName
+						: defined(functionObj)  ? '<anonymous>'
+						: defined(methodName)   ? methodName
+						:                         '<unknown>'
+						)
+					isConstructor
+					isAsync
+					objType: (methodName == undef) ? undef : typeName
 					}
-
-				if defined(functionName)
-					h.name = functionName
-				else if defined(functionObj)
-					h.name = '<anonymous>'
-
-				if defined(methodName)
-					h.name = methodName
-
-				# --- Set type
-				h.type = (
-					  isEval                  ? 'eval'
-					: isNative                ? 'native'
-					: isConstructor           ? 'constructor'
-					: defined(methodName)   ? 'method'
-					: defined(functionName) ? 'function'
-					: isTopLevel              ? 'script'
-					:                           croak('Unknown frame type')
-					)
-
-				if isConstructor
-					h.isConstructor = true
-
-				if isAsync
-					h.isAsync = true
-
-				if (h.type == 'method')
-					h.objType = typeName
 
 				# --- fix a bug in the V8 engine where calls inside a
 				#     top level anonymous function is reported as
 				#     being from the top level, i.e. type 'script'
 
-				if (lResultFrames.length > 0)
-					tos := lResultFrames.at(-1)    # --- i.e. previous frame
+				tos := lResultFrames.at(-1)    # --- i.e. previous frame
+				if (tos != undef)
 					if (h.type == 'script') && (tos.type == 'script')
 						DBG "Patch current TOS (currently #{lResultFrames.length} frames)"
 						tos.type = 'function'
@@ -142,10 +151,16 @@ export getV8Stack = () =>
 			return lResultFrames
 
 		errObj := new Error()
-		lStack := errObj.stack
+
+		# @ts-ignore - because errObj.stack will be an array
+		lStack: stackFrame[] := errObj.stack || []
 
 		# --- reset to previous values
+
+		# @ts-ignore
 		Error.stackTraceLimit = oldLimit
+
+		# @ts-ignore
 		Error.prepareStackTrace = oldPreparer
 
 		for h of lStack
@@ -169,15 +184,20 @@ export getV8Stack = () =>
 
 		return lStack
 	catch e
+		# @ts-ignore
 		ERR e.message
 		return []
 
 # ---------------------------------------------------------------------------
 
-export getV8StackStr := (hOptions={}) =>
-	# --- ignores any stack frames from this module
-	#     *.js files will be mapped to original source files
-	#        if a source map is available
+/**
+ * Get the runtime stack from the v8 engine as a string
+ * ignores any stack frames from this module
+ * files will be mapped to original source files
+ * 	if a source map is available
+ */
+
+export getV8StackStr := (hOptions: optionspec={}): string =>
 
 	lLines := getV8Stack().map((h) =>
 		typeStr := sprintf("%-11s", h.type)
@@ -187,22 +207,37 @@ export getV8StackStr := (hOptions={}) =>
 
 # ---------------------------------------------------------------------------
 
-export getMyCaller := () =>
+/**
+ * Get the current function's caller
+ */
+
+export getMyCaller := (): stackFrame? =>
 
 	try
 		lStack := getV8Stack()
-		return lStack[1]
+		if defined(lStack) && (lStack.length > 0)
+			return lStack[1]
+		else
+			return undef
 	catch err
-		console.log "ERROR in getV8Stack(): #{err.message}"
+		if (err instanceof Error)
+			console.log "ERROR in getV8Stack(): #{err.message}"
 		return undef
 
 # ---------------------------------------------------------------------------
 
-export getMyOutsideCaller := () =>
+/**
+ * Get the current function's caller, ignoring any calls
+ * from the same module
+ */
+
+export getMyOutsideCaller := (): stackFrame? =>
 
 	try
 		lStack := getV8Stack()
 		DBG "Call stack has #{lStack.length} items"
+		if (lStack.length == 0)
+			return undef
 		source := lStack[0].source
 		DBG "source = #{source}"
 		for frame,i of lStack
@@ -211,5 +246,6 @@ export getMyOutsideCaller := () =>
 				return frame
 		return undef
 	catch err
-		console.log "ERROR in getV8Stack(): #{err.message}"
+		if (err instanceof Error)
+			console.log "ERROR in getV8Stack(): #{err.message}"
 		return undef

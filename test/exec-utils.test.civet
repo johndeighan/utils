@@ -1,0 +1,64 @@
+# exec-utils.test.civet
+
+import {
+	mkstr, getCmdLine, getProcOpt, getFinalResult,
+	execCmd, execCmdSync, cmdSucceeds,
+	} from '../src/lib/exec-utils.ts'
+import type {
+	execCmdResult,
+	} from '../src/lib/exec-utils.ts'
+import {
+	equal, like, unlike, succeeds, fails, truthy, falsy,
+	} from '@jdeighan/utils/unit-test'
+
+# ---------------------------------------------------------------------------
+
+# --- mkstr(x)
+buffer := new ArrayBuffer(3)
+view := new Int8Array(buffer)
+
+view[0] = 97
+view[1] = 98
+view[2] = 99
+
+equal mkstr('abc'), 'abc'
+equal mkstr(buffer), 'abc'
+equal mkstr(view), 'abc'
+
+# --- getCmdLine()
+equal getCmdLine('dothis', ['-a', 'willy']), 'dothis -a willy'
+
+# --- getProcOpt()
+like getProcOpt(['-h'], true), {
+	args: ['-h']
+	stdout: 'piped'
+	stderr: 'piped'
+	}
+
+like getProcOpt(['-h'], false), {
+	stdout: 'inherit'
+	stderr: 'inherit'
+	}
+
+# --- getFinalResult()
+#     no unit tests yet
+
+# --- execCmd()
+(() =>
+	hResult := await execCmd('echo', ["Hello"], 'collect')
+	equal hResult.code, 0
+	equal hResult.stdout, "Hello\n"
+	)()
+
+# --- execCmdSync()
+equal execCmdSync("echo", ["Hello"]).code, 0
+
+(() =>
+	hResult := execCmdSync('echo', ["Hello"], 'collect')
+	equal hResult.code, 0
+	equal hResult.stdout, "Hello\n"
+	)()
+
+# --- cmdSucceeds(cmdName, lArgs, hOptions)
+#     no unit tests yet
+

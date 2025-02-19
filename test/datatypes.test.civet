@@ -1,0 +1,119 @@
+# datatypes.test.civet
+
+import {
+	hash, array,
+	undef, defined, notdefined,
+	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
+	isArray, isArrayOfStrings, isHash, isObject, isRegExp,
+	isEmpty, nonEmpty,
+	} from '@jdeighan/utils/datatypes'
+import {
+	truthy, falsy,
+	} from '@jdeighan/utils/unit-test'
+
+# ---------------------------------------------------------------------------
+
+# --- hash
+h: hash := {
+	a: 1
+	b: 2
+	}
+truthy isHash(h)
+
+# --- undef
+truthy (undef == undefined)
+falsy  defined(undef)
+truthy notdefined(undef)
+
+# --- defined()
+truthy defined(42)
+truthy defined('abc')
+truthy defined([1,2])
+truthy defined({a: 13})
+truthy not defined(undefined)
+
+# --- notdefined()
+truthy notdefined(null)
+truthy notdefined(undef)
+falsy  notdefined(42)
+falsy  notdefined('abc')
+
+# --- isString()
+truthy isString('abc')
+truthy isString('')
+falsy isString(42)
+falsy isString(undef)
+falsy isString([1,2])
+falsy isString({a:1, b:2})
+falsy isString(/\s/)
+
+# --- isNonEmptyString()
+truthy isNonEmptyString('a')
+falsy  isNonEmptyString('')
+falsy  isNonEmptyString(undef)
+falsy  isNonEmptyString(42)
+
+# --- isBoolean()
+truthy isBoolean(true)
+falsy  isBoolean(42)
+
+# --- isNumber()
+truthy isNumber(42)
+truthy isNumber(new Number(42))
+falsy isNumber('abc')
+truthy isNumber(3.14159)
+
+# --- isInteger()
+truthy isInteger(42)
+falsy  isInteger(3.14159)
+falsy  isInteger('42')
+
+# --- isArray()
+truthy isArray([1,2])
+falsy  isArray('abc')
+falsy  isArray(42)
+
+# --- isArrayOfStrings()
+truthy isArrayOfStrings(['abc','def'])
+falsy  isArrayOfStrings(42)
+falsy  isArrayOfStrings([1,2])
+falsy  isArrayOfStrings(['abc',2])
+
+# --- isHash()
+truthy isHash({a:1, b:2})
+falsy  isHash(42)
+falsy  isHash([1, 2])
+
+# --- isObject()
+truthy isObject({})
+falsy  isObject(42)
+truthy isObject({a:1, b:2})
+truthy isObject([1, 2])
+
+# --- isRegExp()
+truthy isRegExp(/^abc$/)
+falsy  isRegExp('abc')
+
+# --- isEmpty()
+truthy isEmpty(undefined)
+truthy isEmpty(null)
+truthy isEmpty('')
+truthy isEmpty('   ')
+truthy isEmpty('\t\t')
+truthy isEmpty([])
+truthy isEmpty({})
+falsy  isEmpty('abc')
+falsy  isEmpty([1,2])
+falsy  isEmpty({a:1})
+
+# --- nonEmpty()
+falsy  nonEmpty(undefined)
+falsy  nonEmpty(null)
+falsy  nonEmpty('')
+falsy  nonEmpty('   ')
+falsy  nonEmpty('\t\t')
+falsy  nonEmpty([])
+falsy  nonEmpty({})
+truthy nonEmpty('abc')
+truthy nonEmpty([1,2])
+truthy nonEmpty({a:1})

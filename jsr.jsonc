@@ -1,0 +1,9 @@
+{
+	"name": "@jdeighan/utils",
+	"version": "1.0.0",
+	"exports": {
+		".": "src/lib/utils.ts",
+		"./v8-stack": "srs/lib/v8-stack.ts",
+		"./unit-test": "src/lib/unit-test.ts",
+		}
+	}

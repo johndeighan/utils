@@ -1,12 +1,13 @@
 # compile.test.civet
 
-import {
-	undef, globFiles, compileFile, compileAllFiles,
-	} from '../src/lib/llutils.js'
-
-import * as lib2 from '../src/lib/unit-test.js'
+import * as lib from '@jdeighan/utils'
+Object.assign(globalThis, lib)
+import * as lib2 from '@jdeighan/utils/unit-test.js'
 Object.assign(globalThis, lib2)
 
 # ---------------------------------------------------------------------------
 
 equal 2+2, 4
+
+hResult := execCmdSync 'compile', ['-h'], 'collect'
+LOG ML(hResult)

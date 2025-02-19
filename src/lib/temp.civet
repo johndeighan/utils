@@ -1,0 +1,68 @@
+export hDefaultConfig: configHash := {
+
+	hCompilers: {
+		# --- keys are file extensions
+		#     NOTE: compilers must be synchronous!!!
+
+		'.dot':
+			outExt: '.svg'
+			tester: (): boolean =>
+				return cmdSucceeds('dot', ['--version'], 'quiet')
+			compiler: (path: string): void =>
+				svgPath := withExt(path, '.svg')
+				rmFile svgPath
+				execCmdSync 'dot', ['-Tsvg', path]
+				return
+
+		'.cielo':
+			outExt: '.ts'
+			tester: (): boolean =>
+				return true
+			compiler: (path: string): void =>
+				civetPath := withExt(path, '.temp.civet')
+				rmFile civetPath
+				cielo2civet path, civetPath
+				civet2ts civetPath, withExt(path, '.ts')
+				return
+
+		'.civet':
+			outExt: '.ts'
+			tester: (): boolean =>
+				return cmdSucceeds('civet', ['--version'], 'quiet')
+			compiler: (path: string): void =>
+				civet2ts path, withExt(path, '.ts')
+				return
+
+		}
+
+	hPostProcessors: {
+		# --- Keys are dirspecs
+
+		testDir:
+			dir: 'test'    # --- no post processing
+			postProcessor: (stub: string): void =>
+				return
+
+		libDir:
+			dir: 'src/lib'
+			postProcessor: (stub: string): void =>
+				h := findSourceFile('test', stub, 'test')
+				if notdefined(h)
+					return
+				{path} := h
+				if notdefined(path)
+					return
+				# --- will also run unit test if it exists
+				{status} := compileFile(path)
+				DBG "Compile of #{stub}: status = #{status}"
+				return
+
+		binDir:
+			dir: 'src/bin'
+			postProcessor: (stub: string): void =>
+				LOG "- installing command #{stub}"
+				installDenoExe stub
+				return
+		}
+	}
+

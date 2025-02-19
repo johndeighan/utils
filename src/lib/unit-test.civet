@@ -4,43 +4,46 @@ import {
 	assert, assertEquals, assertNotEquals, assertObjectMatch,
 	assertStringIncludes, assertMatch, assertArrayIncludes,
 	} from '@std/assert'
+
 import {
-	OL, isArray, isHash, range, pushLogLevel, popLogLevel,
-	} from '@jdeighan/utils/llutils.js'
-import {getMyOutsideCaller} from '@jdeighan/utils/v8-stack.js'
+	undef, defined, notdefined, isArray, isHash, isString, hash,
+	} from './datatypes.ts'
+import {
+	pushLogLevel, popLogLevel,
+	} from './logger.ts'
+import {getMyOutsideCaller} from './v8-stack.ts'
 
 /**
  * unit-test - provides functions for use in unit tests
+ * available tests:
+ *    equal
+ *    truthy
+ *    falsy
+ *    fails
+ *    succeeds
+ *    matches
+ *    like
+ *    listLike
+ *    includes
+ *    includesAll
  *
  * @module
  */
 
 # ---------------------------------------------------------------------------
-# typeof x may return
-#    'number'
-#    'string'
-#    'boolean'
-#    'undefined'
-#    'bigint'
-#    'symbol'
-#    'object'
-#    'function'
-# ---------------------------------------------------------------------------
-# available tests
-#    equal
-#    truthy
-#    falsy
-#    fails
-#    succeeds
-#    matches
-#    like
-#    includes
-#    includesAll
-# ---------------------------------------------------------------------------
 
-isString := (x) =>
+/**
+ * Generate a test name using the source line number
+ */
 
-	return (typeof x == 'string') || (x instanceof String)
+export getTestName := (): string =>
+
+	pushLogLevel 'silent'
+	frame := getMyOutsideCaller()
+	console.dir frame      # DEBUG
+	line := (frame == undef) ? 0 : frame.line
+	popLogLevel()
+	return "line #{line}"
 
 # ---------------------------------------------------------------------------
 
@@ -61,8 +64,7 @@ isString := (x) =>
 
 export equal := (value: any, expected: any) : void =>
 
-	label := getTestName()
-	Deno.test label, () => assertEquals(value, expected)
+	Deno.test getTestName(), () => assertEquals(value, expected)
 	return
 
 # ---------------------------------------------------------------------------
@@ -81,10 +83,9 @@ export equal := (value: any, expected: any) : void =>
  * This test will pass.
  */
 
-export truthy := (value: any) =>
+export truthy := (value: any): void =>
 
-	label := getTestName()
-	Deno.test label, () => assert value
+	Deno.test getTestName(), () => assert value
 	return
 
 # ---------------------------------------------------------------------------
@@ -103,10 +104,9 @@ export truthy := (value: any) =>
  * This test will pass.
  */
 
-export falsy := (value) =>
+export falsy := (value: any): void =>
 
-	label := getTestName()
-	Deno.test label, () => assert (not value)
+	Deno.test getTestName(), () => assert (not value)
 	return
 
 # ---------------------------------------------------------------------------
@@ -125,12 +125,11 @@ export falsy := (value) =>
  * This test will pass.
  */
 
-export fails := (func): void =>
+export fails := (func: () => void): void =>
 
 	assert (typeof func == 'function'), "test fails() passed non-function"
-	label := getTestName()
 	pushLogLevel 'silent'
-	Deno.test label, () => assert llthrows(func)
+	Deno.test getTestName(), () => assert(llthrows(func))
 	popLogLevel()
 	return
 
@@ -151,11 +150,10 @@ export fails := (func): void =>
  * This test will pass.
  */
 
-export succeeds := (func): void =>
+export succeeds := (func: () => void): void =>
 
 	assert (typeof func == 'function'), "test succeeds() passed non-function"
-	label := getTestName()
-	Deno.test label, () => assert not llthrows(func)
+	Deno.test getTestName(), () => assert not llthrows(func)
 	return
 
 # ---------------------------------------------------------------------------
@@ -182,16 +180,40 @@ export succeeds := (func): void =>
  * This test will pass.
  */
 
-export matches := (value, expected) =>
+export matches := (value: any, expected: any) =>
 
-	label := getTestName()
 	assert isString(value), "Not a string: #{value}"
 	if isString(expected)
-		Deno.test label, () => assertStringIncludes value, expected
+		Deno.test getTestName(), () => assertStringIncludes value, expected
 	else if (expected instanceof RegExp)
-		Deno.test label, () => assertMatch value, expected
+		Deno.test getTestName(), () => assertMatch value, expected
 	else
-		Deno.test label, () => assert false
+		Deno.test getTestName(), () => assert false
+	return
+
+# ---------------------------------------------------------------------------
+
+/**
+ * In a unit test, tests if one hash matches another hash.
+ * the first hash must have all the properties in the second hash,
+ * but extra properties are allowed.
+ * Reports line number of the test.
+ *
+ * @param {hash} value - any JavaScript object
+ * @param {hash} expected - any JavaScript object
+ * @returns {void} - nothing
+ *
+ * @example
+ * ```js
+ * like {a:1, b:2, c:3}, {a:1, c:3}
+ * ```
+ * This test will pass.
+ */
+
+export like := (value: hash?, expected: hash): void =>
+
+	# @ts-ignore
+	Deno.test getTestName(), () => assertObjectMatch value, expected
 	return
 
 # ---------------------------------------------------------------------------
@@ -224,19 +246,26 @@ export matches := (value, expected) =>
  * This test will pass.
  */
 
-export like := (value, expected) =>
+export listLike := (value: hash[], expected: hash[]): void =>
 
 	label := getTestName()
-	if isHash(value) && isHash(expected)
-		Deno.test label, () => assertObjectMatch value, expected
-	else if isArray(value) && isArray(expected)
-		valLen := value.length
-		expLen := expected.length
-		max := (valLen >= expLen) ? valLen : expLen
-		for i of range(max)
-			actObj := value[i] || {}
-			expObj := expected[i] || {bad: 'bad'}
-			Deno.test label, () => assertObjectMatch actObj, expObj
+
+	len := value.length
+	Deno.test "#{label}/len", () => assertEquals len, expected.length
+	for i of [0..len-1]
+		# @ts-ignore
+		Deno.test "#{label}/i", () => assertObjectMatch value[i], expected[i]
+	return
+
+# ---------------------------------------------------------------------------
+
+export unlike := (value: any, expected: any) =>
+
+	assert isHash(value), "unlike(): value not a hash"
+	assert isHash(expected), "unlike(): expected not a hash"
+	label := getTestName()
+	for key of Object.keys(expected)
+		Deno.test label, () => assert (value[key] == undefined)
 	return
 
 # ---------------------------------------------------------------------------
@@ -257,11 +286,10 @@ export like := (value, expected) =>
  * This test will pass.
  */
 
-export includes := (value, expected) =>
+export includes := (value: any, expected: any) =>
 
-	label := getTestName()
 	assert Array.isArray(value), "not an array: #{value}"
-	Deno.test label, () => assertArrayIncludes(value, [expected])
+	Deno.test getTestName(), () => assertArrayIncludes(value, [expected])
 	return
 
 # ---------------------------------------------------------------------------
@@ -282,27 +310,16 @@ export includes := (value, expected) =>
  * This test will pass.
  */
 
-export includesAll := (value, expected) =>
+export includesAll := (value: any, expected: any) =>
 
-	label := getTestName()
 	assert Array.isArray(value), "not an array: #{value}"
 	assert Array.isArray(expected), "not an array: #{expected}"
-	Deno.test label, () => assertArrayIncludes(value, expected)
+	Deno.test getTestName(), () => assertArrayIncludes(value, expected)
 	return
 
 # ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
 
-export getTestName := () =>
-
-	pushLogLevel 'silent'
-	frame := getMyOutsideCaller()
-	popLogLevel()
-	return "line #{frame.line}"
-
-# ---------------------------------------------------------------------------
-
-export llthrows := (func) =>
+export llthrows := (func: () => any) =>
 
 	try
 		func()

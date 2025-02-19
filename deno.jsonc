@@ -2,96 +2,147 @@
 	// --- Comments and trailing commas allowed!
 	"tasks": {
 		"cleanup": "
-			   civet --js -o .js --inline-map -c src/bin/cleanup.civet
-			&& deno install -fgA -c deno.jsonc src/bin/cleanup.js
-			&& bash cleanup
+			   civet --inline-map -o .ts -c src/bin/cleanup.civet
+			&& deno compile -A -o exe/cleanup.exe src/bin/cleanup.ts
+			&& cp exe/cleanup.exe ../.deno/bin/cleanup.exe
+			&& exe/cleanup
 			",
 
-		"build:base": "
-			   civet --js -o .js --inline-map -c src/lib/logger.civet
-			&& civet --js -o .js --inline-map -c src/lib/data-type-tests.civet
-			&& civet --js -o .js --inline-map -c src/lib/llutils.civet
-			&& civet --js -o .js --inline-map -c src/lib/v8-stack.civet
-			&& civet --js -o .js --inline-map -c src/lib/unit-test.civet
-			&& civet --js -o .js --inline-map -c src/lib/fs.civet
-		   ",
+		"compile:all": "
+			   echo compile: datatypes.civet
+			&& civet --inline-map -o .ts -c src/lib/datatypes.civet
+			&& deno check src/lib/datatypes.ts
 
-		"test:base": "
-			   deno test -qA test/base.test.js
-			&& civet --js -o .js --inline-map -c test/logger.test.civet
-			&& deno test -qA test/logger.test.js
-			&& civet --js -o .js --inline-map -c test/llutils.test.civet
-			&& deno test -qA test/llutils.test.js
-			&& civet --js -o .js --inline-map -c test/unit-test.test.civet
-			&& deno test -qA test/unit-test.test.js
-			&& civet --js -o .js --inline-map -c test/fs.test.civet
-			&& deno test -qA test/fs.test.js
-			&& civet --js -o .js --inline-map -c test/v8-stack.test.civet
-			&& civet --js -o .js --inline-map -c test/v8-stack/v8-module.civet
-			&& deno test -qA test/v8-stack.test.js
+			&& echo compile: llutils.civet
+			&& civet --inline-map -o .ts -c src/lib/llutils.civet
+			&& deno check src/lib/llutils.ts
+
+			&& echo compile: fs.civet
+			&& civet --inline-map -o .ts -c src/lib/fs.civet
+			&& deno check src/lib/fs.ts
+
+			&& echo compile: logger.civet
+			&& civet --inline-map -o .ts -c src/lib/logger.civet
+			&& deno check src/lib/logger.ts
+
+			&& echo compile: exec-utils.civet
+			&& civet --inline-map -o .ts -c src/lib/exec-utils.civet
+			&& deno check src/lib/exec-utils.ts
+
+			&& echo compile: compile-config.civet
+			&& civet --inline-map -o .ts -c src/lib/compile-config.civet
+			&& deno check src/lib/compile-config.ts
+
+			&& echo compile: utils.civet
+			&& civet --inline-map -o .ts -c src/lib/utils.civet
+			&& deno check src/lib/utils.ts
+
+			&& echo compile: v8-stack.civet
+			&& civet --inline-map -o .ts -c src/lib/v8-stack.civet
+			&& deno check src/lib/v8-stack.ts
+
+			&& echo compile: unit-test.civet
+			&& civet --inline-map -o .ts -c src/lib/unit-test.civet
+			&& deno check src/lib/unit-test.ts
 			",
 
-		"build:compiler":
-			"civet --js -o .js --inline-map -c src/bin/compile.civet",
+		"utest:all": "
+			   civet --inline-map -o .ts -c test/datatypes.test.civet
+			&& echo unit test: datatypes
+			&& deno test -qA --reporter dot test/datatypes.test.ts
 
-		"install:compiler":
-			"deno install -fgA -c ./deno.jsonc src/bin/compile.js",
+			&& civet --inline-map -o .ts -c test/llutils.test.civet
+			&& echo unit test: llutils
+			&& deno test -qA --reporter dot test/llutils.test.ts
 
-		"build:run-unit-test":
-			"civet --js -o .js --inline-map -c src/bin/run-unit-test.civet",
+			&& civet --inline-map -o .ts -c test/fs.test.civet
+			&& echo unit test: fs
+			&& deno test -qA --reporter dot test/fs.test.ts
 
-		"install:run-unit-test": "
-			   deno install -fgA -c deno.jsonc src/bin/run-unit-test.js
-			&& deno install -fgA -c deno.jsonc -n rut src/bin/run-unit-test.js
+			&& civet --inline-map -o .ts -c test/logger.test.civet
+			&& echo unit test: logger
+			&& deno test -qA --reporter dot test/logger.test.ts
+
+			&& civet --inline-map -o .ts -c test/exec-utils.test.civet
+			&& echo unit test: exec-utils
+			&& deno test -qA --reporter dot test/exec-utils.test.ts
+
+			&& civet --inline-map -o .ts -c test/compile-config.test.civet
+			&& echo unit test: compile-config
+			&& deno test -qA --reporter dot test/compile-config.test.ts
+
+			&& civet --inline-map -o .ts -c test/utils.test.civet
+			&& echo unit test: utils
+			&& deno test -qA --reporter dot test/utils.test.ts
+
+			&& civet --inline-map -o .ts -c test/v8-stack.test.civet
+			&& civet --inline-map -o .ts -c test/v8-stack/v8-module.civet
+			&& echo unit test: v8-stack
+			&& deno test -qA --reporter dot test/v8-stack.test.ts
 			",
 
-		"build:run-temp-file":
-			"civet --js -o .js --inline-map -c src/bin/run-temp-file.civet",
-
-		"install:run-temp-file": "
-			   deno install -fgA -c deno.jsonc src/bin/run-temp-file.js
-			&& deno install -fgA -c deno.jsonc -n rtf src/bin/run-temp-file.js
+		"docs:all": "
+			deno doc --html --name=@jdeighan/utils src/lib/datatypes.ts src/lib/llutils.ts src/lib/fs.ts src/lib/logger.ts src/lib/utils.ts src/lib/v8-stack.ts src/lib/unit-test.ts
 			",
 
-		"bootstrap":      "clear
-			&& deno task cleanup
-			&& deno task build:base
-			&& deno task test:base
-			&& deno task build:compiler
-			&& deno task install:compiler
-			&& deno task build:run-unit-test
-			&& deno task install:run-unit-test
-			&& deno task build:run-temp-file
-			&& deno task install:run-temp-file
+		"build:compiler": "
+			   civet --inline-map -o .ts -c src/bin/compile.civet
+			&& deno check src/bin/compile.ts
+			&& deno compile -A -o exe/compile.exe src/bin/compile.ts
+			&& cp exe/compile.exe ../.deno/bin/compile.exe
 			",
 
-		"lltemp": "
+		"build:runtemp": "
+			   civet --inline-map -o .ts -c src/bin/runtemp.civet
+			&& deno check src/bin/runtemp.ts
+			&& deno compile -A -o exe/runtemp.exe src/bin/runtemp.ts
+			&& cp exe/runtemp.exe ../.deno/bin/runtemp.exe
+			",
+
+		"build:utest": "
+			   civet --inline-map -o .ts -c src/bin/utest.civet
+			&& deno check src/bin/utest.ts
+			&& deno compile -A -o exe/utest.exe src/bin/utest.ts
+			&& cp exe/utest.exe ../.deno/bin/utest.exe
+			",
+
+		"bootstrap":      "
 			   clear
-			&& civet --js -o .js --inline-map -c test/temp.civet
-			&& deno run -A test/temp.js
+			&& deno task cleanup
+			&& deno task compile:all
+			&& deno task utest:all
+			&& deno task docs:all
+			&& deno task build:compiler
+			&& deno task build:runtemp
+			&& deno task build:utest
+			&& echo SUCCESS
 			",
 
 		"temp": "
 			   clear
-			&& bash compile
-			&& deno run -A test/temp.js
+			&& civet --inline-map -o .ts -c test/temp.civet
+			&& deno check test/temp.ts
+			&& deno run -A test/temp.ts
 			",
 
-		"docs": "
-		      clear
-			&& deno doc --html --name=\"@jdeighan/utils/unit-test\" src/lib/unit-test.js
+		"debug": "
+			   clear
+			&& civet --inline-map -o .ts -c test/temp.civet
+			&& deno check test/temp.ts
+			&& deno run -A --inspect-brk test/temp.ts
 			",
 		},
+
 	"imports": {
 		"@std/assert": "jsr:@std/assert@^1.0.10",
 		"@std/async": "jsr:@std/async@^1.0.9",
 		"@std/async/debounce": "jsr:@std/async@1.0.9/debounce",
 		"@std/cli": "jsr:@std/cli@^1.0.9",
-		"@std/fmt/printf": "jsr:@std/fmt@^1.0.3/printf",
-		"@std/fmt/colors": "jsr:@std/fmt@^1.0.3/colors",
+		"@std/fmt": "jsr:@std/fmt@^1.0.5",
+		"@std/fmt/printf": "jsr:@std/fmt@^1.0.5/printf",
 		"@std/fs": "jsr:@std/fs@^1.0.6",
 		"@std/fs/expand-glob": "jsr:@std/fs@^1.0.6/expand-glob",
-		"@std/log": "jsr:@std/log@^0.224.12",
+		"@std/log": "jsr:@std/log@^0.224.14",
 		"@std/path": "jsr:@std/path@^1.0.8",
 		"@std/streams": "jsr:@std/streams@^1.0.8",
 
@@ -101,10 +152,14 @@
 		"stream/web": "node:stream/web",
 
 		"glob": "npm:glob@^11.0.0",
-		"source-map-js": "npm:source-map-js@^1.2.1",
-		"source-map-support": "npm:source-map-support@^0.5.21",
 		"@danielx/civet": "npm:@danielx/civet@^0.9.6",
 
-		"@jdeighan/utils/": "./src/lib/",
+		"@jdeighan/utils/datatypes": "./src/lib/datatypes.ts",
+		"@jdeighan/utils/llutils": "./src/lib/llutils.ts",
+		"@jdeighan/utils/fs": "./src/lib/fs.ts",
+		"@jdeighan/utils/logger": "./src/lib/logger.ts",
+		"@jdeighan/utils": "./src/lib/utils.ts",
+		"@jdeighan/utils/v8-stack": "./src/lib/v8-stack.ts",
+		"@jdeighan/utils/unit-test": "./src/lib/unit-test.ts",
 		},
 	}

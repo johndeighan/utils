@@ -1,38 +1,56 @@
 # v8-module.coffee
 
-import * as lib from '../../src/lib/v8-stack.js'
-Object.assign(globalThis, lib)
+import {getMyCaller} from '@jdeighan/utils/v8-stack'
+import type {stackFrame} from '@jdeighan/utils/v8-stack'
 
 # ---------------------------------------------------------------------------
 
-export getBoth := () ->
+type bothFrames = stackFrame?[]
 
-	return secondFunc('both')
-
-# ---------------------------------------------------------------------------
-
-export getDirect := () ->
-
-	return secondFunc('direct')
+isBothFrames := (x: any): x is bothFrames =>
+	return Array.isArray(x) && (x.length == 2)
 
 # ---------------------------------------------------------------------------
 
-export getOutside := () ->
+export getBoth := (): bothFrames ->
 
-	return secondFunc('outside')
+	result := secondFunc('both')
+	if Array.isArray(result)
+		return result
+	else
+		throw new Error("Expected array, got stackFrame")
 
 # ---------------------------------------------------------------------------
 
-secondFunc := (type) ->
+export getDirect := (): stackFrame? ->
+
+	result := secondFunc('direct')
+	if Array.isArray(result)
+		throw new Error("Got unexpected array")
+	return result
+
+# ---------------------------------------------------------------------------
+
+export getOutside := (): stackFrame? ->
+
+	result := secondFunc('outside')
+	if Array.isArray(result)
+		throw new Error("Got unexpected array")
+	return result
+
+# ---------------------------------------------------------------------------
+
+secondFunc := (type: string): bothFrames | stackFrame? ->
 
 	return thirdFunc(type)
 
 # ---------------------------------------------------------------------------
 
-thirdFunc := (type) ->
+thirdFunc := (type: string): bothFrames | stackFrame? ->
 
 	# --- direct caller should be 'secondFunc'
-	#     outside caller should be the function that called getCaller()
+	#     outside caller should be the function
+	#        that called getCaller()
 	switch type
 		when 'both'
 			return [getMyCaller(), getMyCaller()]
@@ -41,4 +59,4 @@ thirdFunc := (type) ->
 		when 'outside'
 			return getMyCaller()
 		else
-			croak "Unknown type: #{type}"
+			throw new Error "Unknown type: #{type}"

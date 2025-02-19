@@ -1,77 +1,269 @@
 # utils.civet
 
-import fs from 'node:fs'
 import {
-	assert, croak, undef, defined, notdefined,
-	normalizeStr, execCmd, pass,
-	rpad, lpad, centered, spaces, tabs, LOG,
-	isString, isBoolean, strToHash, addDefaults, getOptions,
-	isNumber, isInteger, isArray, isNonEmptyString,
-	isArrayOfStrings, wsSplit, words, keys, hasKey,
+	undef, defined, notdefined,
+	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
+	isArray, isArrayOfStrings, isHash, isObject, isRegExp,
 	isEmpty, nonEmpty,
-	} from './llutils.js'
+	} from './datatypes.ts'
+import type {hash, optionspec} from './datatypes.ts'
+import {
+	pass, OL, ML, getOptions, croak, assert, strToHash,
+	removeEmptyKeys, keys, hasKey, hasKeys, merge,
+	} from './llutils.ts'
+import {
+	isFile, isDir, fileExt, withExt,
+	rmFile, getPathType, getStats, parsePath,
+	allFilesMatching, allLinesIn, watchFile, watchDir,
+	normalizePath, mkpath, relpath, newerDestFileExists,
+	pathSubDirs, clearDir, mkDir, mkDirsForFile,
+	slurp, barf, myself, deleteFilesMatching,
+	} from './fs.ts'
+import {
+	setLogLevel, pushLogLevel, popLogLevel,
+	curLogLevel, clearLog, getLog,
+	INDENT, UNDENT, CLEAR,
+	DBG, LOG, WARN, ERR,
+	} from './logger.ts'
+import {
+	execCmd, execCmdSync, cmdSucceeds,
+	} from './exec-utils.ts'
+import type {
+	execCmdResult,
+	} from './exec-utils.ts'
+import {
+	hCompilerConfig, findSourceFile, compileFile, isDirSpec,
+	} from './compile-config.ts'
+import type {
+	compileResult,
+	} from './compile-config.ts'
 
 export {
-	assert, croak, undef, defined, notdefined,
-	normalizeStr, execCmd, pass,
-	rpad, lpad, centered, spaces, tabs, LOG,
-	isString, isBoolean, strToHash, addDefaults, getOptions,
-	isNumber, isInteger, isArray, isNonEmptyString,
-	isArrayOfStrings, wsSplit, words, keys, hasKey,
+	undef, defined, notdefined, pass,
+	setLogLevel, pushLogLevel, popLogLevel,
+	curLogLevel, clearLog, getLog,
+	INDENT, UNDENT, CLEAR,
+	DBG, LOG, WARN, ERR,
+	OL, ML, croak, assert, getOptions,
+	removeEmptyKeys, keys, hasKey, hasKeys, merge,
+	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
+	isArray, isArrayOfStrings, isHash, isObject, isRegExp,
 	isEmpty, nonEmpty,
+	isFile, isDir, fileExt, withExt,
+	rmFile, getPathType, getStats, parsePath,
+	allFilesMatching, allLinesIn, watchFile, watchDir,
+	normalizePath, mkpath, relpath, newerDestFileExists,
+	pathSubDirs, clearDir, mkDir, mkDirsForFile,
+	slurp, barf, myself, deleteFilesMatching,
+	compileFile, execCmd, execCmdSync, cmdSucceeds,
+	isDirSpec,
+	}
+export type {
+	execCmdResult, compileResult,
 	}
 
-# ---------------------------------------------------------------------------
-#       BASIC - only use other BASIC functions
-# ---------------------------------------------------------------------------
+/**
+ * @module llutils - low level utilities
+ */
 
-export add_s := (n) =>
-
-	return (n==1) ? '' : 's'
+export type blockSpec = string | string[]
 
 # ---------------------------------------------------------------------------
 
-export isHash := (x) =>
+/**
+ * Splits a string on whitespace into an array,
+ * ignoring any leading or trailing whitespace
+ */
 
-	return (typeof x == 'object')
+export wsSplit := (str: string): string[] =>
 
-# ---------------------------------------------------------------------------
-
-export isNonEmptyHash := (x) =>
-
-	if not isHash(x)
-		return false
-	return (Object.keys(x).length > 0)
-
-# ---------------------------------------------------------------------------
-
-export isNonEmptyArray := (x) =>
-
-	if not isArray(x)
-		return false
-	return (x.length > 0)
+	newstr := str.trim()
+	if (newstr == '')
+		return []
+	else
+		return newstr.split(/\s+/)
 
 # ---------------------------------------------------------------------------
 
-export isFunction := (x) =>
+/**
+ * splits each string on whitespace ignoring any leading
+ * or trailing whitespace, and returns an array of
+ * all substrings obtained
+ */
 
-	if (typeof x != 'function') && not (x instanceof Function)
-		return false
-	return not (x.toString().startsWith('class'))
+export words := (...lStrings: string[]): string[] =>
+
+	let lWords = []
+	for str of lStrings
+		for word of wsSplit(str)
+			lWords.push word
+	return lWords
 
 # ---------------------------------------------------------------------------
 
-export isPromise := (x) =>
+/**
+ * A generator that yields integers starting with 0 and
+ * continuing to n-1
+ */
 
-	if (typeof x != 'object') || (x == null)
-		return false
-	return (typeof x.then == 'function')
+export range := (n: number): Generator<number, void, unknown> ->
+
+	let i = 0
+	while (i < n)
+		yield i
+		i = i + 1
+	return
 
 # ---------------------------------------------------------------------------
 
-export blockToArray := (block) =>
+/**
+ * converts x to a string, removing any carriage returns
+ * and removing leading and trailing whitespace
+ */
 
-	assert isString(block), "block is: #{typeof block}"
+export normalizeStr := (x: any): string =>
+
+	return x.toString().replaceAll('\r', '').trim()
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns a string consisting of the given number
+ * of space characters
+ */
+
+export spaces = (n: number): string =>
+
+	return " ".repeat(n)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns a string consisting of the given number
+ * of TAB characters
+ */
+
+export tabs = (n: number): string =>
+
+	return "\t".repeat(n)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * calculates the number of extra characters needed to
+ * make the given string have the given length.
+ * If not possible, returns 0
+ */
+
+export getNExtra = (str: string, len: number): number =>
+
+	extra := len - str.length
+	return (extra > 0) ? extra : 0
+
+# ---------------------------------------------------------------------------
+
+/**
+ * pads the given string on the right with
+ * the given character, to the given length
+ */
+
+export rpad := (str: string, len: number, ch: string=' '): string =>
+
+	assert (ch.length == 1), "Not a char"
+	extra := getNExtra(str, len)
+	return str + ch.repeat(extra)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * pads the given string on the left with
+ * the given character, to the given length
+ */
+
+export lpad := (str: string, len: number, ch: string=' '): string =>
+
+	assert (ch.length == 1), "Not a char"
+	extra := getNExtra(str, len)
+	return ch.repeat(extra) + str
+
+# ---------------------------------------------------------------------------
+# --- valid options:
+#        char - char to use on left and right
+#        buffer - num spaces around text when char <> ' '
+
+/**
+ * pads the given string on both the left and right
+ * with the given character, to the given length
+ * but with the given number of buffer chars surrounding
+ * the text
+ */
+
+export centered := (
+	text: string,
+	width: number,
+	char: string = ' ',
+	numBuffer: number = 2
+	): string =>
+
+	totSpaces := width - text.length
+	if (totSpaces <= 0)
+		return text
+	numLeft := Math.floor(totSpaces / 2)
+	numRight := totSpaces - numLeft
+	if (char == ' ')
+		return spaces(numLeft) + text + spaces(numRight)
+	else
+		buf := ' '.repeat(numBuffer)
+		left := char.repeat(numLeft - numBuffer)
+		right := char.repeat(numRight - numBuffer)
+		return left + buf + text + buf + right
+
+# ---------------------------------------------------------------------------
+
+/**
+ * pad a string on the left, right, or both
+ * to the given width
+ */
+
+export alignString := (
+	str: string,
+	width: number,
+	align: string
+	): string ->
+
+	assert isString(str), "str not a string: #{OL(str)}"
+	assert isString(align), "align not a string: #{OL(align)}"
+	switch align
+		when 'left', 'l'
+			return rpad(str, width)
+		when 'center', 'c'
+			return centered(str, width)
+		when 'right', 'r'
+			return lpad(str, width)
+		else
+			throw new Error "Unknown align: #{OL(align)}"
+
+# ---------------------------------------------------------------------------
+
+/**
+ * converts the given number to a string, then pads on the left
+ * with zeros to achieve the given length
+ */
+
+export zpad := (n: number, len: number): string =>
+
+	return lpad(n.toString(), len, '0')
+
+# ---------------------------------------------------------------------------
+
+/**
+ * convert a multi-line string to an array
+ * of single line strings
+ */
+
+export blockToArray = (block: string): string[] =>
+
+	assert isString(block), "block is: #{OL(block)}"
 	if isEmpty(block)
 		return []
 	else
@@ -79,24 +271,37 @@ export blockToArray := (block) =>
 
 # ---------------------------------------------------------------------------
 
-export toArray := (strOrArray) =>
+/**
+ * return an array as is, convert a multi-line string
+ * to an array of single line strings
+ */
 
-	if isArray(strOrArray)
+export toArray = (strOrArray: blockSpec): string[] =>
+
+	if Array.isArray(strOrArray)
 		return strOrArray
 	else
 		return blockToArray(strOrArray)
 
 # ---------------------------------------------------------------------------
 
-export arrayToBlock := (lLines) =>
+/**
+ * convert an array of strings to a single multi-line string
+ */
 
-	assert isArray(lLines), "lLines is not an array"
-	lFiltered := lLines.filter((line) => defined(line))
-	return lFiltered.join("\n")
+export arrayToBlock = (lLines: string[]): string =>
+
+	assert isArray(lLines), "lLines is not an array: #{OL(lLines)}"
+	return lLines.filter((line) => defined(line)).join("\n")
 
 # ---------------------------------------------------------------------------
 
-export toBlock := (strOrArray) =>
+/**
+ * return a string as is, convert an array of strings
+ * to a single multi-line string
+ */
+
+export toBlock = (strOrArray: blockSpec): string =>
 
 	if isString(strOrArray)
 		return strOrArray
@@ -105,265 +310,536 @@ export toBlock := (strOrArray) =>
 
 # ---------------------------------------------------------------------------
 
-export splitPrefix := (line) =>
+/**
+ * Remove lines from a string or array
+ * pat can be a string or a regular expression
+ */
 
-	assert isString(line), "non-string: #{typeof line}"
-	lMatches := line.match(/^(\s*)(.*)$/)
-	if defined(lMatches)
-		return [lMatches[1], lMatches[2]]
+export removeLines := (
+	strOrArray: string | string[],
+	pat: string | RegExp
+	): string | string[] =>
+
+	assert isString(pat) || isRegExp(pat),  "Bad arg 2: #{OL(pat)}"
+	lLines := isString(strOrArray) ? blockToArray(strOrArray) : strOrArray
+	lNewLines := (
+		if (typeof pat == 'string')
+			lLines.filter((line) => (line != pat))
+		else
+			lLines.filter((line) => (line.match(pat) == null))
+		)
+	if isString(strOrArray)
+		return lNewLines.join('\n')
 	else
-		# --- should be impossible, but it happened
-		return ['', '']
+		return lNewLines
 
 # ---------------------------------------------------------------------------
 
-export substrCount := (str, substr) =>
+/**
+ * replace these characters with single unicode chars:
+ *    carriage return
+ *    newline
+ *    TAB
+ *    space
+ * Optionally, add a character to indicate a particular
+ * position in the string
+ * Valid options:
+ *    offset - indicate position of offset
+ *    poschar - char to use to indicate position
+ */
 
-	return (str.match(///#{substr}///g)||[]).length
+export escapeStr := (
+	str: string,
+	hReplace: hash = {
+		"\r": '←'
+		"\n": '↓'
+		"\t": '→'
+		" ": '˳'
+		},
+	hOptions: optionspec = {}
+	): string =>
 
-# ---------------------------------------------------------------------------
-
-export isClassInstance := (x, lReqKeys=undef) =>
-
-	if isEmpty(x)
-		return false
-	if (typeof x != 'object')
-		return false
-	if ((x instanceof String)
-			|| (x instanceof Number)
-			|| (x instanceof Boolean)
-			|| (x instanceof RegExp)
-			|| (x instanceof Function)
-			|| isArray(x)
-			|| isHash(x)
-			|| isPromise(x)
-			)
-		return false
-	if defined(lReqKeys)
-		lNeededKeys := isString(lReqKeys) ? words(lReqKeys) : lReqKeys
-		assert isArray(lNeededKeys), "lReqKeys not an array"
-		for keyStr of lNeededKeys
-			if lMatches := keyStr.match(///^ \& (.*) $///)
-				[_, key] := lMatches
-				if notdefined(x[key]) || not isFunction(x[key])
-					return false
-			else
-				if notdefined(x[keyStr])
-					return false
-	return true
-
-# ---------------------------------------------------------------------------
-
-export CWS := (str) =>
-
-	assert isString(str), "CWS(): parameter not a string"
-	return str.trim().replace(/\s+/sg, ' ')
-
-# ---------------------------------------------------------------------------
-
-export chomp := (str) =>
-	# --- Remove trailing \n if present
-
-	len := str.length
-	if (str[len-1] == '\n')
-		if (str[len-2] == '\r')
-			return str.substring(0, len-2)
-		else
-			return str.substring(0, len-1)
-	else
-		return str
-
-# ---------------------------------------------------------------------------
-
-export behead := (block) ->
-
-	nlPos := block.indexOf("\n")
-	if  (nlPos == -1)
-		return [block, '']
-	return [
-		chomp(block.substring(0, nlPos))
-		chomp(block.substring(nlPos+1))
-		]
-
-# ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-
-export toSync := (asyncFunc, lArgs=[]) =>
-
-	isFinished := false
-	promise = asyncFunc(lArgs...)
-	promise.then(() => {isFinished = true})
-	while (!isFinished) {
-		execSync('sleep 0.1')
-		}
-	return
-
-# ---------------------------------------------------------------------------
-
-export OL := (obj, hOptions={}) =>
-
-	if (obj == undef)
-		return 'undef'
-
-	if (obj == null)
-		return 'null'
-
-	{esc, short} := getOptions hOptions, {
-		esc: true
-		short: false
-		}
-
-	if short
-		if isArray(obj)
-			return 'ARRAY'
-		if isHash(obj)
-			return 'HASH'
-		if isFunction(obj)
-			return 'FUNCTION'
-		if isClassInstance(obj)
-			return 'CLASS INSTANCE'
-
-	myReplacer := (key, value) =>
-		if notdefined(value)
-			return '«undef»'
-		type := typeof value
-		switch type
-			when 'symbol'
-				return '«Symbol»'
-			when 'bigint'
-				return "«BigInt #{value.toString()}»"
-			when 'function'
-				tag := value.toString().startsWith('class') ? 'Class' : 'Function'
-				return defined(value.name) ? "«#{tag} #{value.name}»" : "«#{tag}»"
-			when 'string'
-				# --- NOTE: JSON.stringify will add quote chars
-				return esc ? escapeStr(value) : value
-			when 'object'
-				if value instanceof RegExp
-					return "«RegExp #{value.toString()}»"
-				if defined(value) && (typeof value.then == 'function')
-					return "«Promise»"
-				else
-					return value
-			else
-				return value
-
-	result := JSON.stringify(obj, myReplacer)
-
-	# --- Because JSON.stringify adds quote marks,
-	#     we remove them when using .
-	return result.replaceAll('"«','«').replaceAll('»"','»')
-
-# ---------------------------------------------------------------------------
-#    tabify - convert leading spaces to TAB characters
-#             if numSpaces is not defined, then the first
-#             line that contains at least one space sets it
-
-export tabify := (block, hOptions={}) =>
-
-	{numSpaces, strict} := getOptions hOptions, {
-		numSpaces: undef
-		strict: true
-		}
-	if defined(numSpaces)
-		assert isInteger(numSpaces), "bad numSpaces: #{OL(numSpaces)}"
-	lLines := []
-	let count = numSpaces
-	for str of toArray(block)
-		[prefix, theRest] := splitPrefix(str)
-		if (prefix.length == 0)
-			lLines.push theRest
-		else
-			if strict
-				assert (prefix.indexOf('\t') == -1), "unexpected TAB"
-			if notdefined(count)
-				count = substrCount(prefix, ' ')
-			spaces := ' '.repeat(count)
-			lLines.push "#{prefix.replaceAll(spaces, '\t')}#{theRest}"
-	return arrayToBlock(lLines)
-
-# ---------------------------------------------------------------------------
-#    untabify - convert TAB characters to spaces
-
-export untabify := (str, hOptions={}) =>
-
-	{numSpaces, strict} := getOptions hOptions, {
-		numSpaces: 3
-		strict: true
-		}
-	assert isInteger(numSpaces), "bad numSpaces: #{OL(numSpaces)}"
-	spaces := ' '.repeat(numSpaces)
-	lLines := []
-	for line of blockToArray(str)
-		[prefix, theRest] := splitPrefix(line)
-		if prefix.length == 0
-			lLines.push theRest
-		else
-			if strict
-				assert (prefix.indexOf(' ') == -1), "unexpected space char"
-			newPrefix := prefix.replaceAll("\t", spaces)
-			lLines.push "#{newPrefix}#{theRest}"
-	return arrayToBlock(lLines)
-
-# ---------------------------------------------------------------------------
-#   escapeStr - escape newlines, carriage return, TAB chars, etc.
-# --- NOTE: We can't use OL() inside here since it uses escapeStr()
-
-hEscNL := {
-	"\r": '←'
-	"\n": '↓'
-	"\t": '→'
-	" ": '˳'
-	}
-hEscNoNL := {
-	"\r": '←'
-	"\t": '→'
-	" ": '˳'
-	}
-
-# ---------------------------------------------------------------------------
-
-export escapeStr := (str, hOptions={}) =>
-	#     Valid options:
-	#        hEsc    - hash {<ch>: <replacement>, ...}
-	#        offset  - indicate position of offset
-	#        poschar - char to use to indicate position
-
-	assert isString(str), "not a string: #{typeof str}"
-	{hEsc, offset, poschar} := addDefaults hOptions, {
-		hEsc: hEscNL
+	{offset, poschar} := getOptions hOptions, {
 		offset: undef
 		poschar: '┊'
 		}
 
-	hReplace := if isString(hEsc)
-		switch hEsc
-			when 'esc'
-				hEscNL
-			when 'escNoNL'
-				hEscNoNL
-			else
-				{}
-	else
-		hEsc
-	assert isHash(hReplace), "not a hash #{typeof hReplace}"
-
-	let lParts = []
-	let i = 0
-	for ch of str
+	lParts := []
+	for ch,i of str.split('')
 		if defined(offset) && (i == offset)
 			lParts.push poschar
-		lParts.push hReplace[ch] || ch
-		i += 1
+		newch := hReplace[ch]
+		if defined(newch)
+			lParts.push newch
+		else
+			lParts.push ch
 	if (offset == str.length)
 		lParts.push poschar
 	return lParts.join('')
 
 # ---------------------------------------------------------------------------
-# --- ASYNC !
 
-export sleep = (sec) =>
+/**
+ * replace these characters with single unicode chars:
+ *    carriage return
+ *    TAB
+ *    space
+ * Optionally, add a character to indicate a particular
+ * position in the string
+ */
 
-	await new Promise((r) => setTimeout(r, 1000 * sec))
+export escapeBlock = (
+	block: string,
+	hReplace: hash = {
+		"\r": '←'
+		"\t": '→'
+		" ": '˳'
+		},
+	hOptions: optionspec = {}
+	): string =>
+
+	return escapeStr(block, hReplace, hOptions)
+
+# ---------------------------------------------------------------------------
+
+export getPattern := (): string =>
+
+	lKeys := Object.keys(hCompilerConfig.hCompilers)
+	if (lKeys.length == 1)
+		return "**/*#{lKeys[0]}"
+	else
+		return "**/*{#{lKeys.join(',')}}"
+
+# ---------------------------------------------------------------------------
+# --- A generator - yields {path, status, outPath}
+
+export compileAllFiles := (
+	pattern: string? = undef,
+	): Generator<compileResult, void, unknown> ->
+
+	hGlobOptions := {
+		exclude: [
+			'node_modules/**'
+			'.git/**'
+			'**/*.temp.*'  # --- don't compile temp files
+			]
+		}
+
+	globPattern := defined(pattern) ? pattern : getPattern()
+	DBG "compiling all files, pat=#{OL(globPattern)}"
+	for {path} of allFilesMatching(globPattern, hGlobOptions)
+		hResult := compileFile path
+		if (hResult.status == 'compiled')
+			yield hResult
 	return
 
+# ---------------------------------------------------------------------------
+
+export ensureCompiled := (
+	dirspec: string,
+	stub: string,
+	purpose: string? = undef
+	): string? =>
+
+	h := findSourceFile dirspec, stub, purpose
+	if (h == undef) || (h.path == undef) || not isFile(h.path)
+		DBG "Not compiling: no such file: #{dirspec}/#{stub}/#{purpose}"
+		return undef
+	else
+		{status, outPath} := compileFile h.path
+		if (outPath == undef)
+			WARN "Compile of lib #{h.path} failed with status #{status}"
+			return undef
+		else
+			assert isFile(outPath),
+					"compileFile() succeeded, but #{OL(outPath)} does not exist!"
+			return outPath
+
+# ---------------------------------------------------------------------------
+
+type unitTestResult = {
+	stub: string
+	success: boolean
+	msg?: string
+	code?: number
+	signal?: string
+	}
+
+export runUnitTest := (
+	stub: string,
+	): unitTestResult =>
+
+	DBG "Running unit test #{stub}"
+
+	ensureCompiled 'libDir', stub
+	ensureCompiled 'binDir', stub
+
+	# --- This is the path to the test to be run
+	testOutPath := ensureCompiled 'testDir', stub, 'test'
+	if (testOutPath == undef)
+		WARN "Compile of #{stub} unit test failed"
+		return {
+			stub
+			success: false
+			msg: "Compile of #{stub} unit test failed"
+			}
+	else
+		DBG "testOutPath = #{OL(testOutPath)}"
+
+	# --- Compile all files in subdir if it exists
+	if isDir("test/#{stub}")
+		for {path, status, outPath} of compileAllFiles("test/#{stub}/*")
+			if notdefined(outPath)
+				WARN "File #{OL(path)} not compiled"
+
+	# --- Run the unit test, return return code
+	assert isFile(testOutPath), "No such file: #{OL(testOutPath)}"
+
+	# --- Return value has keys success, code, signal
+	h := execCmdSync 'deno', [
+			'test',
+			'-qA',
+			testOutPath
+			]
+#	hResult.stub = stub
+	return {
+		stub
+		success: h.success
+		code: h.code
+		signal: h.signal
+		}
+
+# ---------------------------------------------------------------------------
+# --- a generator
+
+export runAllUnitTests := (): Generator<unitTestResult, void, unknown> ->
+
+	hGlobOptions := {
+		exclude: ['node_modules/**', '.git/**']
+		}
+
+	pattern := 'test/*.test.js'
+	DBG "pattern = #{OL(pattern)}"
+	for {path} of allFilesMatching(pattern, hGlobOptions)
+		{stub} := parsePath(path)
+		if (stub == undef)
+			WARN "No stub found in #{OL(path)}"
+		else
+			DBG "TEST: #{path}"
+			yield runUnitTest(stub)
+	return
+
+# ---------------------------------------------------------------------------
+
+hKeyToLogger: hash := {
+	P: 'profile'
+	D: 'debug'
+	Q: 'quiet'
+	S: 'silent'
+	}
+
+export setLoggerFromArgs := (lArgs: string[]): void =>
+
+	for str of lArgs
+		lMatches := str.match(///^
+			-
+			([A-Za-z0-9_-]*)
+			(=)?
+			///)
+		if (lMatches == null)
+			pass()
+		else
+			keyStr := lMatches[1]
+			hasEq := lMatches[2]
+			if isEmpty(hasEq)
+				for key of keys(hKeyToLogger)
+					if keyStr.includes(key)
+						setLogLevel hKeyToLogger[key]
+	return
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Parse command line arguments, optionally specifying which
+ * options to expect and/or the expected number of non-options
+ *
+ * There are 3 kinds of items allowed on the command line:
+ *
+ * 1. flags, e.g.
+ * 	`-fnx` - sets flags `f`, 'n' and `x` to true
+ *    flags must be upper or lower case letters
+ *
+ * 2. an option with a value, e.g.
+ * 	`-label=mylabel` - sets option `label` to `'mylabel'`
+ * 	if the value contains a space char, it must be quoted
+ * 	if the value looks like a number, it's set to a number
+ *
+ * 3. anything else is a non-option, e.g.
+ * 	c:/temp/temp.txt
+ * 	if it includes a space char or starts with `-`,
+ * 		it must be quoted
+ *
+ * the 1st argument to getCmdArgs() is optional, and is a hash
+ * of information about the expected arguments.
+ *
+ * If key '_' is present, it must be a hash possibly including keys:
+ *    'range' - either an integer specifying the exact number of
+ *              non-options expected, of an array of 2 integers
+ *              specifying the minimum and maximum number of
+ *              non-options expected. The 2nd of these may be
+ *              the string 'inf' to indicate no maximum number
+ *    'desc' - a text description of what non-options are
+ *
+ * All other keys are names of options allowed, and the associated value
+ * must be a hash with possibly these keys:
+ *    type - the type of value expected (defaults to 'boolean')
+ *    desc - a text description of the option (used on help screens)
+ *
+ * the 2nd argument to getCmdArgs() is an array of string arguments
+ * from the command line (defaults to Deno.args)
+ *
+ * the 3rd argument to getCmdArgs() is a hash of possible options:
+ *    doSetLogger - defaults to true - if false, then options
+ *                  -P, -D, -Q and -S no longer set logging options and
+ *                  may therefore be used for other purposes
+ *
+ * By default, the following flags are recognized, and therefore
+ * cannot be included in hDesc (this behavior can be
+ * disabled by setting hOptions.doSetLogger to false):
+ *
+ * `-P` - set the current log level to 'profile'
+ * `-D` - set the current log level to 'debug'
+ * `-Q` - set the current log level to 'warn'
+ * `-S` - set the current log level to 'silent'
+ *
+ * (see library @jdeighan/logger)
+ */
+
+export getCmdArgs := (
+	hDesc: hash? = undef,
+	lArgs: string[] = Deno.args,
+	hOptions: optionspec = {}
+	): hash =>
+
+	if notdefined(hDesc)
+		pass()
+	else
+		assert isHash(hDesc), "Bad hDesc: #{OL(hDesc)}"
+	assert isArrayOfStrings(lArgs), "Bad lArgs: #{OL(lArgs)}"
+
+	if (lArgs.length == 1) && (lArgs[0] == '-h')
+	if ((lArgs.length == 1)
+			&& ['-h','--h','-help','--help'].includes(lArgs[0])
+			)
+		if notdefined(hDesc)
+			LOG "No help available"
+		else
+			showHelp(hDesc)
+		Deno.exit()
+
+	# --- Currently, there is only one possible option
+	{doSetLogger} := getOptions hOptions, {
+		doSetLogger: true
+		}
+
+	if doSetLogger
+		if notdefined(hDesc)
+			pass()
+		else
+			for key of keys(hKeyToLogger)
+				assert notdefined(hDesc[key]),
+						"invalid key #{OL(key)} set in hDesc"
+		setLoggerFromArgs(lArgs)
+
+	hResult: hash := { _: [] }
+
+	# --- Utility functions
+
+	# --- Even gets called for -D, -Q, -P, -S
+	addOption := (name: string, value: any) =>
+		DBG "addOption(#{OL(name)}, #{OL(value)})"
+		assert isString(name), "Not a string: #{OL(name)}"
+		assert not hasKey(hResult, name),
+				"dup key #{name}, hResult = #{OL(hResult)}"
+
+		if doSetLogger
+			logger := hKeyToLogger[name]
+			if defined(logger)
+				hResult[name] = true
+				setLogLevel logger
+				return
+
+		if notdefined(hDesc)
+			hResult[name] = value
+			return
+		{type} := getOptionInfo(hDesc, name)
+
+		# --- type checking
+		if isArray(type)
+			assert type.includes(value), "type not an array"
+			hResult[name] = value
+		else
+			switch type
+				when 'string'
+					hResult[name] = value
+				when 'boolean'
+					hResult[name] = (
+						  (value == 'true')  ? true
+						: (value == 'false') ? false
+						:                      value
+						)
+				when 'number','float'
+					hResult[name] = parseFloat(value)
+				when 'integer'
+					hResult[name] = parseInt(value)
+		return
+
+	addNonOption := (str: string) =>
+		DBG "addNonOption(#{OL(str)})"
+		hResult._.push str
+
+	for str of lArgs
+		# --- ignore '--'
+		if (str == '--')
+			DBG "skipping --"
+			continue
+
+		# --- check if it's an option
+		lMatches := str.match(///^
+			-
+			([A-Za-z0-9_-]*)
+			(?:
+				(=)
+				(.*)
+				)?
+			$///)
+		if (lMatches == null)
+			# --- it's a non-option
+			addNonOption str
+		else
+			# --- it's an option
+			[_, optStr, eqStr, value] := lMatches
+			if eqStr
+				addOption optStr, value
+			else
+				for ch of optStr.split('')
+					addOption ch, true
+
+	# --- if hDesc is set, then
+	#     Fill in default values if available
+
+	if notdefined(hDesc)
+		pass()
+	else
+		for name of keys(hDesc, 'except=_')
+			if notdefined(hResult[name])
+				{defaultVal} := getOptionInfo(hDesc, name)
+				if defined(defaultVal)
+					hResult[name] = defaultVal
+
+		# --- Check of there's a restriction on the number of non-options
+
+		if hasKey(hDesc, '_')
+			hInfo := getNonOptionInfo(hDesc)
+			if (hInfo != undef)
+				{range} := hInfo
+				[min, max] := range
+				len := hResult._.length
+				assert (len >= min), "#{len} non-options < min (#{min})"
+				assert (len <= max), "#{len} non-options > max (#{max})"
+
+	DBG "hResult = #{OL(hResult)}"
+	return hResult
+
+# ---------------------------------------------------------------------------
+
+export getOptionInfo := (hDesc: hash, name: string): hash =>
+
+	# --- Return value is a hash with keys: type, desc
+
+	assert defined(hDesc), "hDesc is not defined in getOptionInfo()"
+	assert isHash(hDesc), "hDesc is not a hash in getOptionInfo(): #{OL(hDesc)}"
+	assert (name != '_'), "getOptionInfo(hDesc, '_') called"
+	assert hasKey(hDesc, name), "No such option: -#{name}"
+	h := isHash(hDesc[name]) ? hDesc[name] : {desc: hDesc[name]}
+	if notdefined(h.type)
+		h.type = (name.length == 1) ? 'boolean' : 'string'
+	if notdefined(h.desc)
+		h.desc = '<no description available>'
+	if not hasKey(h, 'defaultVal') && (h.type == 'boolean')
+		h.defaultVal = false
+	return h
+
+# ---------------------------------------------------------------------------
+# --- returns undef if no '_' key in hDesc
+
+type rangeType = [number, number]
+
+type nonOptionInfo = {
+	type: 'array'
+	desc: string
+	range: rangeType
+	}
+
+export getNonOptionInfo := (hDesc: hash): nonOptionInfo? =>
+
+	# --- Return value is a hash with keys:
+	#        type = 'array'
+	#        desc
+	#        range as [min, max]
+
+	assert defined(hDesc), "hDesc is not defined in getNonOptionInfo()"
+	if not hasKey(hDesc, '_')
+		return undef
+	desc := hDesc.desc || '<no description available>'
+	let range: rangeType = [0, Infinity]
+	if hasKey(hDesc, 'range')
+		r := hDesc.range
+		if isInteger(r)
+			range = [r, r]
+		else if Array.isArray(r)
+			assert (r.length == 2), "Bad '_' key: #{OL(r)}"
+			[min, max] := r
+			assert isInteger(min), "range min not an integer"
+			if (max == 'inf')
+				[min, Infinity]
+			else
+				assert isInteger(max), "range max not an integer"
+				[min, max]
+		else
+			throw new Error "Invalid range: #{OL(r)}"
+
+	return {
+		type: 'array'
+		desc
+		range
+		}
+
+# ---------------------------------------------------------------------------
+
+export showHelp := (hDesc: hash): void =>
+
+	LOG "Available options:"
+	for name of keys(hDesc, 'except=_')
+		{type, desc} := getOptionInfo(hDesc, name)
+		LOG "   -#{name}: #{type} - #{desc}"
+	if defined(hDesc._)
+		LOG "Available non-options:"
+		if isHash(hDesc._)
+			{range, desc} := hDesc._
+			if defined(range)
+				if isInteger(range)
+					LOG "   There must be exactly #{range} non-options"
+				else if isArray(range)
+					[min, max] := range
+					if (min > 0)
+						LOG "   There must be at least #{min} non-options"
+					if (max != 'inf')
+						LOG "   There must be at most #{max} non-options"
+		desc := (
+			  isString(hDesc._) ? hDesc._
+			: isHash(hDesc._) ? (hDesc._.desc || '<no description available>')
+			: croak "Bad descriptor for non-options: #{OL(hDesc._)}"
+			)
+		LOG desc
+	return

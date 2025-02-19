@@ -1,39 +1,55 @@
 # logger.civet
 
-import {assert} from '@std/assert'
-import pathLib from 'path'
-import {sprintf} from '@std/fmt/printf'
+import {existsSync} from "https://deno.land/std/fs/mod.ts";
+import {sprintf} from "https://deno.land/std/fmt/printf.ts";
 import {
 	ConsoleHandler, FileHandler, setup, getLogger,
-	} from "@std/log"
+	LogRecord,
+	} from "https://deno.land/std/log/mod.ts";
 
-defined := (x) => (x != undefined) && (x != null)
+import {
+	assert, croak, pass,
+	} from './llutils.ts'
+import {
+	undef, defined, hash, isString,
+	} from './datatypes.ts'
+import {
+	mkpath, relpath, isDir, isFile, mkDir,
+	} from './fs.ts'
 
-# ---------------------------------------------------------------------------
+Deno := globalThis.Deno
+export logFileName : string := "./logs/logs.txt"
+export sepdash : string := '-'.repeat(32)
+export sepeq : string   := '='.repeat(32)
 
-export logFileName := "./logs/logs.txt"
+# --- These are not exported
+isSep := (str : string): boolean =>
+	return (str == sepdash) || (str == sepeq)
 
-export sepdash := '-'.repeat(32)
-export sepeq   := '='.repeat(32)
-isSep := (str) => (str == sepdash) || (str == sepeq)
+getMainModule := (): string =>
+	path: string := new URL(Deno.mainModule).pathname
+	return relpath(path.slice(1))
 
-let indent = 0
+# --- There always needs to be a 'logs' folder in the current directory
+mkDir './logs'
+
+let indent : number = 0
 prefix := () => '   '.repeat(indent)
 
 # --- Used when current logger is 'profile'
-let prevMS = 0
-let prevFileMS = 0
-let headerOutput = false
-let fileHeaderOutput = false
+let prevMS: number = 0
+let prevFileMS: number = 0
+let headerOutput: boolean = false
+let fileHeaderOutput: boolean = false
 
-hFileLabel := {
+hFileLabel: hash := {
 	DEBUG: 'D '
 	INFO:  'I '
 	WARN:  'W '
 	ERROR: 'ERROR: '
 	}
 
-hConsoleLabel := {
+hConsoleLabel: hash := {
 	DEBUG: ''
 	INFO:  ''
 	WARN:  ''
@@ -42,14 +58,15 @@ hConsoleLabel := {
 
 # ---------------------------------------------------------------------------
 
-export hLoggerConfig := {
+export hLoggerConfig: hash := {
 	handlers:
 
 		profile: new ConsoleHandler('DEBUG', {
-			formatter: ((rec) =>
+			formatter: ((rec: LogRecord) =>
 				{datetime, msg, levelName} := rec
-				msStr := sprintf("%5d", datetime - prevMS)
-				prevMS = datetime
+				ms := datetime.getMilliseconds()
+				msStr := sprintf("%5d", ms - prevMS)
+				prevMS = ms
 				label := hConsoleLabel[levelName]
 				if not headerOutput
 					headerOutput = true
@@ -60,13 +77,13 @@ export hLoggerConfig := {
 			})
 
 		pfile: new FileHandler('DEBUG', {
-			filename: pathLib.resolve(logFileName)
+			filename: mkpath(logFileName)
 			mode: 'a'
-			useColors: false
 			formatter: (rec) =>
 				{datetime, msg, levelName} := rec
-				msStr := sprintf("%5d", datetime - prevFileMS)
-				prevFileMS = datetime
+				ms := datetime.getMilliseconds()
+				msStr := sprintf("%5d", ms - prevFileMS)
+				prevFileMS = ms
 				label := hFileLabel[levelName]
 				if not fileHeaderOutput
 					fileHeaderOutput = true
@@ -78,6 +95,9 @@ export hLoggerConfig := {
 		console: new ConsoleHandler('DEBUG', {
 			formatter: ((rec) =>
 				{levelName, msg} := rec
+				assert isString(msg), "Not a string: #{msg}"
+				if msg.startsWith('=====  ')
+					return ''
 				label := hConsoleLabel[levelName]
 				assert defined(label), "No label for #{levelName}"
 				return "#{label}#{prefix()}#{msg}"
@@ -87,10 +107,11 @@ export hLoggerConfig := {
 		file: new FileHandler('DEBUG', {
 			filename: logFileName
 			mode: 'a'
-			useColors: false
 			formatter: (rec) =>
 				{levelName, msg} := rec
 				if isSep(msg)
+					return msg
+				else if msg.startsWith('=====  ')
 					return msg
 				else
 					label := hFileLabel[levelName]
@@ -142,27 +163,33 @@ export hLoggerConfig := {
 
 await setup(hLoggerConfig)
 
-export INDENT := 'MOKaHenzkyZNbNWmUYijCNoqmIrIemFh'
-export UNDENT := 'MXrveSEaCkCfQjEgPdMIaEDFMIWMtHqz'
-export CLEAR  := '2EYCEu1v7xs0i4L3o5rAV1ZNLFkQYNHh'
+export INDENT : string := 'MOKaHenzkyZNbNWmUYijCNoqmIrIemFh'
+export UNDENT : string := 'MXrveSEaCkCfQjEgPdMIaEDFMIWMtHqz'
+export CLEAR  : string := '2EYCEu1v7xs0i4L3o5rAV1ZNLFkQYNHh'
 
 # ---------------------------------------------------------------------------
 # levels: profile, debug, info, warn, error, file, silent
 
 class LoggerEx
 
-	constructor: () ->
-		@hConfig = hLoggerConfig
-		@hLoggers := @hConfig.loggers
-		defLevel := Deno.env.get('DEFAULT_LOGGER') || 'info'
-		@check defLevel
-		@lLoggerStack := [defLevel]
-		let @silent = false
+	defLevel: string       = Deno.env.get('DEFAULT_LOGGER') || 'info'
+	lLoggerStack: string[] = [@defLevel]
+	hConfig: hash          = hLoggerConfig
+	hLoggers: hash         = @hConfig.loggers
+	silent: boolean        = false
+	mainModule: string     = getMainModule()
 
-	curLevel: () ->
-		return @lLoggerStack.at(-1)
+	constructor()
+		@check @defLevel
 
-	levelChanged: () ->
+	curLevel(): string
+		result := @lLoggerStack.at(-1)
+		if (result == undef)
+			throw new Error("empty stack")
+		else
+			return result
+
+	levelChanged(): void
 		switch @curLevel()
 			when 'profile'
 				# --- NOTE: These are package global variables
@@ -171,31 +198,38 @@ class LoggerEx
 				fileHeaderOutput = false
 		return
 
-	setLevel: (level) ->
+	setLevel(level: string): void
 		@check level
 		@lLoggerStack[@lLoggerStack.length-1] = level
 		@levelChanged()
 		return
 
-	pushLevel: (level) ->
+	pushLevel(level: string): void
 		@check level
 		@lLoggerStack.push level
 		@levelChanged()
 		return
 
-	popLevel: () ->
+	popLevel(): string
 		assert (@lLoggerStack.length > 0), "Empty logger stack"
 		level := @lLoggerStack.pop()
+		if (level == undef)
+			throw new Error("empty stack")
 		@levelChanged()
 		return level
 
-	isActive: (level) ->
+	isActive(level: string): boolean
 		@check level
 		curNum := @hLoggers[@curLevel()].num
 		lvlNum := @hLoggers[level].num
 		return (lvlNum >= curNum)
 
-	output: (level, lItems) ->
+	output(level: string, lItems: any[]): void
+		main := getMainModule()
+		if (main != @mainModule)
+			logger := getLogger('debug')
+			logger.debug "=====  #{main}  ====="
+			@mainModule = main
 		if @isActive(level)
 			for item of lItems
 				switch item
@@ -206,40 +240,69 @@ class LoggerEx
 					when CLEAR
 						@clearLog()
 					else
-						getLogger(@curLevel())[level] item
+						str := isString(item) ? item : JSON.stringify(item)
+						logger := getLogger(@curLevel())
+						switch level
+#							when 'profile'
+#								logger.profile str
+							when 'debug'
+								logger.debug str
+							when 'info'
+								logger.info str
+							when 'warn'
+								logger.warn str
+							when 'error'
+								logger.error str
+#							when 'file'
+#								logger.file str
+							when 'silent'
+								pass()
+							else
+								logger.debug str
 		return
 
-	flush: () ->
+	flush(): void
 		@hConfig.handlers.file.flush()
 		@hConfig.handlers.pfile.flush()
 		return
 
-	clearLog: () ->
+	clearLog(): void
 		@flush()
-		Deno.writeTextFile logFileName, ''
+		Deno.writeTextFileSync logFileName, ''
 		prevMS = prevFileMS = Date.now()
 		return
 
-	getLog: () ->
+	getFullLog(): string
 		@flush()
-		return Deno.readTextFileSync(logFileName).trim()
+		text := Deno.readTextFileSync(logFileName)
+		return text ? text.trim() : ''
 
-	check: (level) ->
+	getLog(): string
+		@flush()
+		text := Deno.readTextFileSync(logFileName)
+		lLines := text ? text.trim().split('\n') : []
+		lNewLines := lLines.filter((x) => not x.match(/^=====\s\s/))
+		resultStr := lNewLines.join('\n')
+		return resultStr
+
+	check(level: string): void
 		assert @hLoggers[level], "Bad logger level: '#{level}'"
+		return
 
-export logger := new LoggerEx()
+export logger: LoggerEx := new LoggerEx()
 
 # ---------------------------------------------------------------------------
 
-export DBG  := (...lItems) => logger.output 'debug', lItems
-export LOG  := (...lItems) => logger.output 'info', lItems
-export WARN := (...lItems) => logger.output 'warn', lItems
-export ERR  := (...lItems) => logger.output 'error', lItems
+export DBG  := (...lItems: any[]): void => logger.output 'debug', lItems
+export LOG  := (...lItems: any[]): void => logger.output 'info', lItems
+export WARN := (...lItems: any[]): void => logger.output 'warn', lItems
+export ERR  := (...lItems: any[]): void => logger.output 'error', lItems
 
-export curLogLevel  := () => return logger.curLevel()
-export setLogLevel  := (level) => logger.setLevel(level)
-export pushLogLevel := (level) => logger.pushLevel(level)
-export popLogLevel  := () => return logger.popLevel()
-export clearLog     := () => return logger.clearLog()
-export getLog       := () => return logger.getLog()
-export flushLog     := () => logger.flush()
+export curLogLevel  := (): string => return logger.curLevel()
+export setLogLevel  := (level: string): void => logger.setLevel(level)
+export pushLogLevel := (level: string): void => logger.pushLevel(level)
+export popLogLevel  := (): string => return logger.popLevel()
+export clearLog     := (): void => return logger.clearLog()
+export getFullLog   := (): string => return logger.getFullLog()
+export getLog       := (): string => return logger.getLog()
+export flushLog     := (): void => logger.flush()

@@ -1,43 +1,52 @@
 # cleanup.civet
 
 import {expandGlobSync} from '@std/fs/expand-glob'
-import pathLib from 'path'
+import pathLib from 'node:path'
 
 # ---------------------------------------------------------------------------
 
-relpath := (path) =>
+relpath := (path: string) =>
 
-	npath := pathLib.relative('', path).replaceAll('\\', '/')
-	if (npath.charAt(1) == ':')
-		return npath.charAt(0).toLowerCase() + npath.substring(1)
-	else
-		return npath
+	return pathLib.relative('', path).replaceAll('\\', '/')
 
 # ---------------------------------------------------------------------------
 
-rootDir :=  Deno.env.get('PROJECT_ROOT_DIR')
+rootDir: string? := Deno.env.get('PROJECT_ROOT_DIR')
 if (rootDir == undefined)
 	console.log "Please set env var PROJECT_ROOT_DIR"
 	Deno.exit()
 
+listOnly := (Deno.args[0] != undefined)
+
+lFiles: string[] := []  # NOTE: a const, but can still push strings
 for pattern of [
-		'src/**/*.js'
+		'**/*.js'
+		'compile.config.ts'
+		'src/**/*.ts'
 		'src/**/*.temp.*'
-		'test/**/*.js'
+		'test/**/*.ts'
 		'test/**/*.temp.*'
+		'logs/logs.txt'
 		]
 	hGlobOptions := {
 		exclude: [
 			'node_modules/**'
 			'.git/**'
-			'src/bin/cleanup.js'
-			'test/base.test.js'
-			"#{rootDir}/.deno/bin/*.exe"
-			"#{rootDir}/.deno/bin/cleanup*"
+			'test/temp.ts'
 			]
 		includeDirs: false
 		}
 
 	for {path} of expandGlobSync(pattern, hGlobOptions)
-		console.log "REMOVE: #{relpath(path)}"
-		Deno.removeSync path
+		lFiles.push path
+
+if (lFiles.length == 0)
+	console.log "No files to remove"
+else
+	for path of lFiles
+		if listOnly
+			console.log "WOULD REMOVE: #{path}"
+		else
+			console.log "REMOVE: #{relpath(path)}"
+			Deno.removeSync path
+	console.log "#{lFiles.length} files removed"

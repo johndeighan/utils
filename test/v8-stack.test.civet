@@ -3,19 +3,23 @@
 import {
 	undef, defined, notdefined, assert, croak,
 	compileAllFiles, relpath,
-	} from '../src/lib/llutils.js'
-import * as lib from '../src/lib/v8-stack.js'
-Object.assign(globalThis, lib)
-import * as lib2 from '../src/lib/unit-test.js'
-Object.assign(globalThis, lib2)
+	} from '@jdeighan/utils'
+import {
+	getV8Stack, getMyCaller,
+	getMyOutsideCaller, getV8StackStr,
+	} from '@jdeighan/utils/v8-stack'
+import {
+	equal, like,
+	} from '@jdeighan/utils/unit-test'
+import type {stackFrame} from '@jdeighan/utils/v8-stack'
 
-import {getBoth} from './v8-stack/v8-module.js'
+import {getBoth} from './v8-stack/v8-module.ts'
 
 # ---------------------------------------------------------------------------
 
 (() ->
-	let stack1 = undef
-	let stack2 = undef
+	let stack1: stackFrame[] = []
+	let stack2: stackFrame[] = []
 
 	main := () ->
 		func1()
@@ -23,6 +27,7 @@ import {getBoth} from './v8-stack/v8-module.js'
 
 	func1 := () ->
 		stack1 = getV8Stack()
+		return
 
 	func2 := () ->
 		stack2 = getV8Stack()
@@ -34,24 +39,24 @@ import {getBoth} from './v8-stack/v8-module.js'
 			type: 'function'
 			name: 'func1'
 			source: 'test/v8-stack.test.civet'
-			line: 25
+			line: 29
 			}
 		{
 			type: 'function'
 			name: 'main'
 			source: 'test/v8-stack.test.civet'
-			line: 21
+			line: 25
 			}
 		{
 			type: 'function'
 			name: '<anonymous>'
 			source: 'test/v8-stack.test.civet'
-			line: 31
+			line: 36
 			}
 		{
 			type: 'script'
 			source: 'test/v8-stack.test.civet'
-			line: 82
+			line: 87
 			}
 		]
 	like stack2, [
@@ -59,24 +64,24 @@ import {getBoth} from './v8-stack/v8-module.js'
 			type: 'function'
 			name: 'func2'
 			source: 'test/v8-stack.test.civet'
-			line: 28
+			line: 33
 			}
 		{
 			type: 'function'
 			name: 'main'
 			source: 'test/v8-stack.test.civet'
-			line: 22
+			line: 26
 			}
 		{
 			type: 'function'
 			name: '<anonymous>'
 			source: 'test/v8-stack.test.civet'
-			line: 31
+			line: 36
 			}
 		{
 			type: 'script'
 			source: 'test/v8-stack.test.civet'
-			line: 82
+			line: 87
 			}
 		]
 	)()
@@ -84,8 +89,8 @@ import {getBoth} from './v8-stack/v8-module.js'
 # ---------------------------------------------------------------------------
 
 (() ->
-	let caller1 = undef
-	let caller2 = undef
+	let caller1: stackFrame? = undef
+	let caller2: stackFrame? = undef
 
 	main := () ->
 		func1()
@@ -114,7 +119,7 @@ import {getBoth} from './v8-stack/v8-module.js'
 # ---------------------------------------------------------------------------
 
 (() ->
-	let hCaller = undef
+	let hCaller: stackFrame? = undef
 
 	main := () ->
 		func1()
@@ -142,8 +147,8 @@ import {getBoth} from './v8-stack/v8-module.js'
 # ---------------------------------------------------------------------------
 
 (() ->
-	let lCallers1 = undef
-	let lCallers2 = undef
+	let lCallers1: stackFrame?[] = []
+	let lCallers2: stackFrame?[] = []
 
 	main := () ->
 		func1()
@@ -190,10 +195,10 @@ import {getBoth} from './v8-stack/v8-module.js'
 		return await getV8StackStr()
 
 	equal await func1(), """
-		[function   ] test/v8-stack.test.civet:190:15
-		[function   ] test/v8-stack.test.civet:187:15
-		[function   ] test/v8-stack.test.civet:192:13
-		[script     ] test/v8-stack.test.civet:199:3
+		[function   ] test/v8-stack.test.civet:195:15
+		[function   ] test/v8-stack.test.civet:192:15
+		[function   ] test/v8-stack.test.civet:197:13
+		[script     ] test/v8-stack.test.civet:204:2
 		"""
 
 	)()
@@ -209,17 +214,17 @@ import {getBoth} from './v8-stack/v8-module.js'
 		return 2 * 2
 
 	equal await func1(), """
-		[function   ] test/v8-stack.test.civet:206:15
-		[function   ] test/v8-stack.test.civet:211:13
-		[script     ] test/v8-stack.test.civet:216:3
+		[function   ] test/v8-stack.test.civet:211:15
+		[function   ] test/v8-stack.test.civet:216:13
+		[script     ] test/v8-stack.test.civet:221:2
 		"""
 	)()
 
 # ---------------------------------------------------------------------------
 
 (() ->
-	let caller1 = undef
-	let caller2 = undef
+	let caller1: stackFrame? = undef
+	let caller2: stackFrame? = undef
 
 	main := () ->
 		func1()

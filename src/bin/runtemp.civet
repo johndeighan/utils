@@ -1,0 +1,30 @@
+# runtemp.civet
+
+import {
+	undef, getCmdArgs, assert,
+	DBG, LOG, isFile,
+	compileFile, execCmd,
+	} from "../lib/utils.ts"
+
+{c: compile} := getCmdArgs {
+	c: 'boolean'
+	}
+
+# ---------------------------------------------------------------------------
+
+DBG "in run-temp-file"
+if compile
+	DBG "compiling all files"
+	await execCmd 'compile'
+else
+	DBG "compiling test/temp.civet"
+	compileFile ['testDir', 'temp']
+
+assert isFile('test/temp.ts'), "Compile of test/temp.civet failed"
+{code} := await execCmd 'deno', [
+	'run',
+	'-A',
+	'test/temp.ts'
+	Deno.args...
+	]
+DBG "Final result code from temp file: #{code}"

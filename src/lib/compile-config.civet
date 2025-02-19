@@ -1,0 +1,481 @@
+# compile-config.civet
+
+import {
+	undef, defined, notdefined, hash, optionspec,
+	isString, isHash, isArray,
+	} from './datatypes.ts'
+import {
+	croak, assert, pass, keys, hasKey, hasKeys, OL, getOptions,
+	} from './llutils.ts'
+import {
+	isFile, fileExt, withExt, rmFile, mkpath, parsePath,
+	relpath, newerDestFileExists,
+	} from './fs.ts'
+import {
+	pushLogLevel, popLogLevel,
+	INDENT, UNDENT,
+	DBG, LOG, WARN, ERR,
+	} from './logger.ts'
+import {
+	execCmd, execCmdSync, cmdSucceeds,
+	} from './exec-utils.ts'
+
+# ---------------------------------------------------------------------------
+
+export type configHash = {
+	hCompilers: hash
+	hPostProcessors: hash
+	}
+
+export isConfigHash := (h: any): h is configHash =>
+
+	try
+		assert defined(h), "hCompilerConfig not defined"
+		assert hasKeys(h, 'hCompilers', 'hPostProcessors'),
+			"Missing key(s) in hCompilerConfig"
+		{hCompilers, hPostProcessors} := h
+
+		assert hasKeys(hCompilers, '.dot', '.cielo', '.civet'),
+			"Missing key(s) in hCompilers"
+		assert hasKeys(hPostProcessors, 'testDir', 'libDir', 'binDir'),
+			"Missing key(s) in hPostProcessors"
+		for ext of keys(hCompilers)
+			h2 := hCompilers[ext]
+			assert hasKeys(h2, 'outExt', 'tester', 'compiler'),
+				"Missing key(s) in hCompilers"
+			{outExt, tester, compiler} := h2
+
+			pushLogLevel 'silent'
+			works := tester()
+			popLogLevel()
+
+			if not works
+				DBG "Deleting compiler for ext #{OL(ext)}"
+				delete hCompilers[ext]
+		return true
+	catch err: any
+		console.error "ERROR: #{err.message}"
+		return false
+
+# ---------------------------------------------------------------------------
+
+export checkConfigHash := (h: any): void =>
+
+	if isConfigHash h
+		DBG "Config Hash OK"
+	else
+		DBG "Bad Config Hash"
+	return
+
+# ---------------------------------------------------------------------------
+# --- will eventually pre-process the .cielo code
+
+cielo2civet := (path: string, civetPath: string): void =>
+
+	assert isFile(path), "No such file: #{OL(path)} (cielo2civet)"
+	assert (fileExt(path) == '.cielo'), "Not a cielo file: #{OL(path)}"
+	execCmdSync 'cp', [path, civetPath]
+	assert isFile(civetPath), "File not created: #{OL(civetPath)}"
+	return
+
+# ---------------------------------------------------------------------------
+
+civet2ts := (path: string, tsPath: string): void =>
+
+	assert isFile(path), "No such file: #{OL(path)} (civet2js)"
+	assert (fileExt(path) == '.civet'), "Not a civet file: #{OL(path)}"
+
+	execCmdSync 'civet', [
+		'--inline-map',
+		'-o',
+		tsPath,
+		'-c',
+		path
+		]
+
+	assert isFile(tsPath), "File not created: #{OL(tsPath)}"
+	return
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export installDenoExe := (stub: string): void =>
+
+	await execCmd 'deno', [
+		'compile'
+		'-A'
+		'--no-check'
+		"src/bin/#{stub}.ts"
+		]
+	return
+
+# ---------------------------------------------------------------------------
+
+export isStub := (str: string): boolean =>
+
+	# --- a stub cannot contain any of '.', '\\', '/'
+	return notdefined(str.match(/[\.\\\/]/))
+
+# ---------------------------------------------------------------------------
+
+export isDirSpec := (dirspec: string): boolean =>
+
+	return hasKey(hCompilerConfig.hPostProcessors, dirspec)
+
+# ---------------------------------------------------------------------------
+# --- Returns {path, dirspec}
+
+export type foundSource = {
+	path: string
+	dirspec: string
+	}
+
+export findSourceFile := (
+	dirspec: string,
+	stub: string,
+	purpose: string? = undef
+	): foundSource? =>
+
+	assert isStub(stub), "Bad stub: #{OL(stub)}"
+	if notdefined(dirspec)
+		# --- If dirspec is undef, we search all possible dirspecs
+		#     but throw exception if it's found in more than one
+
+		let foundPath: string? = undef
+		let dspec: string? = undef
+
+		for ds of keys(hCompilerConfig.hPostProcessors)
+			h := findSourceFile ds, stub, purpose
+			if notdefined(h)
+				pass()
+			else
+				{path, dirspec} := h
+				if notdefined(path) || notdefined(dirspec)
+					pass()
+				else
+					assert notdefined(foundPath),
+							"Ambiguous: [#{dirspec}, #{stub}]"
+					foundPath = path
+					dspec = dirspec
+		if notdefined(foundPath) || notdefined(dspec)
+			return undef
+		else
+			return {
+				path: foundPath,
+				dirspec: dspec
+				}
+	else
+		assert isDirSpec(dirspec), "Bad dirspec: #{OL(dirspec)}"
+		dir := hCompilerConfig.hPostProcessors[dirspec].dir
+
+		# --- Try every supported file extension
+		for ext of keys(hCompilerConfig.hCompilers)
+			path := (
+				defined(purpose)
+					? mkpath(dir, "#{stub}.#{purpose}#{ext}")
+					: mkpath(dir, "#{stub}#{ext}")
+				)
+			if isFile path
+				return {path, dirspec}
+		return undef
+
+# ---------------------------------------------------------------------------
+# --- returns {path, relPath, dirspec, stub, purpose, ext}
+#        returns undef if the file does not exist
+#        dirspec and stub are undef if file exists, but
+#           isn't in ./src/lib, ./src/bin or ./test folders
+
+type fileSpec = string[]
+
+export isFileSpec := (x: any): x is fileSpec =>
+	return Array.isArray(x) && (x.length == 2)
+
+export type srcInfo = {
+	path: string
+	relPath: string
+	dirspec: string?  # will be undef if file exists, but not in a std dir
+	stub: string?
+	purpose: string?
+	ext: string?
+	}
+
+export getSrcInfo := (src: string | fileSpec): srcInfo? =>
+
+	if isString src
+		if isFile src
+			{stub, purpose, ext, relPath} := parsePath(src)
+			dirspec := (
+				  relPath.startsWith('src/lib/')   ? 'libDir'
+				: relPath.startsWith('./src/lib/') ? 'libDir'
+				: relPath.startsWith('src/bin/')   ? 'binDir'
+				: relPath.startsWith('./src/bin/') ? 'binDir'
+				: relPath.startsWith('test/')      ? 'testDir'
+				: relPath.startsWith('./test/')    ? 'testDir'
+				:                                    undef)
+			return {
+				path: src
+				relPath
+				dirspec
+				stub: defined(dirspec) ? stub : undef
+				purpose
+				ext
+				}
+		else
+			return undef
+	else if (src == undef) || (src == null)
+		return undef
+	else
+		# -- NOTE: src can be [undef, <stub>, purpose],
+		#          in which case there can be only one dirspec
+		#          that results in an existing file
+
+		[dspec, stub, purpose] := src
+		h := findSourceFile dspec, stub, purpose
+		if (h == undef)
+			return undef
+		{path, dirspec} := h
+		if isFile path
+			{stub, purpose, ext, relPath} := parsePath(path)
+			return {
+				path
+				relPath
+				dirspec
+				stub
+				purpose
+				ext
+				}
+		else
+			return undef
+
+# ---------------------------------------------------------------------------
+# --- returns [compiler, outExt]
+#     or [undef, undef] if there is no compiler
+
+export getCompiler := (ext: string): any[] =>
+
+	h := hCompilerConfig.hCompilers[ext]
+	if notdefined(h)
+		DBG "Not compiling - no compiler for #{ext} files"
+		return [undef, undef]
+
+	assert isHash(h), "hCompilers[#{ext}] not a hash: #{OL(h)}"
+	{outExt, compiler} := h
+	assert defined(compiler), "Missing compiler in config for #{OL(ext)}"
+	assert defined(outExt), "Missing outExt in config for #{OL(ext)}"
+	return [compiler, outExt]
+
+# ---------------------------------------------------------------------------
+# --- src can be a full path or [dirspec, stub, purpose]
+#        where dirspec can be 'lib', 'bin' or 'test'
+#     throws error if file does not exist
+#
+#     Possible status values:
+#        'temp'       - it was a temp file, not compiled
+#        'nocompiler' - has no compiler, not compiled
+#        'exists'     - newer compiled file already exists
+#        'failed'     - compiling failed
+#        'compiled'   - successfully compiled
+
+type compileStatus = (
+	  'nofile'
+	| 'temp'
+	| 'nocompiler'
+	| 'exists'
+	| 'failed'
+	| 'compiled'
+	)
+
+export type compileResult = {
+	status: compileStatus
+	path: string
+	relPath: string?
+	outPath: string?
+	}
+
+export compileFile := (
+	src: string | fileSpec,
+	): compileResult =>
+
+	DBG "COMPILE: #{OL(src)}", INDENT
+
+	hSrcInfo := getSrcInfo src
+	if (hSrcInfo == undef)
+		throw new Error "No such file: #{OL(src)}"
+	{dirspec, stub, path: orgPath, relPath, purpose, ext} := hSrcInfo
+	path := orgPath || ((typeof src == 'string') ? src : src.join('/'))
+	if notdefined(relPath)
+		ERR "No such file: #{OL(src)} (compileFile)", UNDENT
+		return {
+			status: 'nofile'
+			path
+			relPath: undef
+			outPath: undef
+			}
+	if (purpose == 'temp')
+		DBG "Not compiling temp file #{OL(relPath)}", UNDENT
+		return {
+			status: 'temp'
+			path
+			relPath
+			outPath: undef
+			}
+
+	if (ext == undef)
+		DBG "Not compiling - no file extension in #{relPath}", UNDENT
+		return {
+			status: 'nocompiler'
+			path
+			relPath
+			outPath: undef
+			}
+
+	[compiler, outExt] := getCompiler(ext)
+	if notdefined(compiler)
+		DBG "Not compiling - no compiler for #{ext}", UNDENT
+		return {
+			status: 'nocompiler'
+			path
+			relPath
+			outPath: undef
+			}
+
+	outPath := withExt(relPath, outExt)
+	if newerDestFileExists(relPath, outPath)
+		DBG "Not compiling, newer #{outPath} exists", UNDENT
+		return {
+			status: 'exists'
+			path
+			relPath
+			outPath
+			}
+
+	DBG "No newer dest file exists"
+	if isFile(outPath)
+		DBG "removing older #{outPath}"
+		rmFile outPath
+
+	DBG "compiling #{OL(relPath)}"
+	compiler relPath     # produces file outPath, may throw
+
+	if isFile(outPath)
+		# --- If first line is a file name with original extension,
+		#     replace the file extension
+		contents := Deno.readTextFileSync outPath
+		lLines := contents.split "\n"
+		lLines[0].replace ext, outExt
+		Deno.writeTextFileSync outPath, lLines.join("\n")
+	else
+		ERR "Output file #{relpath(outPath)} not produced", UNDENT
+		return {
+			status: 'failed'
+			path
+			relPath
+			outPath
+			}
+
+	# --- If there's a post-processor, run it
+	if notdefined(dirspec)
+		# --- if no dirspec here, file is not in a standard directory
+		#     so there can't be a post-processor
+		pass()
+	else
+		postProc := hCompilerConfig.hPostProcessors[dirspec].postProcessor
+		if notdefined(postProc)
+			pass()
+		else
+			DBG "post-processing file"
+			postProc stub
+
+	DBG UNDENT
+	return {
+		status: 'compiled'
+		path
+		relPath
+		outPath
+		}
+
+# ---------------------------------------------------------------------------
+# --- NOTES:
+#        1. compiler doesn't need to check if the file exists
+#        2. compiler doesn't need to check the file extension
+
+export hDefaultConfig: configHash := {
+
+	hCompilers: {
+		# --- keys are file extensions
+		#     NOTE: compilers must be synchronous!!!
+
+		'.dot':
+			outExt: '.svg'
+			tester: (): boolean =>
+				return cmdSucceeds('dot', ['--version'], 'quiet')
+			compiler: (path: string): void =>
+				svgPath := withExt(path, '.svg')
+				rmFile svgPath
+				execCmdSync 'dot', ['-Tsvg', path]
+				return
+
+		'.cielo':
+			outExt: '.ts'
+			tester: (): boolean =>
+				return true
+			compiler: (path: string): void =>
+				civetPath := withExt(path, '.temp.civet')
+				rmFile civetPath
+				cielo2civet path, civetPath
+				civet2ts civetPath, withExt(path, '.ts')
+				return
+
+		'.civet':
+			outExt: '.ts'
+			tester: (): boolean =>
+				return cmdSucceeds('civet', ['--version'], 'quiet')
+			compiler: (path: string): void =>
+				civet2ts path, withExt(path, '.ts')
+				return
+
+		}
+
+	hPostProcessors: {
+		# --- Keys are dirspecs
+
+		testDir:
+			dir: 'test'    # --- no post processing
+			postProcessor: (stub: string): void =>
+				return
+
+		libDir:
+			dir: 'src/lib'
+			postProcessor: (stub: string): void =>
+				h := findSourceFile('test', stub, 'test')
+				if notdefined(h)
+					return
+				{path} := h
+				if notdefined(path)
+					return
+				# --- will also run unit test if it exists
+				{status} := compileFile(path)
+				DBG "Compile of #{stub}: status = #{status}"
+				return
+
+		binDir:
+			dir: 'src/bin'
+			postProcessor: (stub: string): void =>
+				LOG "- installing command #{stub}"
+				installDenoExe stub
+				return
+		}
+	}
+
+# ---------------------------------------------------------------------------
+
+# --- resolves '.' to current dir, not current file location
+export userConfigPath: string := mkpath('./compile.config.ts')
+checkConfigHash hDefaultConfig
+
+export let hCompilerConfig: configHash = hDefaultConfig
+if isFile userConfigPath
+	DBG "using user config path = #{userConfigPath}"
+	module := await import("file:///#{userConfigPath}")
+	hCompilerConfig := module.default as configHash
+	checkConfigHash hCompilerConfig

@@ -2,7 +2,7 @@
 ===============
 
 **NOTE**: All code in this README is `civet` code (danielx/civet on npm)
-However, I have `civet` set up to be CoffeeScript compatible.
+However, I have `civet` set up to be (mostly) CoffeeScript compatible.
 The main points are that:
 
 1. The body of program structures, such as  `if`, `while`, etc.
@@ -10,7 +10,7 @@ The main points are that:
 	For example:
 
 ```coffee
-if x == 2
+if (x == 2)
 	console.log "OK"
 	return true
 else
@@ -31,17 +31,34 @@ else
 	comments, though CoffeeScript does not.
 
 5. Any function that includes an `await` is async and any function
-	that includes a `yield` is a generator.
+	that includes a `yield` is a generator. No need for the `async`
+	keyword or JavaScripts weird generator naming convention.
 
 6. Constants can be declared using `:=` (CoffeeScript does not allow
-	declaring values, i.e. you can't use `const`, `let` or `var`, but
-	civet allows it and even provides some shortcut symbols:
+	declaring values at all, i.e. you can't use `const`, `let` or `var`,
+	but civet allows it and even provides some shortcut symbols:
 
 ```coffee
 x := 13      # --- declares a constant
-let x = 42   #     declares a variable
-x .= 42      #     also declares a variable
+let x = 42   #     declares a let variable
+x .= 42      #     also declares a let variable (I don't use it)
 ```
+
+Debugging
+---------
+
+To debug the temp file, put a 'debugger' statement at the top
+of temp.js or temp.civet
+
+Then, run:
+
+```bash
+$ deno task debug
+```
+
+Then, open Chrome, enter URL "chrome://inspect"
+Then, click on "Open dedicated DevTools for Node"
+Then, click on 'Run' to continue to the debugger statement
 
 Unit Testing
 ------------
