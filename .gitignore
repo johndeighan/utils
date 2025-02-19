@@ -4,6 +4,7 @@ node_modules/
 /public
 /dist
 /docs
+/exe
 
 # dotenv environment variables file
 .env
