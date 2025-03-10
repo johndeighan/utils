@@ -664,6 +664,7 @@ export class FileEventHandler
 		@hHandlers[path][kind]()
 		return
 
+	# ASYNC!
 	getChangeList(): fsChangeType[]
 		await sleep @ms
 		return @lChanges

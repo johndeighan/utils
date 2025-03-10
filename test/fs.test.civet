@@ -459,6 +459,48 @@ await (() =>
 	equal lChanges, expected
 	)()
 
+# --- get the final change list via getChangeList() method
+await (() =>
+	handler := new FileEventHandler()
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp2.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+
+	await sleep 2
+
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+
+	lChanges := await handler.getChangeList()
+
+	expected := [
+		{kind: 'modify', path: '/usr/lib/temp2.txt'}
+		{kind: 'modify', path: '/usr/lib/temp.txt'}
+		{kind: 'modify', path: '/usr/lib/temp.txt'}
+		]
+
+	equal lChanges, expected
+	)()
+
 # --- watchFile()
 await (() =>
 	# --- Set contents of dummy.txt to standard contents
