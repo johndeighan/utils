@@ -1,10 +1,10 @@
 logs/
 node_modules/
-/build
-/public
-/dist
-/docs
-/exe
+build/
+public/
+dist/
+docs/
+exe/
 
 # dotenv environment variables file
 .env

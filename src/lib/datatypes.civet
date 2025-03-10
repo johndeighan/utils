@@ -1,13 +1,23 @@
 # datatypes.civet
 
 /**
- * An alias for TypeScript type 'object'
+ * An alias for TypeScript type 'object' with string keys
  */
 
 export interface hash
 	[key: string]: any
 
+/**
+ * An array containing anything
+ */
+
 export type array = any[]
+
+/**
+ * A function that takes no parameters and returns nothing
+ */
+
+export type voidFunc = () => void
 
 /**
  * specifying options for function getOptions()
@@ -19,6 +29,7 @@ export type optionspec = hash | string
 
 /**
  * An alias for JavaScript's `undefined`
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20undef)
  */
 
 export undef := undefined
@@ -28,7 +39,7 @@ export undef := undefined
 /**
  * returns true if the provided value is defined
  * (i.e. not null or undefined), else returns false
- * (see [unit tests](./test/llutils.test.civet))
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20defined()))
  */
 
 export defined := (x: any): boolean =>
@@ -40,6 +51,7 @@ export defined := (x: any): boolean =>
 /**
  * Returns true if all the values provided are not defined
  * (i.e. either null or undefined), else returns false
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20notdefined())
  */
 
 export notdefined := (x: any): x is undefined =>
@@ -50,6 +62,7 @@ export notdefined := (x: any): x is undefined =>
 
 /**
  * returns true if (typeof item == 'string') or item instanceof String
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20isString)
  */
 
 export isString := (x: any): x is string =>
@@ -58,6 +71,12 @@ export isString := (x: any): x is string =>
 
 # ---------------------------------------------------------------------------
 
+/**
+ * Test if something is a non-empty string,
+ * i.e. isn't all whitespace
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20isNonEmptyString)
+ */
+
 export isNonEmptyString := (x: any): boolean =>
 
 	# --- must contain non-whitespace character
@@ -65,11 +84,21 @@ export isNonEmptyString := (x: any): boolean =>
 
 # ---------------------------------------------------------------------------
 
+/**
+ * Test if something is a boolean
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20isBoolean)
+ */
+
 export isBoolean := (x: any): x is boolean =>
 
 	return (typeof x == 'boolean') || (x instanceof Boolean)
 
 # ---------------------------------------------------------------------------
+
+/**
+ * Test if something is a number
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20isNumber)
+ */
 
 export isNumber := (x: any): x is number =>
 
@@ -78,7 +107,16 @@ export isNumber := (x: any): x is number =>
 
 # ---------------------------------------------------------------------------
 
+/**
+ * Type integer
+ */
+
 export type integer = number
+
+/**
+ * Test if something is an integer
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20isInteger)
+ */
 
 export isInteger := (x: any): x is integer =>
 
@@ -86,11 +124,21 @@ export isInteger := (x: any): x is integer =>
 
 # ---------------------------------------------------------------------------
 
+/**
+ * Test if something is an array
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20isArray())
+ */
+
 export isArray := (x: any): x is array =>
 
 	return Array.isArray(x)
 
 # ---------------------------------------------------------------------------
+
+/**
+ * Test if something is an array of strings
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20isArrayOfStrings())
+ */
 
 export isArrayOfStrings := (x: any): boolean =>
 
@@ -103,7 +151,16 @@ export isArrayOfStrings := (x: any): boolean =>
 
 # ---------------------------------------------------------------------------
 
+/**
+ * Type regexp - a regular expression
+ */
+
 type regexp = object
+
+/**
+ * Test if something is a regular expression
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20isRegExp)
+ */
 
 export isRegExp := (item: any): item is regexp =>
 
@@ -111,11 +168,21 @@ export isRegExp := (item: any): item is regexp =>
 
 # ---------------------------------------------------------------------------
 
+/**
+ * Test if something is an object
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20isObject)
+ */
+
 export isObject := (item: any): item is object =>
 
 	return (typeof item == 'object')
 
 # ---------------------------------------------------------------------------
+
+/**
+ * Test if something is a hash
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20isHash)
+ */
 
 export isHash := (item: any): item is hash =>
 
@@ -130,6 +197,7 @@ export isHash := (item: any): item is hash =>
  * 	- x is an array of length 0
  * 	- x is a hash that has no keys
  * else returns false
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20isEmpty)
  */
 
 export isEmpty := (x: any): boolean =>
@@ -148,7 +216,8 @@ export isEmpty := (x: any): boolean =>
 # ---------------------------------------------------------------------------
 
 /**
- * returns ! isEmpty(x)
+ * returns not isEmpty(x)
+ * [(unit tests)](../test/datatypes.test.civet#:~:text=%23%20%2D%2D%2D%20nonEmpty)
  */
 
 export nonEmpty := (x: any): boolean =>

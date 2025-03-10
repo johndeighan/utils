@@ -3,12 +3,10 @@
 import {
 	mkstr, getCmdLine, getProcOpt, getFinalResult,
 	execCmd, execCmdSync, cmdSucceeds,
-	} from '../src/lib/exec-utils.ts'
-import type {
 	execCmdResult,
 	} from '../src/lib/exec-utils.ts'
 import {
-	equal, like, unlike, succeeds, fails, truthy, falsy,
+	equal, like, succeeds, fails, truthy, falsy,
 	} from '@jdeighan/utils/unit-test'
 
 # ---------------------------------------------------------------------------

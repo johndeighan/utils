@@ -1,11 +1,11 @@
 # logger.civet
 
-import {existsSync} from "https://deno.land/std/fs/mod.ts";
-import {sprintf} from "https://deno.land/std/fmt/printf.ts";
+import {existsSync} from "https://deno.land/std/fs/mod.ts"
+import {sprintf} from "https://deno.land/std/fmt/printf.ts"
 import {
 	ConsoleHandler, FileHandler, setup, getLogger,
 	LogRecord,
-	} from "https://deno.land/std/log/mod.ts";
+	} from "https://deno.land/std/log/mod.ts"
 
 import {
 	assert, croak, pass,
@@ -31,7 +31,7 @@ getMainModule := (): string =>
 	return relpath(path.slice(1))
 
 # --- There always needs to be a 'logs' folder in the current directory
-mkDir './logs'
+# mkDir './logs'
 
 let indent : number = 0
 prefix := () => '   '.repeat(indent)

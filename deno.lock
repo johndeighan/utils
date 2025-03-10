@@ -441,6 +441,9 @@
     "https://deno.land/x/exec/mod.ts": "https://deno.land/x/exec@0.0.5/mod.ts"
   },
   "remote": {
+    "https://cdn.skypack.dev/-/lodash-es@v4.17.21-rDGl8YjBUjcrrAbjNrmo/dist=es2019,mode=imports/optimized/lodash-es.js": "4a1b35d34b5e0d3ae68aa46ddaabb9700ccecb75b830974db7c46a271f10daa8",
+    "https://cdn.skypack.dev/error/unknown:lodash?from=lodash-es": "c042c6105b8140042d5fe8fc6406d0a2296b10a94e5e0a31c0c68bc9b84e6ec5",
+    "https://cdn.skypack.dev/lodash-es?dts": "7dc1d11c01e46bf442774791267f7ca93f6cc204451ac648f2560b0cd6c91524",
     "https://deno.land/std@0.178.0/async/abortable.ts": "73acfb3ed7261ce0d930dbe89e43db8d34e017b063cf0eaa7d215477bf53442e",
     "https://deno.land/std@0.178.0/async/deadline.ts": "c5facb0b404eede83e38bd2717ea8ab34faa2ffb20ef87fd261fcba32ba307aa",
     "https://deno.land/std@0.178.0/async/debounce.ts": "adab11d04ca38d699444ac8a9d9856b4155e8dda2afd07ce78276c01ea5a4332",
@@ -601,8 +604,10 @@
         "npm:@jsr/std__async@^1.0.10",
         "npm:@jsr/std__fs@^1.0.10",
         "npm:@jsr/std__streams@^1.0.8",
+        "npm:@types/lodash@^4.17.15",
         "npm:@types/node@^22.12.0",
         "npm:@types/source-map-support@~0.5.10",
+        "npm:lodash@^4.17.21",
         "npm:source-map-support@~0.5.21"
       ]
     }

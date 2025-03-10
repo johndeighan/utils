@@ -1,6 +1,5 @@
 # exec-utils.civet
 
-import {compile} from 'npm:@danielx/civet'
 import {stripAnsiCode} from "jsr:@std/fmt/colors"
 
 import {

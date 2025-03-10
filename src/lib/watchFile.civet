@@ -1,0 +1,78 @@
+# watchFile.civet
+
+# ---------------------------------------------------------------------------
+
+debug := true
+DBG := (str: string) =>
+	if debug
+		console.log str
+	return
+
+export type AnyFunction = (...lArgs: any[]) => any
+export type BoolFunction = (...lArgs: any[]) => boolean
+export type VoidProcedure = () => void
+export type procedure = (...lArgs: any[]) => void
+
+# ---------------------------------------------------------------------------
+
+export debounce := (
+	callback: (...lArgs: any[]) => boolean,
+	wait: number,
+	onStop: (...lArgs: any[]) => void,
+	): procedure =>
+
+	let timeoutId: number? = undefined
+	return (...lArgs: any[]) =>
+		# --- clear any existing timeout
+		clearTimeout(timeoutId)
+		func := () =>
+			if callback(...lArgs)
+				console.log "stopping"
+				onStop(...lArgs)
+			return
+		timeoutId = setTimeout(func, wait)
+		return
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+# import {debounce} from "https://cdn.skypack.dev/lodash-es?dts"
+
+export watchFile := (
+	path: string | string[],
+	fileAction: (type: string, path: string) => boolean
+	): void ->
+
+	func := (evt: Deno.FsEvent): boolean =>
+		console.log "func fired"
+		{kind, paths} := evt
+		let doStop = false
+		for path of paths
+			result := fileAction kind, path
+			console.log "fileAction fired, result = #{result}"
+			doStop = doStop || result
+		console.log "   - return #{doStop} from func"
+		return doStop
+
+	let doStop: boolean = false
+	stopFunc := () =>
+		doStop = true
+		console.log "in stopFunc"
+		return
+
+	dfunc := debounce(func, 200, stopFunc)
+
+	console.log "WATCH: #{JSON.stringify(path)}"
+	watcher := Deno.watchFs(path)
+	for await event of watcher
+		if (dfunc == undefined)
+		console.log "watcher fired"
+		val: any := dfunc(event)
+		console.log "return from dfunc() is #{val}"
+		console.log "after dfunc: doStop = #{doStop}"
+		if doStop
+			console.log "   - stopping watcher"
+			watcher.close()
+			break
+	console.log "returning"
+	return

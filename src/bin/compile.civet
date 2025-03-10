@@ -2,11 +2,11 @@
 
 import {
 	undef, defined, notdefined, pass, OL, assert, croak,
-	getCmdArgs, compileAllFiles, watchDir,
+	getCmdArgs, compileAllFiles, watchFiles,
 	DBG, LOG, WARN, ERR,
 	isDirSpec, compileFile,
+	compileResult,
 	} from '../lib/utils.ts'
-import type {compileResult} from '../lib/utils.ts'
 
 {_, path, w: watch} := getCmdArgs {
 	path: "one or more file paths"
@@ -71,5 +71,6 @@ if defined(path)
 LOG "(#{numCompiled} files compiled)"
 
 if watch
-	watchDir Deno.cwd(), (kind, path) =>
+	watchFiles Deno.cwd(), ({kind, path}) =>
 		console.log "EVENT: #{kind} #{path}"
+		return false

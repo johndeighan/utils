@@ -1,7 +1,6 @@
 # v8-module.coffee
 
-import {getMyCaller} from '@jdeighan/utils/v8-stack'
-import type {stackFrame} from '@jdeighan/utils/v8-stack'
+import {getMyCaller, stackFrame} from '@jdeighan/utils/v8-stack'
 
 # ---------------------------------------------------------------------------
 

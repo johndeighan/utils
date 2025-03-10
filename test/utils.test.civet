@@ -10,7 +10,7 @@ import {
 	getCmdArgs,
 	} from '@jdeighan/utils'
 import {
-	equal, like, unlike, succeeds, fails, truthy, falsy,
+	equal, like, succeeds, fails, truthy, falsy,
 	} from '@jdeighan/utils/unit-test'
 
 # ---------------------------------------------------------------------------

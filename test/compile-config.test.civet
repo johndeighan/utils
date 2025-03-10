@@ -12,12 +12,10 @@ import {
 	findSourceFile,
 	isFileSpec, getSrcInfo, getCompiler, compileFile,
 	hDefaultConfig, userConfigPath, hCompilerConfig,
-	} from '../src/lib/compile-config.ts'
-import type {
 	configHash, foundSource, srcInfo, compileResult,
 	} from '../src/lib/compile-config.ts'
 import {
-	equal, like, unlike, succeeds, fails, truthy, falsy,
+	equal, like, succeeds, fails, truthy, falsy,
 	} from '@jdeighan/utils/unit-test'
 
 # ---------------------------------------------------------------------------

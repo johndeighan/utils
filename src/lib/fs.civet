@@ -1,8 +1,15 @@
 # fs.civet
 
+import {sprintf} from "https://deno.land/std/fmt/printf.ts"
+import {debounce} from '@std/async/debounce'
+
 import {
 	existsSync, emptyDirSync, ensureDirSync,
 	} from 'jsr:@std/fs'
+import {
+	appendFileSync,
+	} from 'node:fs'
+import {EventEmitter} from 'node:events'
 
 # --- Deno's statSync and lstatSync are still unstable,
 #     so use this
@@ -12,25 +19,17 @@ import pathLib from 'node:path'
 import urlLib from 'node:url'
 import {expandGlobSync} from 'jsr:@std/fs/expand-glob'
 import {TextLineStream} from 'jsr:@std/streams'
-import {debounce} from "jsr:@std/async/debounce"
 
 import {
 	undef, defined, notdefined,
 	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
 	isArray, isArrayOfStrings, isHash, isObject, isRegExp,
+	integer, hash, voidFunc, optionspec,
 	} from './datatypes.ts'
-import type {hash, optionspec} from './datatypes.ts'
-
 import {
-	assert, croak, OL, getOptions, removeEmptyKeys,
+	assert, croak, OL, getOptions, removeEmptyKeys, pass,
+	spaces, sinceLoadStr, sleep,
 	} from './llutils.ts'
-
-export lStatFields: string[] := [
-	'dev','ino','mode','nlink','uid','gid','rdev',
-	'size','blksize','blocks',
-	'atimeMs','mtimeMs','ctimeMs','birthtimeMs',
-	'atime','mtime','ctime','birthtime',
-	]
 
 Deno := globalThis.Deno
 export type pathType =
@@ -43,7 +42,7 @@ encoder := new TextEncoder()
 # ---------------------------------------------------------------------------
 
 /**
- * returns a boolean indicating of the given path exists
+ * returns a boolean indicating if the given path exists
  * and is a file
  */
 
@@ -61,6 +60,30 @@ export isFile := (path: string): boolean =>
 export isDir := (path: string): boolean =>
 
 	return existsSync(path) && statSync(path).isDirectory()
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns one of:
+ *    'missing'  - does not exist
+ *    'dir'      - is a directory
+ *    'file'     - is a file
+ *    'symlink'  - is a symlink
+ *    'unknown'  - exists, but not a file, directory or symlink
+ */
+
+export getPathType := (path: string): pathType =>
+
+	assert isString(path), "not a string: #{OL(path)}"
+	if not existsSync path
+		return 'missing'
+	h := statSync(path)
+	return (
+		  h.isFile()         ? 'file'
+		: h.isDirectory()    ? 'dir'
+		: h.isSymbolicLink() ? 'symlink'
+		:                      'unknown'
+		)
 
 # ---------------------------------------------------------------------------
 
@@ -94,42 +117,12 @@ export withExt := (path: string, ext: string): string =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * remove a file from the file system, but do nothing
- * if the file does not exist
- */
-
-export rmFile := (path: string): void =>
-
-	if existsSync path
-		Deno.removeSync path
-	return
-
-# ---------------------------------------------------------------------------
-
-/**
- * returns one of:
- *    'missing'  - does not exist
- *    'dir'      - is a directory
- *    'file'     - is a file
- *    'symlink'  - is a symlink
- *    'unknown'  - exists, but not a file, directory or symlink
- */
-
-export getPathType := (path: string): pathType =>
-
-	assert isString(path), "not a string: #{OL(path)}"
-	if not existsSync path
-		return 'missing'
-	h := statSync(path)
-	return (
-		  h.isFile()         ? 'file'
-		: h.isDirectory()    ? 'dir'
-		: h.isSymbolicLink() ? 'symlink'
-		:                      'unknown'
-		)
-
-# ---------------------------------------------------------------------------
+export lStatFields: string[] := [
+	'dev','ino','mode','nlink','uid','gid','rdev',
+	'size','blksize','blocks',
+	'atimeMs','mtimeMs','ctimeMs','birthtimeMs',
+	'atime','mtime','ctime','birthtime',
+	]
 
 /**
  * return statistics for a file or directory
@@ -244,6 +237,7 @@ export allFilesMatching := (
 		followSymlinks
 		canonicalize
 		filter
+		debug
 		} := getOptions hOptions, {
 			root: undef
 			lExclude: ['node_modules/**', '.git/**']
@@ -251,6 +245,7 @@ export allFilesMatching := (
 			followSymlinks: false
 			canonicalize: false
 			filter: undef
+			debug: false
 			}
 
 	hGlobOptions := {
@@ -261,9 +256,15 @@ export allFilesMatching := (
 		canonicalize
 		}
 
+	DBG := (msg: string): void =>
+		if debug
+			console.log msg
+		return
+
 	for h of expandGlobSync(pattern, hGlobOptions)
 		# --- h has keys: path, name, isFile, isDirectory, isSymLink
 
+		DBG "MATCH: #{h.path}"
 		type := (
 			  h.isFile      ? 'file'
 			: h.isDirectory ? 'dir'
@@ -271,8 +272,14 @@ export allFilesMatching := (
 			:                 'unknown'
 			)
 		hFile := parsePath(h.path)
-		if notdefined(filter) || filter(hFile)
+		if notdefined(filter)
+			DBG "   - no filter"
 			yield hFile
+		else if filter(hFile)
+			DBG "   - allowed by filter"
+			yield hFile
+		else
+			DBG "   - excluded by filter"
 	return
 
 # ---------------------------------------------------------------------------
@@ -281,12 +288,9 @@ export allFilesMatching := (
 /**
  * An async iterable - yields every line in the given file
  *
- * Example Usage in *.civet
- *
- *   import {allLinesIn} from './llutils.js'
- *
+ * Usage:
  *   for await line of allLinesIn('src/lib/temp.civet')
- * 	    console.log "LINE: #{line}"
+ * 	  console.log "LINE: #{line}"
  *   console.log "DONE"
  */
 
@@ -303,68 +307,6 @@ export allLinesIn := (
 	for await line of readable
 		yield line
 	return
-
-# ---------------------------------------------------------------------------
-# ASYNC
-
-/**
- * an async function that watches for changes to a file
- * and invokes a callback function
- *
- * Example Usage in *.civet
- *
- *   import {watchFile} from '@jdeighan/utils'
- *
- *   await watchFile 'temp.txt', (kind, path) =>
- *      console.log "#{kind} #{path}"
- */
-
-export watchFile := (
-	path: string,
-	callback: (s: string, t: string) => void
-	) ->
-
-	console.log "WATCHING FILE: #{path}"
-	assert isFile(path), "Not a file: #{path}"
-	func := (evt: Deno.FsEvent) =>
-		{kind, paths} := evt
-		for path of paths
-			callback kind, path
-	dfunc := debounce(func, 200)
-	for await event of Deno.watchFs(path)
-		dfunc event
-	return
-
-# ---------------------------------------------------------------------------
-# ASYNC
-
-/**
- * an async function that watches for file changes inside
- * a directory and invokes a callback function
- *
- * Example Usage in *.civet
- *
- *   import {watchDir} from '@jdeighan/utils'
- *
- *   watchDir Deno.cwd(), (kind, path) =>
- *      console.log "#{kind}: #{path}"
- *   console.log "DONE"
- */
-
-export watchDir := (
-	dirpath: string,
-	callback: (s: string, t: string) => void
-	) ->
-
-	console.log "WATCHING DIR: #{dirpath}"
-	assert isDir(dirpath), "Not a directory: #{dirpath}"
-	func := (evt: Deno.FsEvent) =>
-		{kind, paths} := evt
-		for path of paths
-			callback kind, path
-	dfunc := debounce(func, 200)
-	for await event of Deno.watchFs(dirpath)
-		dfunc event
 
 # ---------------------------------------------------------------------------
 
@@ -408,6 +350,79 @@ export relpath := (lParts...: string[]): string =>
 
 # ---------------------------------------------------------------------------
 
+export type pathDesc = {
+	dir: string
+	root: string
+	lParts: string[]
+	}
+
+/**
+ * returns {dir, root, lParts} where lParts includes the names of
+ * all directories between the root and the file name
+ * relative to the current working directory
+ */
+
+export pathSubDirs = (path: string, hOptions: optionspec={}): pathDesc =>
+
+	{relative} := getOptions hOptions, {
+		relative: false
+		}
+	path = relative ? relpath(path) : mkpath(path)
+	{root, dir} := pathLib.parse(path)
+	return {
+		dir
+		root
+		lParts: dir.slice(root.length).split(/[\\\/]/)
+		}
+
+# ---------------------------------------------------------------------------
+# --- Should be called like: myself(import.meta.url)
+#     returns full path of current file
+
+export myself := (url: string): string =>
+
+	return relpath urlLib.fileURLToPath(url)
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+/**
+ * read a file into a string
+ */
+
+export slurp := (path: string): string =>
+
+	assert isFile(path), "No such file: #{path} (slurp)"
+	data := Deno.readFileSync path
+	return decoder.decode(data).replaceAll('\r', '')
+
+# ---------------------------------------------------------------------------
+
+/**
+ * write a string to a file
+ * will ensure that all necessary directories exist
+ */
+
+export barf := (
+	contents: string,
+	path: string,
+	hOptions: optionspec={}
+	): void =>
+
+	{append} := getOptions hOptions, {
+		append: false
+		}
+	mkDirsForFile(path)
+	data := encoder.encode(contents)
+	if append && isFile(path)
+		appendFileSync path, data
+	else
+		Deno.writeFileSync path, data
+	return
+
+# ---------------------------------------------------------------------------
+
 export newerDestFileExists := (
 	srcPath: string,
 	destPath: string
@@ -419,32 +434,6 @@ export newerDestFileExists := (
 	srcModTime := statSync(srcPath).mtimeMs
 	destModTime := statSync(destPath).mtimeMs
 	return (destModTime > srcModTime)
-
-# ---------------------------------------------------------------------------
-
-/**
- * returns {root, lParts} where lParts includes the names of
- * all directories between the root and the file name
- */
-
-export pathSubDirs = (path: string): {root: string, lParts: string[]} =>
-
-	{root, dir} := pathLib.parse(path)
-	return {
-		root
-		lParts: dir.slice(root.length).split(/[\\\/]/)
-		}
-
-# ---------------------------------------------------------------------------
-
-/**
- * deletes all files and subdirectories in the given directory
- */
-
-export clearDir = (dirPath: string): void =>
-
-	emptyDirSync dirPath
-	return
 
 # ---------------------------------------------------------------------------
 
@@ -465,6 +454,40 @@ export mkDir = (dirPath: string, clear: boolean=false): void =>
 # ---------------------------------------------------------------------------
 
 /**
+ * remove a file from the file system, but do nothing
+ * if the file does not exist
+ */
+
+export rmFile := (path: string): void =>
+
+	if existsSync path
+		Deno.removeSync path
+	return
+
+# ---------------------------------------------------------------------------
+
+/**
+ * remove a directory from the file system, but do nothing
+ * if the directory does not exist
+ * NOTE: You must pass the 'clear' option if the directory
+ *       is not empty
+ */
+
+export rmDir := (path: string, hOptions: optionspec={}): void =>
+
+	{clear} := getOptions hOptions, {
+		clear: false
+		}
+	if existsSync path
+		if clear
+			Deno.removeSync path, {recursive: true}
+		else
+			Deno.removeSync path
+	return
+
+# ---------------------------------------------------------------------------
+
+/**
  * create any missing directories in the given path
  */
 
@@ -475,47 +498,24 @@ export mkDirsForFile = (path: string): void =>
 	for part of lParts
 		dir += "/#{part}"
 		if not isDir(dir)
-			mkDir(dir)
+			mkDir dir
 	return
 
 # ---------------------------------------------------------------------------
 
 /**
- * read a file into a string
+ * deletes all files and subdirectories in the given directory
  */
 
-export slurp := (path: string): string =>
+export clearDir = (dirPath: string): void =>
 
-	assert isFile(path), "No such file: #{path} (slurp)"
-	data := Deno.readFileSync path
-	return decoder.decode(data).replaceAll('\r', '')
-
-# ---------------------------------------------------------------------------
-
-/**
- * write a string to a file
- * will ensure that all necessary directories exist
- */
-
-export barf := (contents: string, path: string): void =>
-
-	mkDirsForFile(path)
-	data := encoder.encode(contents)
-	Deno.writeFileSync(path, data)
+	emptyDirSync dirPath
 	return
-
-# ---------------------------------------------------------------------------
-# --- Should be called like: myself(import.meta.url)
-#     returns full path of current file
-
-export myself := (url: string): string =>
-
-	return normalizePath urlLib.fileURLToPath(url)
 
 # ---------------------------------------------------------------------------
 # --- hOptions gets passed to allFilesMatching()
 
-export deleteFilesMatching := (
+export removeFilesMatching := (
 	pattern: string,
 	hOptions: optionspec={}
 	): void =>
@@ -527,37 +527,207 @@ export deleteFilesMatching := (
 	return
 
 # ---------------------------------------------------------------------------
-# --- if a filter is supplied,
-#     true return = keep, false return = delete
 
-export keepFiles := (
-	root: string,        # --- a directory path
-	lFiles: string[],
-	hOptions: optionspec={}
+export removeFilesExcept := (
+	pattern: string,
+	lKeep: string[],
+	hOptions: optionspec = {}
 	): void =>
 
-	assert isDir(root), "root not a directory: #{OL(root)}"
-	saveDir := Deno.cwd()
-	Deno.chdir root
-
-	{logonly, filter} := getOptions hOptions, {
-		logonly: true
-		filter: undef
+	{debug} := getOptions hOptions, {
+		debug: false
 		}
+	DBG := (msg: string): void =>
+		if debug
+			console.log msg
+		return
 
-	# --- Create an array of normalized paths
-	lNormFiles := lFiles.map((path) => mkpath(path))
+	# --- true return means remove it
+	filter := (hFile: pathInfo): boolean =>
+		{type, relPath} := hFile
+		if (type != 'file')
+			return false
+		return not lKeep.includes(relPath)
 
-	for {relPath} of allFilesMatching('**', {includeDirs: false})
-		normPath := mkpath relPath
-		if lNormFiles.includes normPath
-			continue
-		if defined(filter) && filter(normPath)
-			continue
-		if logonly
-			console.log "WOULD REMOVE: #{OL(relPath)}"
-		else
-			Deno.removeSync relPath
-
-	Deno.chdir saveDir
+	h: optionspec := {filter, debug}
+	for {relPath} of allFilesMatching(pattern, h)
+		DBG "REMOVE FILE #{relPath}"
+		Deno.removeSync relPath
 	return
+
+# ---------------------------------------------------------------------------
+
+export removeDirsExcept := (
+	pattern: string,
+	lKeep: string[],
+	hOptions: optionspec = {}
+	): void =>
+
+	{debug} := getOptions hOptions, {
+		debug: false
+		}
+	DBG := (msg: string): void =>
+		if debug
+			console.log msg
+		return
+
+	# --- true return means remove it
+	filter := (hFile: pathInfo): boolean =>
+		{type, relPath} := hFile
+		if (type != 'dir')
+			return false
+		return not lKeep.includes(relPath)
+
+	h: optionspec := {filter, includeDirs: true}
+	pathFunc := (h: hash): string => h.path
+	lDirs := Array.from(allFilesMatching(pattern, h)).map(pathFunc)
+
+	# --- We need to remove empty subdirectories before
+	#     removing a directory, so we build a list and
+	#     remove longer paths before shorter paths
+
+	compareFunc := (a: string, b: string): number => (b.length - a.length)
+	for path of lDirs.sort(compareFunc)
+		DBG "REMOVE DIR #{path}"
+		Deno.removeSync path
+	return
+
+# ---------------------------------------------------------------------------
+
+export type fsChangeType = {
+	kind: string
+	path: string
+	ms?: number
+	}
+
+/**
+ * type fsCallbackFunc - a function taking (type, path) and optionally
+ * returns a function reference to be called on file changes
+ */
+
+export type fsCallbackFunc = (change: fsChangeType) => void
+
+/**
+ * class FileEventHandler
+ *    handles file changed events when .handle({kind, path}) is called
+ *    callback is a function, debounced by 200 ms
+ *       that takes (type, path) and returns a voidFunc
+ *       which will be called if the callback returns a function reference
+ * [unit tests](../test/fs.test.civet#:~:text=%23%20%2D%2D%2D%20class%20FileEventHandler)
+ */
+
+export class FileEventHandler
+
+	callback: fsCallbackFunc?
+	lChanges: fsChangeType[] := []
+	hHandlers: hash = {}   # --- path => event type => debounced handler
+	onStop: () => void = pass
+	ms: number
+	debug: boolean
+
+	constructor(
+			@callback: fsCallbackFunc?=undef,
+			hOptions: optionspec={}
+			)
+
+		{
+			debug: @debug,
+			onStop: @onStop
+			ms: @ms
+			} := getOptions hOptions, {
+				debug: false
+				onStop: pass
+				ms: 200
+				}
+		@DBG "FileEventHandler constructor() called"
+
+	# --- Calls a function of type () => void
+	#     but is debounced by @ms ms
+
+	handle(change: fsChangeType): void
+		{kind, path} := change
+		@DBG "HANDLE: [#{sinceLoadStr()}] #{kind} #{path}"
+		if notdefined(@hHandlers?.[path])
+			@DBG "Create handler for '#{path}'", 1
+			@hHandlers[path] = {}
+
+		if notdefined(@hHandlers?.[path]?.[kind])
+			@DBG "Create handler for #{kind} #{path}", 1
+			func := () =>
+				if @callback
+					@callback({kind, path})
+				@lChanges.push {kind, path}
+				@hHandlers[path][kind] = undef
+				return undef
+			@hHandlers[path][kind] = debounce(func, @ms)
+		@DBG "Call debounced handler for #{kind} #{path}"
+		@hHandlers[path][kind]()
+		return
+
+	getChangeList(): fsChangeType[]
+		await sleep @ms
+		return @lChanges
+
+	private DBG(msg: string, level: number=0): void
+		if @debug
+			console.log "   #{spaces(3*level)}- #{msg}"
+		return
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export type watcherCallbackFunc = (change: fsChangeType) => boolean
+
+/**
+ * a function that watches for changes one or more files or directories
+ *    and calls a callback function for each change.
+ * If the callback returns true, watching is halted
+ *
+ * Usage:
+ *   handler := (kind, path) => console.log path
+ *   await watchFile 'temp.txt', handler
+ *   await watchFile 'src/lib',  handler
+ *   await watchFile ['temp.txt', 'src/lib'], handler
+ */
+
+export watchFile := (
+	path: string | string[],
+	watcherCB: watcherCallbackFunc,
+	hOptions: optionspec={}
+	): void ->
+
+	{debug, ms} := getOptions hOptions, {
+		debug: false
+		ms: 200
+		}
+	DBG := (msg: string): void =>
+		if debug
+			console.log msg
+		return
+
+	DBG "WATCH: #{JSON.stringify(path)}"
+
+	watcher := Deno.watchFs(path)
+
+	let doStop: boolean = false
+
+	fsCallback: fsCallbackFunc := ({kind, path}) =>
+		result := watcherCB({kind, path})
+		DBG "FCB: result = #{result}"
+		if result
+			watcher.close()
+		return
+
+	handler := new FileEventHandler(fsCallback, {debug, ms})
+
+	for await {kind, paths} of watcher
+		DBG "watcher event fired"
+		if doStop
+			DBG "doStop = #{doStop}, Closing watcher"
+			break
+#		{kind, paths} := evt
+		for path of paths
+			# --- fsCallback will be (eventually) called
+			handler.handle({kind, path})
+
+export watchFiles := watchFile

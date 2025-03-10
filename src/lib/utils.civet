@@ -5,19 +5,20 @@ import {
 	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
 	isArray, isArrayOfStrings, isHash, isObject, isRegExp,
 	isEmpty, nonEmpty,
+	hash, optionspec,
 	} from './datatypes.ts'
-import type {hash, optionspec} from './datatypes.ts'
 import {
 	pass, OL, ML, getOptions, croak, assert, strToHash,
 	removeEmptyKeys, keys, hasKey, hasKeys, merge,
+	spaces, tabs,
 	} from './llutils.ts'
 import {
 	isFile, isDir, fileExt, withExt,
 	rmFile, getPathType, getStats, parsePath,
-	allFilesMatching, allLinesIn, watchFile, watchDir,
+	allFilesMatching, allLinesIn, watchFile, watchFiles,
 	normalizePath, mkpath, relpath, newerDestFileExists,
 	pathSubDirs, clearDir, mkDir, mkDirsForFile,
-	slurp, barf, myself, deleteFilesMatching,
+	slurp, barf, myself, removeFilesMatching,
 	} from './fs.ts'
 import {
 	setLogLevel, pushLogLevel, popLogLevel,
@@ -27,14 +28,10 @@ import {
 	} from './logger.ts'
 import {
 	execCmd, execCmdSync, cmdSucceeds,
-	} from './exec-utils.ts'
-import type {
 	execCmdResult,
 	} from './exec-utils.ts'
 import {
 	hCompilerConfig, findSourceFile, compileFile, isDirSpec,
-	} from './compile-config.ts'
-import type {
 	compileResult,
 	} from './compile-config.ts'
 
@@ -46,15 +43,16 @@ export {
 	DBG, LOG, WARN, ERR,
 	OL, ML, croak, assert, getOptions,
 	removeEmptyKeys, keys, hasKey, hasKeys, merge,
+	spaces, tabs,
 	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
 	isArray, isArrayOfStrings, isHash, isObject, isRegExp,
 	isEmpty, nonEmpty,
 	isFile, isDir, fileExt, withExt,
 	rmFile, getPathType, getStats, parsePath,
-	allFilesMatching, allLinesIn, watchFile, watchDir,
+	allFilesMatching, allLinesIn, watchFile, watchFiles,
 	normalizePath, mkpath, relpath, newerDestFileExists,
 	pathSubDirs, clearDir, mkDir, mkDirsForFile,
-	slurp, barf, myself, deleteFilesMatching,
+	slurp, barf, myself, removeFilesMatching,
 	compileFile, execCmd, execCmdSync, cmdSucceeds,
 	isDirSpec,
 	}
@@ -124,28 +122,6 @@ export range := (n: number): Generator<number, void, unknown> ->
 export normalizeStr := (x: any): string =>
 
 	return x.toString().replaceAll('\r', '').trim()
-
-# ---------------------------------------------------------------------------
-
-/**
- * returns a string consisting of the given number
- * of space characters
- */
-
-export spaces = (n: number): string =>
-
-	return " ".repeat(n)
-
-# ---------------------------------------------------------------------------
-
-/**
- * returns a string consisting of the given number
- * of TAB characters
- */
-
-export tabs = (n: number): string =>
-
-	return "\t".repeat(n)
 
 # ---------------------------------------------------------------------------
 

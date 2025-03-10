@@ -1,17 +1,7 @@
 to do
 
-Try to get TypeScript to analyze these correctly:
-
-defined()
-notdefined()
-assert()
-croak()
-
-For some reason, Object.assign isn't working in datatypes.test.ts!!!!!!!!
-
-Add type annotations everywhere
-Continue working with src/lib/fs.civet
-
+Adding the watchFile() test to fs.test.civet causes
+the unit tests to fail!!!
 
 1. force compilation, then check last modify time
 	- test/llutils
@@ -21,7 +11,7 @@ Continue working with src/lib/fs.civet
 
 3. compile test/llutils without post processing
 
-Document all libraries (unit-test has docs)
+Document all libraries
 
 test commands temp, utest
 

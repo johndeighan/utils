@@ -5,6 +5,7 @@ import {
 	} from 'npm:source-map-support'
 import {sprintf} from '@std/fmt/printf'
 
+import {hash, optionspec} from './datatypes.ts'
 import {
 	undef, defined, notdefined, isEmpty, nonEmpty,
 	assert, croak, hasKey, OL, ML, getOptions,
@@ -12,7 +13,6 @@ import {
 	isFile, mkpath, fileExt, withExt, normalizePath, relpath,
 	DBG, LOG, WARN, ERR, INDENT, UNDENT,
 	} from './utils.ts'
-import type {hash, optionspec} from './datatypes.ts'
 
 /**
  * @module v8-stack - runtime stack utilities
@@ -221,7 +221,7 @@ export getMyCaller := (): stackFrame? =>
 			return undef
 	catch err
 		if (err instanceof Error)
-			console.log "ERROR in getV8Stack(): #{err.message}"
+			LOG "ERROR in getV8Stack(): #{err.message}"
 		return undef
 
 # ---------------------------------------------------------------------------
@@ -247,5 +247,5 @@ export getMyOutsideCaller := (): stackFrame? =>
 		return undef
 	catch err
 		if (err instanceof Error)
-			console.log "ERROR in getV8Stack(): #{err.message}"
+			LOG "ERROR in getV8Stack(): #{err.message}"
 		return undef

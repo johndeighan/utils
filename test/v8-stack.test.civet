@@ -7,11 +7,11 @@ import {
 import {
 	getV8Stack, getMyCaller,
 	getMyOutsideCaller, getV8StackStr,
+	stackFrame,
 	} from '@jdeighan/utils/v8-stack'
 import {
 	equal, like,
 	} from '@jdeighan/utils/unit-test'
-import type {stackFrame} from '@jdeighan/utils/v8-stack'
 
 import {getBoth} from './v8-stack/v8-module.ts'
 

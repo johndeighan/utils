@@ -46,7 +46,7 @@ export hDefaultConfig: configHash := {
 		libDir:
 			dir: 'src/lib'
 			postProcessor: (stub: string): void =>
-				h := findSourceFile('test', stub, 'test')
+				h := findSourceFile('testDir', stub, 'test')
 				if notdefined(h)
 					return
 				{path} := h

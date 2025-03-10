@@ -40,7 +40,6 @@ export getTestName := (): string =>
 
 	pushLogLevel 'silent'
 	frame := getMyOutsideCaller()
-	console.dir frame      # DEBUG
 	line := (frame == undef) ? 0 : frame.line
 	popLogLevel()
 	return "line #{line}"
@@ -254,18 +253,7 @@ export listLike := (value: hash[], expected: hash[]): void =>
 	Deno.test "#{label}/len", () => assertEquals len, expected.length
 	for i of [0..len-1]
 		# @ts-ignore
-		Deno.test "#{label}/i", () => assertObjectMatch value[i], expected[i]
-	return
-
-# ---------------------------------------------------------------------------
-
-export unlike := (value: any, expected: any) =>
-
-	assert isHash(value), "unlike(): value not a hash"
-	assert isHash(expected), "unlike(): expected not a hash"
-	label := getTestName()
-	for key of Object.keys(expected)
-		Deno.test label, () => assert (value[key] == undefined)
+		Deno.test "#{label}/#{i}", () => assertObjectMatch value[i], expected[i]
 	return
 
 # ---------------------------------------------------------------------------

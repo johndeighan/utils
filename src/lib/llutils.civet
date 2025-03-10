@@ -1,11 +1,27 @@
 # llutils.civet
 
+import {sprintf} from "https://deno.land/std/fmt/printf.ts"
+
 import {
 	undef, defined, notdefined,
 	isHash, isArray, isNonEmptyString,
 	isEmpty, nonEmpty, isString, isObject,
-	hash, optionspec,
+	integer, hash, voidFunc, optionspec,
 	} from './datatypes.ts'
+
+llutilsLoadTime: integer := Date.now()
+
+# ---------------------------------------------------------------------------
+
+export sinceLoad := () =>
+
+	return Date.now() - llutilsLoadTime
+
+# ---------------------------------------------------------------------------
+
+export sinceLoadStr := () =>
+
+	return sprintf("%5d", sinceLoad())
 
 # ---------------------------------------------------------------------------
 
@@ -223,3 +239,24 @@ export sleep := (sec: number): void =>
 	await new Promise((r) => setTimeout(r, 1000 * sec))
 	return
 
+# ---------------------------------------------------------------------------
+
+/**
+ * returns a string consisting of the given number
+ * of space characters
+ */
+
+export spaces = (n: number): string =>
+
+	return " ".repeat(n)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns a string consisting of the given number
+ * of TAB characters
+ */
+
+export tabs = (n: number): string =>
+
+	return "\t".repeat(n)

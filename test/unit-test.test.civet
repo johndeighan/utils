@@ -1,7 +1,9 @@
 # unit-test.test.civet
 
-import * as lib from '@jdeighan/utils/unit-test'
-Object.assign(globalThis, lib)
+import {
+	equal, truthy, falsy, fails, succeeds, like, listLike,
+	matches, includes, includesAll,
+	} from '../src/lib/unit-test.ts'
 
 # ---------------------------------------------------------------------------
 
@@ -25,8 +27,6 @@ succeeds () => return 'me'
 
 like     {a:1, b:2, c:3}, {a:1, c:3}
 listLike [{a:1, b:2, c:3}], [{a:1, c:3}]
-
-unlike   {a:1, b:2}, {c: undefined, c: undefined}
 
 matches  "this is a long sentence", "long"
 matches  "another 42 lines", /\d+/
