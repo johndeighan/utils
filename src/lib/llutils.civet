@@ -1,6 +1,6 @@
 # llutils.civet
 
-import {sprintf} from "https://deno.land/std/fmt/printf.ts"
+import {sprintf} from "@std/fmt/printf"
 
 import {
 	undef, defined, notdefined,
@@ -178,7 +178,7 @@ export removeEmptyKeys := (h: hash): hash =>
  * return an array of all own keys in a hash
  */
 
-export keys := (obj: hash, hOptions: optionspec={}) =>
+export keys := (obj: hash, hOptions: optionspec={}): string[] =>
 
 	h := getOptions hOptions, {
 		except: []
@@ -201,7 +201,7 @@ export keys := (obj: hash, hOptions: optionspec={}) =>
  * a hash that includes all the keys provided
  */
 
-export hasKey := (h: hash, ...lKeys: string[]) =>
+export hasKey := (h: hash, ...lKeys: string[]): boolean =>
 
 	if notdefined(h)
 		return false

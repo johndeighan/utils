@@ -307,7 +307,7 @@ export includesAll := (value: any, expected: any) =>
 
 # ---------------------------------------------------------------------------
 
-export llthrows := (func: () => any) =>
+export llthrows := (func: () => any): boolean =>
 
 	try
 		func()

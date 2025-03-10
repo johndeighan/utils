@@ -4,6 +4,9 @@
 	"version": "1.0.0",
 	"license": "MIT",
 	"exports": {
+		".": "./src/lib/utils.ts",
+		"./v8-stack": "./src/lib/v8-stack.ts",
+		"./unit-test": "./src/lib/unit-test.ts",
 		},
 
 	"tasks": {
@@ -176,6 +179,7 @@
 		"@std/async/debounce": "jsr:@std/async@1.0.9/debounce",
 		"@std/cli": "jsr:@std/cli@^1.0.9",
 		"@std/fmt": "jsr:@std/fmt@^1.0.5",
+		"@std/fmt/colors": "jsr:@std/fmt@^1.0.5/colors",
 		"@std/fmt/printf": "jsr:@std/fmt@^1.0.5/printf",
 		"@std/fs": "jsr:@std/fs@^1.0.6",
 		"@std/fs/expand-glob": "jsr:@std/fs@^1.0.6/expand-glob",

@@ -1,11 +1,11 @@
 # logger.civet
 
-import {existsSync} from "https://deno.land/std/fs/mod.ts"
-import {sprintf} from "https://deno.land/std/fmt/printf.ts"
+import {existsSync} from "@std/fs"
+import {sprintf} from "@std/fmt/printf"
 import {
 	ConsoleHandler, FileHandler, setup, getLogger,
 	LogRecord,
-	} from "https://deno.land/std/log/mod.ts"
+	} from "@std/log"
 
 import {
 	assert, croak, pass,

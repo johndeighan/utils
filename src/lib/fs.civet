@@ -1,11 +1,11 @@
 # fs.civet
 
-import {sprintf} from "https://deno.land/std/fmt/printf.ts"
+import {sprintf} from "@std/fmt/printf"
 import {debounce} from '@std/async/debounce'
 
 import {
 	existsSync, emptyDirSync, ensureDirSync,
-	} from 'jsr:@std/fs'
+	} from '@std/fs'
 import {
 	appendFileSync,
 	} from 'node:fs'
@@ -17,8 +17,8 @@ import {statSync} from 'node:fs'
 
 import pathLib from 'node:path'
 import urlLib from 'node:url'
-import {expandGlobSync} from 'jsr:@std/fs/expand-glob'
-import {TextLineStream} from 'jsr:@std/streams'
+import {expandGlobSync} from '@std/fs/expand-glob'
+import {TextLineStream} from '@std/streams'
 
 import {
 	undef, defined, notdefined,
