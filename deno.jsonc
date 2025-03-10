@@ -12,9 +12,8 @@
 	"tasks": {
 		"cleanup": "
 			   civet --inline-map -o .ts -c src/bin/cleanup.civet
-			&& deno compile -A -o exe/cleanup.exe src/bin/cleanup.ts
-			&& cp exe/cleanup.exe ../.deno/bin/cleanup.exe
-			&& exe/cleanup
+			&& deno install -gA src/bin/cleanup.ts
+			&& cleanup
 			",
 
 		"utest:fs": "
@@ -135,22 +134,19 @@
 		"build:compiler": "
 			   civet --inline-map -o .ts -c src/bin/compile.civet
 			&& deno check src/bin/compile.ts
-			&& deno compile -A -o exe/compile.exe src/bin/compile.ts
-			&& cp exe/compile.exe ../.deno/bin/compile.exe
+			&& deno install -gA src/bin/compile.ts
 			",
 
 		"build:runtemp": "
 			   civet --inline-map -o .ts -c src/bin/runtemp.civet
 			&& deno check src/bin/runtemp.ts
-			&& deno compile -A -o exe/runtemp.exe src/bin/runtemp.ts
-			&& cp exe/runtemp.exe ../.deno/bin/runtemp.exe
+			&& deno install -gA src/bin/runtemp.ts
 			",
 
 		"build:utest": "
 			   civet --inline-map -o .ts -c src/bin/utest.civet
 			&& deno check src/bin/utest.ts
-			&& deno compile -A -o exe/utest.exe src/bin/utest.ts
-			&& cp exe/utest.exe ../.deno/bin/utest.exe
+			&& deno install -gA src/bin/utest.ts
 			",
 
 		"bootstrap":      "
