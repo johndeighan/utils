@@ -18,6 +18,10 @@ import {
 	mkpath, relpath, isDir, isFile, mkDir,
 	} from './fs.ts'
 
+/**
+ * @module logger - logging utilities
+ */
+
 Deno := globalThis.Deno
 export logFileName : string := "./logs/logs.txt"
 export sepdash : string := '-'.repeat(32)

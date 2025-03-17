@@ -16,6 +16,10 @@ import {
 	DBG, LOG, WARN, ERR,
 	} from './logger.ts'
 
+/**
+ * @module exec-utils - utilities for executing external code
+ */
+
 textDecoder := new TextDecoder()
 
 # ---------------------------------------------------------------------------

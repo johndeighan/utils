@@ -1,6 +1,10 @@
 # datatypes.civet
 
 /**
+ * @module datatypes - TypeScript datatype checking
+ */
+
+/**
  * An alias for TypeScript type 'object' with string keys
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,hash)
  */

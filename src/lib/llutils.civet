@@ -9,6 +9,10 @@ import {
 	integer, hash, voidFunc, optionspec,
 	} from './datatypes.ts'
 
+/**
+ * @module llutils - low level utilities
+ */
+
 export llutilsLoadTime: integer := Date.now()
 
 # ---------------------------------------------------------------------------

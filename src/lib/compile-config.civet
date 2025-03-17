@@ -20,6 +20,10 @@ import {
 	execCmd, execCmdSync, cmdSucceeds,
 	} from './exec-utils.ts'
 
+/**
+ * @module compile-config - configuring the compiler
+ */
+
 # ---------------------------------------------------------------------------
 
 export type configHash = {

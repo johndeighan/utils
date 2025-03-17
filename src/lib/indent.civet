@@ -11,6 +11,10 @@ import {
 	} from './llutils.ts'
 import {DBG} from './logger.ts'
 
+/**
+ * @module indent - indent level utilities
+ */
+
 export let oneIndent: string? = undef
 
 # ---------------------------------------------------------------------------

@@ -30,6 +30,10 @@ import {
 	spaces, sinceLoadStr, sleep,
 	} from './llutils.ts'
 
+/**
+ * @module fs - file system utilities
+ */
+
 Deno := globalThis.Deno
 export type pathType =
 	'missing' | 'file' | 'dir' | 'symlink' | 'unknown'
