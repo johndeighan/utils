@@ -2,11 +2,8 @@
 
 import {
 	undef, defined, notdefined,
-	isArray,
-	} from '../src/lib/datatypes.ts'
-import {
-	relpath,
-	} from '../src/lib/fs.ts'
+	isArray, relpath, getCmdArgs, DBG,
+	} from '../src/lib/utils.ts'
 import {
 	isConfigHash, installDenoExe, isStub, isDirSpec,
 	findSourceFile,
@@ -16,11 +13,14 @@ import {
 	} from '../src/lib/compile-config.ts'
 import {
 	equal, like, succeeds, fails, truthy, falsy,
-	} from '@jdeighan/utils/unit-test'
+	} from '../src/lib/unit-test.ts'
+
+hArgs := getCmdArgs()
 
 # ---------------------------------------------------------------------------
 
-# --- isConfigHash()
+DBG "isConfigHash()"
+
 truthy isConfigHash({
 	hCompilers: {
 		'.dot': {
@@ -49,28 +49,33 @@ truthy isConfigHash({
 truthy isConfigHash(hCompilerConfig)
 truthy isConfigHash(hDefaultConfig)
 
-# --- installDenoExe()
+DBG "installDenoExe()"
+
 #     No unit test yet
 
-# --- isStub()
+DBG "isStub()"
+
 truthy isStub('abc')
 falsy  isStub('.js')
 falsy  isStub('abc/deno')
 falsy  isStub('abc\\deno')
 
-# --- isDirSpec()
+DBG "isDirSpec()"
+
 truthy isDirSpec('testDir')
 truthy isDirSpec('libDir')
 truthy isDirSpec('binDir')
 falsy  isDirSpec('abc')
 
-# --- findSourceFile()
+DBG "findSourceFile()"
+
 hInfo := findSourceFile('libDir', 'llutils')
 truthy defined(hInfo)
 if (hInfo != undef)
 	equal relpath(hInfo.path), 'src/lib/llutils.civet'
 
-# --- isFileSpec()
+DBG "isFileSpec()"
+
 truthy isFileSpec(['abc', 'stub'])
 falsy  isFileSpec(undef)
 falsy  isFileSpec(42)
@@ -78,7 +83,8 @@ falsy  isFileSpec('abc')
 falsy  isFileSpec(['abc'])
 falsy  isFileSpec(['abc', 'def', 'ghi'])
 
-# --- getSrcInfo()
+DBG "getSrcInfo()"
+
 like getSrcInfo(['libDir', 'llutils']), {
 	relPath: 'src/lib/llutils.civet'
 	dirspec: 'libDir'
@@ -95,7 +101,8 @@ like getSrcInfo('src/lib/llutils.civet'), {
 	ext: '.civet'
 	}
 
-# --- getCompiler()
+DBG "getCompiler()"
+
 (() =>
 	lInfo := getCompiler('.civet')
 	truthy defined(lInfo)
@@ -103,10 +110,12 @@ like getSrcInfo('src/lib/llutils.civet'), {
 	equal lInfo.length, 2
 	)()
 
-# --- compileFile()
+DBG "compileFile()"
+
 #     no unit tests yet
 
-# --- userConfigPath()
+DBG "userConfigPath()"
+
 (() =>
 	dir := Deno.cwd().replaceAll('\\','/')
 	equal userConfigPath, "#{dir}/compile.config.ts"

@@ -3,13 +3,13 @@
 import {
 	assert, assertEquals, assertNotEquals, assertObjectMatch,
 	assertStringIncludes, assertMatch, assertArrayIncludes,
-	} from '@std/assert'
+	} from 'jsr:@std/assert'
 
 import {
 	undef, defined, notdefined, isArray, isHash, isString, hash,
 	} from './datatypes.ts'
 import {
-	pushLogLevel, popLogLevel,
+	pushLogLevel, popLogLevel, DBG,
 	} from './logger.ts'
 import {getMyOutsideCaller} from './v8-stack.ts'
 
@@ -63,7 +63,9 @@ export getTestName := (): string =>
 
 export equal := (value: any, expected: any) : void =>
 
-	Deno.test getTestName(), () => assertEquals(value, expected)
+	name := getTestName()
+	DBG "equal ?, #{JSON.stringify(expected)} (#{name})"
+	Deno.test name, () => assertEquals(value, expected)
 	return
 
 # ---------------------------------------------------------------------------
@@ -84,7 +86,9 @@ export equal := (value: any, expected: any) : void =>
 
 export truthy := (value: any): void =>
 
-	Deno.test getTestName(), () => assert value
+	name := getTestName()
+	DBG "truthy #{JSON.stringify(value)} (#{name})"
+	Deno.test name, () => assert value
 	return
 
 # ---------------------------------------------------------------------------
@@ -105,7 +109,9 @@ export truthy := (value: any): void =>
 
 export falsy := (value: any): void =>
 
-	Deno.test getTestName(), () => assert (not value)
+	name := getTestName()
+	DBG "falsy #{JSON.stringify(value)} (#{name})"
+	Deno.test name, () => assert (not value)
 	return
 
 # ---------------------------------------------------------------------------
@@ -128,7 +134,9 @@ export fails := (func: () => void): void =>
 
 	assert (typeof func == 'function'), "test fails() passed non-function"
 	pushLogLevel 'silent'
-	Deno.test getTestName(), () => assert(llthrows(func))
+	name := getTestName()
+	DBG "fails <func> (#{name})"
+	Deno.test name, () => assert(llthrows(func))
 	popLogLevel()
 	return
 
@@ -152,7 +160,9 @@ export fails := (func: () => void): void =>
 export succeeds := (func: () => void): void =>
 
 	assert (typeof func == 'function'), "test succeeds() passed non-function"
-	Deno.test getTestName(), () => assert not llthrows(func)
+	name := getTestName()
+	DBG "succeeds <func> (#{name})"
+	Deno.test name, () => assert not llthrows(func)
 	return
 
 # ---------------------------------------------------------------------------
@@ -182,12 +192,14 @@ export succeeds := (func: () => void): void =>
 export matches := (value: any, expected: any) =>
 
 	assert isString(value), "Not a string: #{value}"
+	name := getTestName()
+	DBG "matches ?, #{JSON.stringify(expected)} (#{name})"
 	if isString(expected)
-		Deno.test getTestName(), () => assertStringIncludes value, expected
+		Deno.test name, () => assertStringIncludes value, expected
 	else if (expected instanceof RegExp)
-		Deno.test getTestName(), () => assertMatch value, expected
+		Deno.test name, () => assertMatch value, expected
 	else
-		Deno.test getTestName(), () => assert false
+		Deno.test name, () => assert false
 	return
 
 # ---------------------------------------------------------------------------
@@ -212,7 +224,12 @@ export matches := (value: any, expected: any) =>
 export like := (value: hash?, expected: hash): void =>
 
 	# @ts-ignore
-	Deno.test getTestName(), () => assertObjectMatch value, expected
+	name := getTestName()
+	DBG "like ?, #{JSON.stringify(expected)} (#{name})"
+	if notdefined(value)
+		Deno.test name, () => assertEquals value, undef
+	else
+		Deno.test name, () => assertObjectMatch value, expected
 	return
 
 # ---------------------------------------------------------------------------
@@ -247,13 +264,14 @@ export like := (value: hash?, expected: hash): void =>
 
 export listLike := (value: hash[], expected: hash[]): void =>
 
-	label := getTestName()
+	name := getTestName()
+	DBG "listLike ?, #{JSON.stringify(expected)} (#{name})"
 
 	len := value.length
-	Deno.test "#{label}/len", () => assertEquals len, expected.length
+	Deno.test "#{name}/len", () => assertEquals len, expected.length
 	for i of [0..len-1]
 		# @ts-ignore
-		Deno.test "#{label}/#{i}", () => assertObjectMatch value[i], expected[i]
+		Deno.test "#{name}/#{i}", () => assertObjectMatch value[i], expected[i]
 	return
 
 # ---------------------------------------------------------------------------
@@ -277,7 +295,9 @@ export listLike := (value: hash[], expected: hash[]): void =>
 export includes := (value: any, expected: any) =>
 
 	assert Array.isArray(value), "not an array: #{value}"
-	Deno.test getTestName(), () => assertArrayIncludes(value, [expected])
+	name := getTestName()
+	DBG "includes ?, #{JSON.stringify(expected)} (#{name})"
+	Deno.test name, () => assertArrayIncludes(value, [expected])
 	return
 
 # ---------------------------------------------------------------------------
@@ -302,7 +322,9 @@ export includesAll := (value: any, expected: any) =>
 
 	assert Array.isArray(value), "not an array: #{value}"
 	assert Array.isArray(expected), "not an array: #{expected}"
-	Deno.test getTestName(), () => assertArrayIncludes(value, expected)
+	name := getTestName()
+	DBG "includesAll ?, #{JSON.stringify(expected)} (#{name})"
+	Deno.test name, () => assertArrayIncludes(value, expected)
 	return
 
 # ---------------------------------------------------------------------------

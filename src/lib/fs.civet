@@ -1,11 +1,10 @@
 # fs.civet
 
-import {sprintf} from "@std/fmt/printf"
-import {debounce} from '@std/async/debounce'
-
+import {sprintf} from "jsr:@std/fmt/printf"
+import {debounce} from 'jsr:@std/async/debounce'
 import {
 	existsSync, emptyDirSync, ensureDirSync,
-	} from '@std/fs'
+	} from 'jsr:@std/fs'
 import {
 	appendFileSync,
 	} from 'node:fs'
@@ -17,8 +16,8 @@ import {statSync} from 'node:fs'
 
 import pathLib from 'node:path'
 import urlLib from 'node:url'
-import {expandGlobSync} from '@std/fs/expand-glob'
-import {TextLineStream} from '@std/streams'
+import {expandGlobSync} from 'jsr:@std/fs/expand-glob'
+import {TextLineStream} from 'jsr:@std/streams'
 
 import {
 	undef, defined, notdefined,
@@ -665,7 +664,7 @@ export class FileEventHandler
 		return
 
 	# ASYNC!
-	getChangeList(): fsChangeType[]
+	getChangeList()
 		await sleep @ms
 		return @lChanges
 

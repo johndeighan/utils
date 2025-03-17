@@ -1,6 +1,6 @@
 # llutils.civet
 
-import {sprintf} from "@std/fmt/printf"
+import {sprintf} from "jsr:@std/fmt/printf"
 
 import {
 	undef, defined, notdefined,
@@ -9,19 +9,19 @@ import {
 	integer, hash, voidFunc, optionspec,
 	} from './datatypes.ts'
 
-llutilsLoadTime: integer := Date.now()
+export llutilsLoadTime: integer := Date.now()
 
 # ---------------------------------------------------------------------------
 
-export sinceLoad := () =>
+export sinceLoad := (datetime: integer=Date.now()) =>
 
-	return Date.now() - llutilsLoadTime
+	return (datetime - llutilsLoadTime)
 
 # ---------------------------------------------------------------------------
 
-export sinceLoadStr := () =>
+export sinceLoadStr := (datetime: integer?=undef) =>
 
-	return sprintf("%5d", sinceLoad())
+	return sprintf("%6d", sinceLoad(datetime))
 
 # ---------------------------------------------------------------------------
 
@@ -40,7 +40,7 @@ export croak := (msg: string): never =>
  * thrown with the given `msg`
  */
 
-export assert := (cond: boolean, msg: string): void =>
+export assert := (cond: boolean, msg: string="An error occurred"): void =>
 
 	if !cond
 		croak msg
@@ -49,10 +49,47 @@ export assert := (cond: boolean, msg: string): void =>
 # ---------------------------------------------------------------------------
 
 /**
+ * Asserts that `cond` is true. If it isn't, an exception is
+ * thrown with the given `msg`
+ */
+
+export throwsError := (func: voidFunc, msg: string="Unexpected success"): void =>
+
+	try
+		func()
+		throw new Error(msg)
+	catch err
+		return    # ignore error - it was expected
+
+# ---------------------------------------------------------------------------
+
+/**
  * Calling pass() does nothing
  */
 
 export pass = (): void =>    # do nothing
+
+# ---------------------------------------------------------------------------
+
+export deeplyEquals := (a: any, b: any): boolean =>
+
+	if (a == b)
+		return true
+
+	if (typeof a != 'object') || (a == null) || (typeof b != 'object') || (b == null)
+		return false
+
+	keysA := Object.keys(a)
+	keysB := Object.keys(b)
+
+	if (keysA.length != keysB.length)
+		return false
+
+	for (key of keysA)
+		if not b.hasOwnProperty(key) || not deeplyEquals(a[key], b[key])
+			return false
+	return true
+
 
 # ---------------------------------------------------------------------------
 
@@ -246,7 +283,7 @@ export sleep := (sec: number): void =>
  * of space characters
  */
 
-export spaces = (n: number): string =>
+export spaces := (n: number): string =>
 
 	return " ".repeat(n)
 
@@ -257,6 +294,161 @@ export spaces = (n: number): string =>
  * of TAB characters
  */
 
-export tabs = (n: number): string =>
+export tabs := (n: number): string =>
 
 	return "\t".repeat(n)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * rtrim - strip trailing whitespace
+ */
+
+export rtrim := (line: string): string =>
+
+	assert isString(line), "not a string: #{typeof line}"
+	lMatches := line.match(/^(.*?)\s+$/)
+	return (lMatches == null) ? line : lMatches[1]
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Count the number of a specific character in a string
+ */
+
+export countChars = (str: string, ch: string): number =>
+
+	let count = 0
+	let pos = -1
+	while (pos = str.indexOf(ch, pos+1)) != -1
+		count += 1
+	return count
+
+# ---------------------------------------------------------------------------
+
+/**
+ * convert a multi-line string to an array
+ * of single line strings
+ */
+
+export blockToArray = (block: string): string[] =>
+
+	assert isString(block), "block is: #{OL(block)}"
+	if isEmpty(block)
+		return []
+	else
+		return block.split(/\r?\n/)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * A string or string array
+ */
+
+export type blockSpec = string | string[]
+
+/**
+ * return an array as is, convert a multi-line string
+ * to an array of single line strings
+ */
+
+export toArray = (strOrArray: blockSpec): string[] =>
+
+	if Array.isArray(strOrArray)
+		return strOrArray
+	else
+		return blockToArray(strOrArray)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * convert an array of strings to a single multi-line string
+ */
+
+export arrayToBlock = (lLines: string[]): string =>
+
+	assert isArray(lLines), "lLines is not an array: #{OL(lLines)}"
+	return lLines.filter((line) => defined(line)).join("\n")
+
+# ---------------------------------------------------------------------------
+
+/**
+ * return a string as is, convert an array of strings
+ * to a single multi-line string
+ */
+
+export toBlock = (strOrArray: blockSpec): string =>
+
+	if isString(strOrArray)
+		return strOrArray
+	else
+		return arrayToBlock(strOrArray)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * replace these characters with single unicode chars:
+ *    carriage return
+ *    newline
+ *    TAB
+ *    space
+ * Optionally, add a character to indicate a particular
+ * position in the string
+ * Valid options:
+ *    offset - indicate position of offset
+ *    poschar - char to use to indicate position
+ */
+
+export escapeStr := (
+	str: string?,
+	hReplace: hash = {
+		"\r": '←'
+		"\n": '↓'
+		"\t": '→'
+		" ": '˳'
+		},
+	hOptions: optionspec = {}
+	): string =>
+
+	if notdefined(str)
+		return '<undefined>'
+	{offset, poschar} := getOptions hOptions, {
+		offset: undef
+		poschar: '┊'
+		}
+
+	lParts := []
+	for ch,i of str.split('')
+		if defined(offset) && (i == offset)
+			lParts.push poschar
+		newch := hReplace[ch]
+		if defined(newch)
+			lParts.push newch
+		else
+			lParts.push ch
+	if (offset == str.length)
+		lParts.push poschar
+	return lParts.join('')
+
+# ---------------------------------------------------------------------------
+
+/**
+ * replace these characters with single unicode chars:
+ *    carriage return
+ *    TAB
+ *    space
+ * Optionally, add a character to indicate a particular
+ * position in the string
+ */
+
+export escapeBlock = (
+	block: string,
+	hReplace: hash = {
+		"\r": '←'
+		"\t": '→'
+		" ": '˳'
+		},
+	hOptions: optionspec = {}
+	): string =>
+
+	return escapeStr(block, hReplace, hOptions)

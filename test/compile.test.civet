@@ -1,9 +1,16 @@
 # compile.test.civet
 
-import * as lib from '@jdeighan/utils'
-Object.assign(globalThis, lib)
-import * as lib2 from '@jdeighan/utils/unit-test.js'
-Object.assign(globalThis, lib2)
+import {
+	LOG,
+	} from '../src/lib/logger.ts'
+import {
+	getCmdArgs, execCmdSync, ML,
+	} from '../src/lib/utils.ts'
+import {
+	equal,
+	} from '../src/lib/unit-test.ts'
+
+hArgs := getCmdArgs()
 
 # ---------------------------------------------------------------------------
 

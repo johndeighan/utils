@@ -1,18 +1,19 @@
 # logger.civet
 
-import {existsSync} from "@std/fs"
-import {sprintf} from "@std/fmt/printf"
+import {existsSync} from "jsr:@std/fs"
+import {sprintf} from "jsr:@std/fmt/printf"
 import {
 	ConsoleHandler, FileHandler, setup, getLogger,
 	LogRecord,
-	} from "@std/log"
+	} from "jsr:@std/log"
 
 import {
-	assert, croak, pass,
-	} from './llutils.ts'
-import {
-	undef, defined, hash, isString,
+	undef, defined, notdefined,
+	hash, isString,
 	} from './datatypes.ts'
+import {
+	assert, croak, pass, sinceLoadStr,
+	} from './llutils.ts'
 import {
 	mkpath, relpath, isDir, isFile, mkDir,
 	} from './fs.ts'
@@ -36,12 +37,6 @@ getMainModule := (): string =>
 let indent : number = 0
 prefix := () => '   '.repeat(indent)
 
-# --- Used when current logger is 'profile'
-let prevMS: number = 0
-let prevFileMS: number = 0
-let headerOutput: boolean = false
-let fileHeaderOutput: boolean = false
-
 hFileLabel: hash := {
 	DEBUG: 'D '
 	INFO:  'I '
@@ -64,15 +59,9 @@ export hLoggerConfig: hash := {
 		profile: new ConsoleHandler('DEBUG', {
 			formatter: ((rec: LogRecord) =>
 				{datetime, msg, levelName} := rec
-				ms := datetime.getMilliseconds()
-				msStr := sprintf("%5d", ms - prevMS)
-				prevMS = ms
+				ts := sinceLoadStr()
 				label := hConsoleLabel[levelName]
-				if not headerOutput
-					headerOutput = true
-					return "ms\n-----\n#{msStr} #{label}#{prefix()}#{msg}"
-				else
-					return "#{msStr} #{label}#{prefix()}#{msg}"
+				return "[#{ts}] #{label}#{prefix()}#{msg}"
 				)
 			})
 
@@ -81,15 +70,9 @@ export hLoggerConfig: hash := {
 			mode: 'a'
 			formatter: (rec) =>
 				{datetime, msg, levelName} := rec
-				ms := datetime.getMilliseconds()
-				msStr := sprintf("%5d", ms - prevFileMS)
-				prevFileMS = ms
+				ts := sinceLoadStr()
 				label := hFileLabel[levelName]
-				if not fileHeaderOutput
-					fileHeaderOutput = true
-					return "ms\n-----\n#{msStr} #{label}#{prefix()}#{msg}"
-				else
-					return "#{msStr} #{label}#{prefix()}#{msg}"
+				return "[#{ts}] #{label}#{prefix()}#{msg}"
 			})
 
 		console: new ConsoleHandler('DEBUG', {
@@ -170,7 +153,7 @@ export CLEAR  : string := '2EYCEu1v7xs0i4L3o5rAV1ZNLFkQYNHh'
 # ---------------------------------------------------------------------------
 # levels: profile, debug, info, warn, error, file, silent
 
-class LoggerEx
+export class LoggerEx
 
 	defLevel: string       = Deno.env.get('DEFAULT_LOGGER') || 'info'
 	lLoggerStack: string[] = [@defLevel]
@@ -190,12 +173,6 @@ class LoggerEx
 			return result
 
 	levelChanged(): void
-		switch @curLevel()
-			when 'profile'
-				# --- NOTE: These are package global variables
-				prevMS = prevFileMS = Date.now()
-				headerOutput = false
-				fileHeaderOutput = false
 		return
 
 	setLevel(level: string): void
@@ -269,7 +246,6 @@ class LoggerEx
 	clearLog(): void
 		@flush()
 		Deno.writeTextFileSync logFileName, ''
-		prevMS = prevFileMS = Date.now()
 		return
 
 	getFullLog(): string
@@ -278,9 +254,8 @@ class LoggerEx
 		return text ? text.trim() : ''
 
 	getLog(): string
-		@flush()
-		text := Deno.readTextFileSync(logFileName)
-		lLines := text ? text.trim().split('\n') : []
+		text := @getFullLog()
+		lLines := text ? text.split('\n') : []
 		lNewLines := lLines.filter((x) => not x.match(/^=====\s\s/))
 		resultStr := lNewLines.join('\n')
 		return resultStr
@@ -293,6 +268,15 @@ export logger: LoggerEx := new LoggerEx()
 
 # ---------------------------------------------------------------------------
 
+export clearLog := (level: string?=undef): void =>
+
+	logger.clearLog()
+	if not notdefined(level)
+		logger.setLevel(level)
+	return
+
+# ---------------------------------------------------------------------------
+
 export DBG  := (...lItems: any[]): void => logger.output 'debug', lItems
 export LOG  := (...lItems: any[]): void => logger.output 'info', lItems
 export WARN := (...lItems: any[]): void => logger.output 'warn', lItems
@@ -302,7 +286,6 @@ export curLogLevel  := (): string => return logger.curLevel()
 export setLogLevel  := (level: string): void => logger.setLevel(level)
 export pushLogLevel := (level: string): void => logger.pushLevel(level)
 export popLogLevel  := (): string => return logger.popLevel()
-export clearLog     := (): void => return logger.clearLog()
 export getFullLog   := (): string => return logger.getFullLog()
 export getLog       := (): string => return logger.getLog()
 export flushLog     := (): void => logger.flush()

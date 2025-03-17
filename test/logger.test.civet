@@ -1,28 +1,47 @@
 # logger.test.civet
 
 import {
-	DBG, LOG, WARN, ERR, getLog, setLogLevel, clearLog,
-	INDENT, UNDENT,
-	} from '@jdeighan/utils'
+	assert, throwsError,
+	DBG, LOG, WARN, ERR,
+	getLog, getFullLog, setLogLevel, clearLog,
+	curLogLevel, pushLogLevel, popLogLevel,
+	INDENT, UNDENT, getCmdArgs, logger, LoggerEx,
+	} from '../src/lib/utils.ts'
 import {
 	equal, truthy, falsy, succeeds, fails, matches,
-	} from '@jdeighan/utils/unit-test'
+	} from '../src/lib/unit-test.ts'
+
+hArgs := getCmdArgs()
 
 # ---------------------------------------------------------------------------
 
-logAll := () =>
-	clearLog()
+DBG "DBG, LOG, WARN, ERR"
+
+logAll := (): void =>
 	DBG "debug"
 	LOG "info"
 	WARN "warning"
 	ERR "error"
+	return
+
+DBG "clearLog"
+
+getTestLog := (level: string='info'): string =>
+	clearLog(level)
+	logAll()
 	return getLog()
 
 # ---------------------------------------------------------------------------
 
+DBG "class LoggerEx"
+DBG "const logger"
+
+truthy (logger instanceof LoggerEx)
+
+DBG "getLog()"
+
 (() =>
-	curLog := logAll()
-	equal curLog, """
+	equal getTestLog(), """
 		I info
 		W warning
 		ERROR: error
@@ -30,62 +49,96 @@ logAll := () =>
 	)()
 
 (() =>
-	setLogLevel 'debug'
-	curLog := logAll()
-	truthy curLog.startsWith("""
+	equal getTestLog('debug'), """
 		D debug
 		I info
 		W warning
 		ERROR: error
-		""")
+		"""
 	)()
 
 (() =>
-	setLogLevel 'error'
-	curLog := logAll()
-	truthy curLog.startsWith("""
+	equal getTestLog('error'), """
 		ERROR: error
-		""")
+		"""
 	)()
 
-(() =>
-	clearLog()
-	setLogLevel 'info'
+DBG "const INDENT, UNDENT, CLEAR"
+
+succeeds () =>
+	clearLog('info')
 	LOG "info", INDENT, "stuff", UNDENT
 	LOG "done"
-	curLog := getLog()
-	equal curLog, """
+	equal getLog(), """
 		I info
 		I    stuff
 		I done
 		"""
-	)()
 
-(() =>
-	clearLog()
-	setLogLevel 'info'
+succeeds () =>
+	clearLog('info')
 	LOG "info", INDENT, "stuff", UNDENT
 	LOG "finished"
-	curLog := getLog()
-	equal curLog, """
+	equal getLog(), """
 		I info
 		I    stuff
 		I finished
 		"""
-	)()
 
-(() =>
-	clearLog()
-	setLogLevel 'profile'
+succeeds () =>
+	clearLog('profile')
 	LOG "info", INDENT, "stuff", UNDENT
 	LOG "done"
 
-	curLog := getLog()
-	matches curLog, ///^
+	matches getLog(), ///^
 		ms \n
 		-{5} \n
 		\s* \d+ \s I \s info \n
 		\s* \d+ \s I \s{4} stuff
 		\s* \d+ \s I \s done
 		$///
-	) # ()
+
+DBG "curLogLevel(), setLogLevel()"
+DBG "pushLogLevel(), popLogLevel()"
+DBG "getLog(), getFullLog()"
+
+succeeds () =>
+	clearLog('warn')
+	logAll()
+	assert (curLogLevel() == 'warn')
+
+	setLogLevel('info')
+	logAll()
+	assert (curLogLevel() == 'info')
+
+	pushLogLevel('error')
+	logAll()
+	assert (curLogLevel() == 'error')
+
+	popLogLevel()
+	logAll()
+	assert (curLogLevel() == 'info')
+
+	assert (getLog() == """
+		W warning
+		ERROR: error
+		I info
+		W warning
+		ERROR: error
+		ERROR: error
+		I info
+		W warning
+		ERROR: error
+		""")
+
+	assert (getFullLog() == """
+		W warning
+		ERROR: error
+		I info
+		W warning
+		ERROR: error
+		ERROR: error
+		I info
+		W warning
+		ERROR: error
+		""")

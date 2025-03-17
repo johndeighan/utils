@@ -2,26 +2,32 @@
 
 import {
 	undef, defined, notdefined, assert, croak,
-	compileAllFiles, relpath,
-	} from '@jdeighan/utils'
+	DBG,
+	compileAllFiles, relpath, getCmdArgs,
+	} from '../src/lib/utils.ts'
 import {
 	getV8Stack, getMyCaller,
 	getMyOutsideCaller, getV8StackStr,
 	stackFrame,
-	} from '@jdeighan/utils/v8-stack'
+	} from '../src/lib/v8-stack.ts'
 import {
 	equal, like,
-	} from '@jdeighan/utils/unit-test'
+	} from '../src/lib/unit-test.ts'
 
 import {getBoth} from './v8-stack/v8-module.ts'
 
+hArgs := getCmdArgs()
+
 # ---------------------------------------------------------------------------
+
+DBG "type stackFrame"
+DBG "getV8Stack()"
 
 (() ->
 	let stack1: stackFrame[] = []
 	let stack2: stackFrame[] = []
 
-	main := () ->
+	main := () =>
 		func1()
 		func2()
 
@@ -39,54 +45,93 @@ import {getBoth} from './v8-stack/v8-module.ts'
 			type: 'function'
 			name: 'func1'
 			source: 'test/v8-stack.test.civet'
-			line: 29
+			line: 35
 			}
 		{
 			type: 'function'
 			name: 'main'
 			source: 'test/v8-stack.test.civet'
-			line: 25
+			line: 31
 			}
 		{
 			type: 'function'
-			name: '<anonymous>'
+			name: '<anon>'
 			source: 'test/v8-stack.test.civet'
-			line: 36
+			line: 42
 			}
 		{
 			type: 'script'
 			source: 'test/v8-stack.test.civet'
-			line: 87
+			line: 94
 			}
 		]
+
 	like stack2, [
 		{
 			type: 'function'
 			name: 'func2'
 			source: 'test/v8-stack.test.civet'
-			line: 33
+			line: 39
 			}
 		{
 			type: 'function'
 			name: 'main'
 			source: 'test/v8-stack.test.civet'
-			line: 26
+			line: 32
 			}
 		{
 			type: 'function'
-			name: '<anonymous>'
+			name: '<anon>'
 			source: 'test/v8-stack.test.civet'
-			line: 36
+			line: 42
 			}
 		{
 			type: 'script'
 			source: 'test/v8-stack.test.civet'
-			line: 87
+			line: 94
 			}
 		]
 	)()
 
 # ---------------------------------------------------------------------------
+
+DBG "getV8StackStr()"
+
+(() ->
+	let stack1: string = ''
+	let stack2: string = ''
+
+	main := () ->
+		func1()
+		func2()
+
+	func1 := () ->
+		stack1 = getV8StackStr()
+		return
+
+	func2 := () ->
+		stack2 = getV8StackStr()
+		return
+
+	main()
+	equal stack1, """
+		[function func1    ] test/v8-stack.test.civet:109:11
+		[function main     ] test/v8-stack.test.civet:105:2
+		[function <anon>   ] test/v8-stack.test.civet:116:1
+		[script            ] test/v8-stack.test.civet:130:2
+		"""
+
+	equal stack2, """
+		[function func2    ] test/v8-stack.test.civet:113:11
+		[function main     ] test/v8-stack.test.civet:106:2
+		[function <anon>   ] test/v8-stack.test.civet:116:1
+		[script            ] test/v8-stack.test.civet:130:2
+		"""
+	)()
+
+# ---------------------------------------------------------------------------
+
+DBG "getMyCaller()"
 
 (() ->
 	let caller1: stackFrame? = undef
@@ -147,8 +192,8 @@ import {getBoth} from './v8-stack/v8-module.ts'
 # ---------------------------------------------------------------------------
 
 (() ->
-	let lCallers1: stackFrame?[] = []
-	let lCallers2: stackFrame?[] = []
+	let lCallers1: (stackFrame?)[] = []
+	let lCallers2: (stackFrame?)[] = []
 
 	main := () ->
 		func1()
@@ -195,10 +240,10 @@ import {getBoth} from './v8-stack/v8-module.ts'
 		return await getV8StackStr()
 
 	equal await func1(), """
-		[function   ] test/v8-stack.test.civet:195:15
-		[function   ] test/v8-stack.test.civet:192:15
-		[function   ] test/v8-stack.test.civet:197:13
-		[script     ] test/v8-stack.test.civet:204:2
+		[function func2    ] test/v8-stack.test.civet:240:15
+		[function func1    ] test/v8-stack.test.civet:237:15
+		[function <anon>   ] test/v8-stack.test.civet:242:13
+		[script            ] test/v8-stack.test.civet:249:2
 		"""
 
 	)()
@@ -214,9 +259,9 @@ import {getBoth} from './v8-stack/v8-module.ts'
 		return 2 * 2
 
 	equal await func1(), """
-		[function   ] test/v8-stack.test.civet:211:15
-		[function   ] test/v8-stack.test.civet:216:13
-		[script     ] test/v8-stack.test.civet:221:2
+		[function func1    ] test/v8-stack.test.civet:256:15
+		[function <anon>   ] test/v8-stack.test.civet:261:13
+		[script            ] test/v8-stack.test.civet:266:2
 		"""
 	)()
 
@@ -249,3 +294,36 @@ import {getBoth} from './v8-stack/v8-module.ts'
 		source: 'test/v8-stack.test.civet'
 		}
 	)()
+
+# ---------------------------------------------------------------------------
+
+DBG "getMyOutsideCaller()"
+
+(() ->
+	let caller1: stackFrame? = undef
+	let caller2: stackFrame? = undef
+
+	main := () ->
+		func1()
+		func2()
+
+	func1 := () ->
+		caller1 = getMyOutsideCaller()
+
+	func2 := () ->
+		caller2 = getMyOutsideCaller()
+		return
+
+	main()
+	like caller1, {
+		type: 'function'
+		name: 'main'
+		source: 'test/v8-stack.test.civet'
+		}
+	like caller2, {
+		type: 'function'
+		name: 'main'
+		source: 'test/v8-stack.test.civet'
+		}
+	)()
+

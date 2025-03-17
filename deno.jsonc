@@ -12,7 +12,7 @@
 	"tasks": {
 		"cleanup": "
 			   civet --inline-map -o .ts -c src/bin/cleanup.civet
-			&& deno install -gA src/bin/cleanup.ts
+			&& deno install -fgA src/bin/cleanup.ts
 			&& cleanup
 			",
 
@@ -23,12 +23,52 @@
 			&& deno check src/lib/fs.ts
 			&& civet --inline-map -o .ts -c test/fs.test.civet
 			&& echo unit test: fs
-			&& deno test -A test/fs.test.ts
+			&& deno test -A test/fs.test.ts -- -D
+			",
+
+		"utest:v8-stack": "
+			   clear
+			&& echo compile: v8-stack.civet
+			&& civet --inline-map -o .ts -c src/lib/v8-stack.civet
+			&& deno check src/lib/v8-stack.ts
+			&& civet --inline-map -o .ts -c test/v8-stack.test.civet
+			&& civet --inline-map -o .ts -c test/v8-stack/v8-module.civet
+			&& echo unit test: v8-stack
+			&& deno test -A test/v8-stack.test.ts -- -D
+			",
+
+		"utest:logger": "
+			   clear
+			&& echo compile: logger.civet
+			&& civet --inline-map -o .ts -c src/lib/logger.civet
+			&& deno check src/lib/logger.ts
+			&& civet --inline-map -o .ts -c test/logger.test.civet
+			&& echo unit test: logger
+			&& deno test -A test/logger.test.ts -- -D
+			",
+
+		"utest:indent": "
+			   clear
+			&& echo compile: indent.civet
+			&& civet --inline-map -o .ts -c src/lib/indent.civet
+			&& deno check src/lib/indent.ts
+			&& civet --inline-map -o .ts -c test/indent.test.civet
+			&& echo unit test: indent
+			&& deno test -A test/indent.test.ts -- -P
+			",
+
+		"utest:utils": "
+			   clear
+			&& echo compile: utils.civet
+			&& civet --inline-map -o .ts -c src/lib/utils.civet
+			&& deno check src/lib/utils.ts
+			&& civet --inline-map -o .ts -c test/utils.test.civet
+			&& echo unit test: utils
+			&& deno test -A test/utils.test.ts -- -S
 			",
 
 		"temp": "
-			   deno task utest:fs
-			&& civet --inline-map -o .ts -c test/temp.civet
+			   civet --inline-map -o .ts -c test/temp.civet
 			&& deno check test/temp.ts
 			&& deno run -A test/temp.ts
 			",
@@ -67,6 +107,10 @@
 			&& civet --inline-map -o .ts -c src/lib/logger.civet
 			&& deno check src/lib/logger.ts
 
+			&& echo compile: indent.civet
+			&& civet --inline-map -o .ts -c src/lib/indent.civet
+			&& deno check src/lib/indent.ts
+
 			&& echo compile: exec-utils.civet
 			&& civet --inline-map -o .ts -c src/lib/exec-utils.civet
 			&& deno check src/lib/exec-utils.ts
@@ -74,6 +118,10 @@
 			&& echo compile: compile-config.civet
 			&& civet --inline-map -o .ts -c src/lib/compile-config.civet
 			&& deno check src/lib/compile-config.ts
+
+			&& echo compile: indent.civet
+			&& civet --inline-map -o .ts -c src/lib/indent.civet
+			&& deno check src/lib/indent.ts
 
 			&& echo compile: utils.civet
 			&& civet --inline-map -o .ts -c src/lib/utils.civet
@@ -105,6 +153,10 @@
 			&& civet --inline-map -o .ts -c test/logger.test.civet
 			&& deno test -qA --reporter dot test/logger.test.ts
 
+			&& echo unit test: indent
+			&& civet --inline-map -o .ts -c test/indent.test.civet
+			&& deno test -qA --reporter dot test/indent.test.ts
+
 			&& echo unit test: exec-utils
 			&& civet --inline-map -o .ts -c test/exec-utils.test.civet
 			&& deno test -qA --reporter dot test/exec-utils.test.ts
@@ -134,19 +186,19 @@
 		"build:compiler": "
 			   civet --inline-map -o .ts -c src/bin/compile.civet
 			&& deno check src/bin/compile.ts
-			&& deno install -gA src/bin/compile.ts
+			&& deno install -fgA src/bin/compile.ts
 			",
 
 		"build:runtemp": "
 			   civet --inline-map -o .ts -c src/bin/runtemp.civet
 			&& deno check src/bin/runtemp.ts
-			&& deno install -gA src/bin/runtemp.ts
+			&& deno install -fgA src/bin/runtemp.ts
 			",
 
 		"build:utest": "
 			   civet --inline-map -o .ts -c src/bin/utest.civet
 			&& deno check src/bin/utest.ts
-			&& deno install -gA src/bin/utest.ts
+			&& deno install -fgA src/bin/utest.ts
 			",
 
 		"bootstrap":      "
@@ -189,6 +241,7 @@
 		"stream/web": "node:stream/web",
 
 		"glob": "npm:glob@^11.0.0",
+		"source-map-support": "npm:source-map-support@^0.5.21",
 		"@danielx/civet": "npm:@danielx/civet@^0.9.6",
 
 		"@jdeighan/utils/datatypes": "./src/lib/datatypes.ts",

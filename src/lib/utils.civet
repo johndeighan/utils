@@ -8,9 +8,11 @@ import {
 	hash, optionspec,
 	} from './datatypes.ts'
 import {
-	pass, OL, ML, getOptions, croak, assert, strToHash,
-	removeEmptyKeys, keys, hasKey, hasKeys, merge,
-	spaces, tabs,
+	pass, deeplyEquals, OL, ML, getOptions, croak, assert, throwsError,
+	strToHash, removeEmptyKeys, keys, hasKey, hasKeys, merge,
+	spaces, tabs, rtrim, countChars,
+	blockToArray, toArray, arrayToBlock, toBlock,
+	escapeStr, escapeBlock,
 	} from './llutils.ts'
 import {
 	isFile, isDir, fileExt, withExt,
@@ -21,14 +23,18 @@ import {
 	slurp, barf, myself, removeFilesMatching,
 	} from './fs.ts'
 import {
-	setLogLevel, pushLogLevel, popLogLevel,
-	curLogLevel, clearLog, getLog,
+	LoggerEx, logger, setLogLevel, pushLogLevel, popLogLevel,
+	curLogLevel, clearLog, getLog, getFullLog,
 	INDENT, UNDENT, CLEAR,
 	DBG, LOG, WARN, ERR,
 	} from './logger.ts'
 import {
+	oneIndent, resetOneIndent, indentLevel, splitLine,
+	indented, undented,
+	} from './indent.ts'
+import {
 	execCmd, execCmdSync, cmdSucceeds,
-	execCmdResult,
+	execCmdResult, mkstr, getCmdLine, getProcOpt, getFinalResult,
 	} from './exec-utils.ts'
 import {
 	hCompilerConfig, findSourceFile, compileFile, isDirSpec,
@@ -36,14 +42,18 @@ import {
 	} from './compile-config.ts'
 
 export {
-	undef, defined, notdefined, pass,
-	setLogLevel, pushLogLevel, popLogLevel,
-	curLogLevel, clearLog, getLog,
+	undef, defined, notdefined, pass, deeplyEquals,
+	LoggerEx, logger, setLogLevel, pushLogLevel, popLogLevel,
+	curLogLevel, clearLog, getLog, getFullLog,
 	INDENT, UNDENT, CLEAR,
 	DBG, LOG, WARN, ERR,
-	OL, ML, croak, assert, getOptions,
+	oneIndent, resetOneIndent, indentLevel, splitLine,
+	indented, undented,
+	OL, ML, croak, assert, throwsError, getOptions,
 	removeEmptyKeys, keys, hasKey, hasKeys, merge,
-	spaces, tabs,
+	spaces, tabs, rtrim, countChars,
+	blockToArray, toArray, arrayToBlock, toBlock,
+	escapeStr, escapeBlock,
 	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
 	isArray, isArrayOfStrings, isHash, isObject, isRegExp,
 	isEmpty, nonEmpty,
@@ -55,6 +65,7 @@ export {
 	slurp, barf, myself, removeFilesMatching,
 	compileFile, execCmd, execCmdSync, cmdSucceeds,
 	isDirSpec,
+	mkstr, getCmdLine, getProcOpt, getFinalResult,
 	}
 export type {
 	execCmdResult, compileResult,
@@ -63,8 +74,6 @@ export type {
 /**
  * @module llutils - low level utilities
  */
-
-export type blockSpec = string | string[]
 
 # ---------------------------------------------------------------------------
 
@@ -233,60 +242,6 @@ export zpad := (n: number, len: number): string =>
 # ---------------------------------------------------------------------------
 
 /**
- * convert a multi-line string to an array
- * of single line strings
- */
-
-export blockToArray = (block: string): string[] =>
-
-	assert isString(block), "block is: #{OL(block)}"
-	if isEmpty(block)
-		return []
-	else
-		return block.split(/\r?\n/)
-
-# ---------------------------------------------------------------------------
-
-/**
- * return an array as is, convert a multi-line string
- * to an array of single line strings
- */
-
-export toArray = (strOrArray: blockSpec): string[] =>
-
-	if Array.isArray(strOrArray)
-		return strOrArray
-	else
-		return blockToArray(strOrArray)
-
-# ---------------------------------------------------------------------------
-
-/**
- * convert an array of strings to a single multi-line string
- */
-
-export arrayToBlock = (lLines: string[]): string =>
-
-	assert isArray(lLines), "lLines is not an array: #{OL(lLines)}"
-	return lLines.filter((line) => defined(line)).join("\n")
-
-# ---------------------------------------------------------------------------
-
-/**
- * return a string as is, convert an array of strings
- * to a single multi-line string
- */
-
-export toBlock = (strOrArray: blockSpec): string =>
-
-	if isString(strOrArray)
-		return strOrArray
-	else
-		return arrayToBlock(strOrArray)
-
-# ---------------------------------------------------------------------------
-
-/**
  * Remove lines from a string or array
  * pat can be a string or a regular expression
  */
@@ -308,73 +263,6 @@ export removeLines := (
 		return lNewLines.join('\n')
 	else
 		return lNewLines
-
-# ---------------------------------------------------------------------------
-
-/**
- * replace these characters with single unicode chars:
- *    carriage return
- *    newline
- *    TAB
- *    space
- * Optionally, add a character to indicate a particular
- * position in the string
- * Valid options:
- *    offset - indicate position of offset
- *    poschar - char to use to indicate position
- */
-
-export escapeStr := (
-	str: string,
-	hReplace: hash = {
-		"\r": '←'
-		"\n": '↓'
-		"\t": '→'
-		" ": '˳'
-		},
-	hOptions: optionspec = {}
-	): string =>
-
-	{offset, poschar} := getOptions hOptions, {
-		offset: undef
-		poschar: '┊'
-		}
-
-	lParts := []
-	for ch,i of str.split('')
-		if defined(offset) && (i == offset)
-			lParts.push poschar
-		newch := hReplace[ch]
-		if defined(newch)
-			lParts.push newch
-		else
-			lParts.push ch
-	if (offset == str.length)
-		lParts.push poschar
-	return lParts.join('')
-
-# ---------------------------------------------------------------------------
-
-/**
- * replace these characters with single unicode chars:
- *    carriage return
- *    TAB
- *    space
- * Optionally, add a character to indicate a particular
- * position in the string
- */
-
-export escapeBlock = (
-	block: string,
-	hReplace: hash = {
-		"\r": '←'
-		"\t": '→'
-		" ": '˳'
-		},
-	hOptions: optionspec = {}
-	): string =>
-
-	return escapeStr(block, hReplace, hOptions)
 
 # ---------------------------------------------------------------------------
 
@@ -508,6 +396,7 @@ export runAllUnitTests := (): Generator<unitTestResult, void, unknown> ->
 # ---------------------------------------------------------------------------
 
 hKeyToLogger: hash := {
+	I: 'info'
 	P: 'profile'
 	D: 'debug'
 	Q: 'quiet'
@@ -576,8 +465,8 @@ export setLoggerFromArgs := (lArgs: string[]): void =>
  *
  * the 3rd argument to getCmdArgs() is a hash of possible options:
  *    doSetLogger - defaults to true - if false, then options
- *                  -P, -D, -Q and -S no longer set logging options and
- *                  may therefore be used for other purposes
+ *                  -P, -D, -Q, -I and -S no longer set logging options
+ *                  and may therefore be used for other purposes
  *
  * By default, the following flags are recognized, and therefore
  * cannot be included in hDesc (this behavior can be
@@ -586,6 +475,7 @@ export setLoggerFromArgs := (lArgs: string[]): void =>
  * `-P` - set the current log level to 'profile'
  * `-D` - set the current log level to 'debug'
  * `-Q` - set the current log level to 'warn'
+ * `-I` - set the current log level to 'info'
  * `-S` - set the current log level to 'silent'
  *
  * (see library @jdeighan/logger)
@@ -819,3 +709,9 @@ export showHelp := (hDesc: hash): void =>
 			)
 		LOG desc
 	return
+
+# ---------------------------------------------------------------------------
+
+export setDir := (block: string): void =>
+
+	console.log "Working on it"

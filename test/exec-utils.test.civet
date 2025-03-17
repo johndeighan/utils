@@ -3,15 +3,18 @@
 import {
 	mkstr, getCmdLine, getProcOpt, getFinalResult,
 	execCmd, execCmdSync, cmdSucceeds,
-	execCmdResult,
-	} from '../src/lib/exec-utils.ts'
+	execCmdResult, getCmdArgs, DBG,
+	} from '../src/lib/utils.ts'
 import {
 	equal, like, succeeds, fails, truthy, falsy,
-	} from '@jdeighan/utils/unit-test'
+	} from '../src/lib/unit-test.ts'
+
+hArgs := getCmdArgs()
 
 # ---------------------------------------------------------------------------
 
-# --- mkstr(x)
+DBG "mkstr(x)"
+
 buffer := new ArrayBuffer(3)
 view := new Int8Array(buffer)
 
@@ -23,10 +26,12 @@ equal mkstr('abc'), 'abc'
 equal mkstr(buffer), 'abc'
 equal mkstr(view), 'abc'
 
-# --- getCmdLine()
+DBG "getCmdLine()"
+
 equal getCmdLine('dothis', ['-a', 'willy']), 'dothis -a willy'
 
-# --- getProcOpt()
+DBG "getProcOpt()"
+
 like getProcOpt(['-h'], true), {
 	args: ['-h']
 	stdout: 'piped'
@@ -38,17 +43,20 @@ like getProcOpt(['-h'], false), {
 	stderr: 'inherit'
 	}
 
-# --- getFinalResult()
+DBG "getFinalResult()"
+
 #     no unit tests yet
 
-# --- execCmd()
+DBG "execCmd()"
+
 (() =>
 	hResult := await execCmd('echo', ["Hello"], 'collect')
 	equal hResult.code, 0
 	equal hResult.stdout, "Hello\n"
 	)()
 
-# --- execCmdSync()
+DBG "execCmdSync()"
+
 equal execCmdSync("echo", ["Hello"]).code, 0
 
 (() =>
@@ -57,6 +65,7 @@ equal execCmdSync("echo", ["Hello"]).code, 0
 	equal hResult.stdout, "Hello\n"
 	)()
 
-# --- cmdSucceeds(cmdName, lArgs, hOptions)
-#     no unit tests yet
+DBG "cmdSucceeds(cmdName, lArgs, hOptions)"
 
+truthy cmdSucceeds('ls')
+falsy  cmdSucceeds('nosuchcmd')

@@ -1,10 +1,10 @@
-# v8-module.coffee
+# v8-module.civet
 
 import {getMyCaller, stackFrame} from '@jdeighan/utils/v8-stack'
 
 # ---------------------------------------------------------------------------
 
-type bothFrames = stackFrame?[]
+type bothFrames = (stackFrame?)[]
 
 isBothFrames := (x: any): x is bothFrames =>
 	return Array.isArray(x) && (x.length == 2)

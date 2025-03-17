@@ -2,8 +2,8 @@
 
 import {
 	install, mapSourcePosition,
-	} from 'npm:source-map-support@0.5.21'
-import {sprintf} from '@std/fmt/printf'
+	} from 'npm:source-map-support'
+import {sprintf} from 'jsr:@std/fmt/printf'
 
 import {hash, optionspec} from './datatypes.ts'
 import {
@@ -108,16 +108,16 @@ export getV8Stack = (): stackFrame[] =>
 						: defined(methodName)   ? 'method'
 						: defined(functionName) ? 'function'
 						: isTopLevel            ? 'script'
-						:                         'unknown'
+						:                         'unkn'
 						)
 					source
 					line
 					column
 					name: (
 						  defined(functionName) ? functionName
-						: defined(functionObj)  ? '<anonymous>'
+						: defined(functionObj)  ? '<anon>'
 						: defined(methodName)   ? methodName
-						:                         '<unknown>'
+						:                         ''
 						)
 					isConstructor
 					isAsync
@@ -133,7 +133,7 @@ export getV8Stack = (): stackFrame[] =>
 					if (h.type == 'script') && (tos.type == 'script')
 						DBG "Patch current TOS (currently #{lResultFrames.length} frames)"
 						tos.type = 'function'
-						tos.name = '<anonymous>'
+						tos.name = '<anon>'
 
 				DBG centered('return frame', width, '-')
 				DBG ML(h)
@@ -200,8 +200,13 @@ export getV8Stack = (): stackFrame[] =>
 export getV8StackStr := (hOptions: optionspec={}): string =>
 
 	lLines := getV8Stack().map((h) =>
-		typeStr := sprintf("%-11s", h.type)
-		return "[#{typeStr}] #{h.source}:#{h.line}:#{h.column}"
+		{type, name, source, line, column} := h
+		nameStr :=
+			if name
+				sprintf("%-18s", "#{type} #{name}")
+			else
+				sprintf("%-18s", "#{type}")
+		return "[#{nameStr}] #{source}:#{line}:#{column}"
 		)
 	return lLines.join('\n')
 

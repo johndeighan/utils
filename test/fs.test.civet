@@ -1,14 +1,18 @@
 # fs.test.civet
 
-import {sprintf} from "https://deno.land/std/fmt/printf.ts"
+import {sprintf} from "jsr:@std/fmt/printf"
 
 import {
 	undef, defined,
 	hash, optionspec, voidFunc,
 	} from '../src/lib/datatypes.ts'
 import {
-	sinceLoad, sinceLoadStr, hasKey, sleep,
+	DBG,
+	} from '../src/lib/logger.ts'
+import {
+	sinceLoad, sinceLoadStr, hasKey, sleep, deeplyEquals,
 	} from '../src/lib/llutils.ts'
+
 import {
 	isFile, isDir, getPathType, fileExt, withExt,
 	lStatFields, getStats, parsePath,
@@ -20,14 +24,21 @@ import {
 	watchFile, FileEventHandler, watcherCallbackFunc,
 	fsChangeType, fsCallbackFunc,
 	} from '../src/lib/fs.ts'
+
+import {
+	getCmdArgs,
+	} from '../src/lib/utils.ts'
 import {
 	equal, truthy, falsy, like, listLike, succeeds, fails,
 	} from '../src/lib/unit-test.ts'
+
+hArgs := getCmdArgs()
 
 # ---------------------------------------------------------------------------
 
 cleanup := (): void =>
 
+	DBG "cleaning up"
 	lKeepFiles: string[] := [
 		'dummy.txt'
 		'file1.txt'
@@ -49,20 +60,23 @@ cleanup()
 
 # ---------------------------------------------------------------------------
 
-# --- isFile()
+DBG "isFile()"
+
 truthy isFile('./deno.jsonc')
 truthy isFile('deno.jsonc')
 falsy isFile('./src/lib/notafile.txt')
 truthy isFile("./test/fs/dummy.txt")
 falsy  isFile("./test/fs")
 
-# --- isDir()
+DBG "isDir()"
+
 truthy isDir('test')
 falsy isDir('nosuchdir')
 truthy isDir("./test/fs")
 falsy  isDir("./test/fs/dummy.txt")
 
-# --- getPathType()
+DBG "getPathType()"
+
 equal getPathType('./deno.jsonc'), 'file'
 equal getPathType("./test/fs"), 'dir'
 equal getPathType('./src/lib/notafile.txt'), 'missing'
@@ -70,23 +84,27 @@ equal getPathType("./test"), 'dir'
 equal getPathType("./test/fs.test.civet"), 'file'
 equal getPathType("C:/temp/file.txt"), 'missing'
 
-# --- fileExt()
+DBG "fileExt()"
+
 equal fileExt('C:/Users/johnd/utils/deno.jsonc'), '.jsonc'
 equal fileExt("C:/temp/file.txt"), ".txt"
 equal fileExt("c:\\temp/to/file.txt"), ".txt"
 equal fileExt("c:\\temp/to/file.flag.txt"), ".txt"
 
-# --- withExt()
+DBG "withExt()"
+
 equal withExt('deno.jsonc', '.txt'), 'deno.txt'
 equal withExt("C:/temp/file.txt", ".js"), "C:/temp/file.js"
 equal withExt("c:\\temp/to/file.txt", ".js"), "c:\\temp/to/file.js"
 equal withExt("c:\\temp/to/file.flag.txt", ".js"), "c:\\temp/to/file.flag.js"
 
-# --- getStats(path)
+DBG "getStats(path)"
+
 truthy hasKey(getStats('deno.jsonc'), 'mtimeMs')
 equal getStats('test/fs/file1.txt').size, 18
 
-# --- parsePath()
+DBG "parsePath()"
+
 like  parsePath("C:/temp/file.txt"), {
 	type: 'missing'
 	path: "C:/temp/file.txt"
@@ -110,7 +128,8 @@ like parsePath(import.meta.url), {
 	relDir: 'test'
 	}
 
-# --- allFilesMatching()
+DBG "allFilesMatching()"
+
 listLike Array.from(allFilesMatching('**/test/fs/file*.txt')), [
 	{
 		type: 'file'
@@ -206,7 +225,8 @@ listLike Array.from(allFilesMatching('**/test/fs/**', 'includeDirs')), [
 		]
 	)()
 
-# --- allLinesIn()
+DBG "allLinesIn()"
+
 lLines := []
 for await line of allLinesIn('./test/fs/file1.txt')
 	lLines.push line
@@ -217,13 +237,15 @@ equal lLines, [
 	'line3'
 	]
 
-# --- normalizePath()
+DBG "normalizePath()"
+
 equal normalizePath("C:/temp/file.txt"), "C:/temp/file.txt"
 equal normalizePath("C:\\temp/to/file.txt"), "C:/temp/to/file.txt"
 equal normalizePath("C:\\temp/to/file.flag.txt"), "C:/temp/to/file.flag.txt"
 equal normalizePath('C:\\Users\\johnd'), 'C:/Users/johnd'
 
-# --- mkpath()
+DBG "mkpath()"
+
 equal mkpath("C:/temp/file.txt"), "C:/temp/file.txt"
 equal mkpath("C:/temp", "file.txt"), "C:/temp/file.txt"
 equal mkpath("C:\\temp/to/file.txt"), "C:/temp/to/file.txt"
@@ -233,10 +255,12 @@ equal mkpath("C:\\temp/to", "file.txt"), "C:/temp/to/file.txt"
 equal mkpath("C:\\temp", "to/file.flag.txt"), "C:/temp/to/file.flag.txt"
 equal mkpath('c:\\', 'Users', 'johnd'), 'C:/Users/johnd'
 
-# --- relpath(lParts...)
+DBG "relPath()"
+
 equal relpath('C:/Users/johnd/utils/deno.jsonc'), 'deno.jsonc'
 
-# --- pathSubDirs(path)
+DBG "pathSubDirs()"
+
 (() =>
 	fullPath := "C:/Users/johnd/utils/test/fs/deno.jsonc"
 	relPath  := "test/fs/deno.jsonc"
@@ -278,14 +302,16 @@ equal relpath('C:/Users/johnd/utils/deno.jsonc'), 'deno.jsonc'
 		}
 	)()
 
-# --- myself()
+DBG "myself()"
+
 equal myself(import.meta.url), 'test/fs.test.ts'
 
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 
-# --- slurp(path)
+DBG "slurp(path)"
+
 equal slurp('./test/fs/file1.txt'), """
 	line1
 	line2
@@ -294,7 +320,8 @@ equal slurp('./test/fs/file1.txt'), """
 
 barfPath := 'test/fs/barfed.txt'
 
-# --- barf(contents, path)
+DBG "barf(contents, path)"
+
 (() =>
 	contents := """
 		abc
@@ -310,11 +337,13 @@ barfPath := 'test/fs/barfed.txt'
 		"""
 	)()
 
-# --- newerDestFileExists(srcPath, destPath)
+DBG "newerDestFileExists(srcPath, destPath)"
+
 truthy newerDestFileExists('test/fs/file1.txt', barfPath)
 falsy  newerDestFileExists(barfPath, 'test/fs/file1.txt')
 
-# --- mkDir(dirPath, hOptions)
+DBG "mkDir()"
+
 falsy  isDir('test/fs/tempdir')
 falsy  isFile('test/fs/tempdir/file42.txt')
 mkDir 'test/fs/tempdir'
@@ -322,19 +351,22 @@ barf 'abc', 'test/fs/tempdir/file42.txt'
 truthy isDir('test/fs/tempdir')
 truthy isFile('test/fs/tempdir/file42.txt')
 
-# --- rmFile()
+DBG "rmFile()"
+
 truthy isFile(barfPath)
 rmFile barfPath
 falsy  isFile(barfPath)
 
-# --- rmDir
+DBG "rmDir()"
+
 truthy isDir('test/fs/tempdir')
 rmDir 'test/fs/tempdir', 'clear'
 falsy  isDir('test/fs/tempdir')
 
 path := 'test/fs/aaa/bbb/newfile.txt'
 
-# --- mkDirsForFile(path)
+DBG "mkDirsForFile(path)"
+
 (() =>
 	mkDirsForFile path
 	truthy isDir('test/fs')
@@ -353,7 +385,8 @@ setup := (): void =>
 	barf 'abc', 'test/fs/aaa/bbb/oldfile.txt'
 	barf 'abc', 'test/fs/aaa/bbb/temp.txt'
 
-# --- clearDir(dir)
+DBG "clearDir(dir)"
+
 (() =>
 	setup()
 	clearDir 'test/fs/aaa'
@@ -363,7 +396,8 @@ setup := (): void =>
 	falsy  isFile(path)
 	)()
 
-# --- removeFilesMatching()
+DBG "removeFilesMatching()"
+
 (() =>
 	setup()
 	removeFilesMatching '**/*file.txt'
@@ -374,7 +408,8 @@ setup := (): void =>
 	truthy isFile('test/fs/aaa/bbb/temp.txt')
 	)()
 
-# --- removeFilesExcept()
+DBG "removeFilesExcept()"
+
 (() =>
 	setup()
 	lKeep := [
@@ -389,31 +424,13 @@ setup := (): void =>
 	truthy isFile('test/fs/aaa/bbb/temp.txt')
 	)()
 
-# --- removeDirsExcept()
+DBG "removeDirsExcept()"
+
 #     no unit tests yet
 
-deepEquals := (a: any, b: any): boolean =>
+DBG "class FileEventHandler"
 
-	if (a == b)
-		return true
-
-	if (typeof a != 'object') || (a == null) || (typeof b != 'object') || (b == null)
-		return false
-
-	keysA := Object.keys(a)
-	keysB := Object.keys(b)
-
-	if (keysA.length != keysB.length)
-		return false
-
-	for (key of keysA)
-		if not b.hasOwnProperty(key) || not deepEquals(a[key], b[key])
-			return false
-	return true
-
-# --- class FileEventHandler
-
-await (() =>
+(() =>
 	lChanges: fsChangeType[] := []
 	fileChangeFunc: fsCallbackFunc := (change) =>
 		lChanges.push change
@@ -459,8 +476,10 @@ await (() =>
 	equal lChanges, expected
 	)()
 
+DBG "class FileEventHandler 2"
+
 # --- get the final change list via getChangeList() method
-await (() =>
+(() =>
 	handler := new FileEventHandler()
 	handler.handle {
 		kind: 'modify',
@@ -501,7 +520,8 @@ await (() =>
 	equal lChanges, expected
 	)()
 
-# --- watchFile()
+DBG "watchFile()"
+
 await (() =>
 	# --- Set contents of dummy.txt to standard contents
 	path := mkpath('test/fs/dummy.txt')

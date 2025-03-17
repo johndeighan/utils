@@ -1,15 +1,11 @@
 to do
 
-Adding the watchFile() test to fs.test.civet causes
-the unit tests to fail!!!
+work on logger.test.civet, using "deno task utest:logger"
 
-1. force compilation, then check last modify time
-	- test/llutils
-	- lib/llutils
-	- bin/cleanup
-2. compile again w/o force, check last modify time
+line 30 in llutils doesn't work!
 
-3. compile test/llutils without post processing
+switch unit tests to use DBG, not # --- func()
+rewrite JSDoc Link to expect DBG
 
 Document all libraries
 
