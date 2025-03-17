@@ -72,7 +72,8 @@ export type {
 	}
 
 /**
- * @module utils - utility functions
+ * utils - utility functions
+ * @module
  */
 
 # ---------------------------------------------------------------------------

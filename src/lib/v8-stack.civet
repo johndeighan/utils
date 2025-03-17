@@ -15,7 +15,8 @@ import {
 	} from './utils.ts'
 
 /**
- * @module v8-stack - runtime stack utilities
+ * v8-stack - runtime stack utilities
+ * @module
  */
 
 install()     # from source-map-support
