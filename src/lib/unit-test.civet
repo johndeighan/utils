@@ -3,7 +3,7 @@
 import {
 	assert, assertEquals, assertNotEquals, assertObjectMatch,
 	assertStringIncludes, assertMatch, assertArrayIncludes,
-	} from 'jsr:@std/assert'
+	} from '@std/assert'
 
 import {
 	undef, defined, notdefined, isArray, isHash, isString, hash,

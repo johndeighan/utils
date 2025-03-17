@@ -1,6 +1,6 @@
 # exec-utils.civet
 
-import {stripAnsiCode} from "jsr:@std/fmt/colors"
+import {stripAnsiCode} from "@std/fmt/colors"
 
 import {
 	undef, defined, notdefined,

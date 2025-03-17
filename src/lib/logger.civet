@@ -1,11 +1,11 @@
 # logger.civet
 
-import {existsSync} from "jsr:@std/fs"
-import {sprintf} from "jsr:@std/fmt/printf"
+import {existsSync} from "@std/fs"
+import {sprintf} from "@std/fmt/printf"
 import {
 	ConsoleHandler, FileHandler, setup, getLogger,
 	LogRecord,
-	} from "jsr:@std/log"
+	} from "@std/log"
 
 import {
 	undef, defined, notdefined,

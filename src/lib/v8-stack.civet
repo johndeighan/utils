@@ -2,8 +2,8 @@
 
 import {
 	install, mapSourcePosition,
-	} from 'npm:source-map-support'
-import {sprintf} from 'jsr:@std/fmt/printf'
+	} from 'source-map-support'
+import {sprintf} from '@std/fmt/printf'
 
 import {hash, optionspec} from './datatypes.ts'
 import {
