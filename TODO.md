@@ -1,11 +1,9 @@
 to do
 
-work on logger.test.civet, using "deno task utest:logger"
-
-line 30 in llutils doesn't work!
-
-switch unit tests to use DBG, not # --- func()
-rewrite JSDoc Link to expect DBG
+Add examples to all entrypoint modules
+Ask Deno:
+	- how to link to unit tests
+	- why Deno doesn't think I have all module docs
 
 Document all libraries
 
