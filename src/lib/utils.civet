@@ -1,3 +1,8 @@
+/**
+ * utils - utility functions
+ * @module
+ */
+
 # utils.civet
 
 import {
@@ -70,11 +75,6 @@ export {
 export type {
 	execCmdResult, compileResult,
 	}
-
-/**
- * utils - utility functions
- * @module
- */
 
 # ---------------------------------------------------------------------------
 

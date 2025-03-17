@@ -1,18 +1,3 @@
-# unit-test.civet
-
-import {
-	assert, assertEquals, assertNotEquals, assertObjectMatch,
-	assertStringIncludes, assertMatch, assertArrayIncludes,
-	} from '@std/assert'
-
-import {
-	undef, defined, notdefined, isArray, isHash, isString, hash,
-	} from './datatypes.ts'
-import {
-	pushLogLevel, popLogLevel, DBG,
-	} from './logger.ts'
-import {getMyOutsideCaller} from './v8-stack.ts'
-
 /**
  * unit-test - provides functions for use in unit tests
  * available tests:
@@ -29,6 +14,21 @@ import {getMyOutsideCaller} from './v8-stack.ts'
  *
  * @module
  */
+
+# unit-test.civet
+
+import {
+	assert, assertEquals, assertNotEquals, assertObjectMatch,
+	assertStringIncludes, assertMatch, assertArrayIncludes,
+	} from '@std/assert'
+
+import {
+	undef, defined, notdefined, isArray, isHash, isString, hash,
+	} from './datatypes.ts'
+import {
+	pushLogLevel, popLogLevel, DBG,
+	} from './logger.ts'
+import {getMyOutsideCaller} from './v8-stack.ts'
 
 # ---------------------------------------------------------------------------
 
