@@ -1,0 +1,466 @@
+# llutils.lib.test.civet
+
+import {
+	undef, sinceLoad, sinceLoadStr,
+	croak, assert, throwsError, pass, deeplyEquals,
+	OL, ML, o, strToHash, addDefaults, getOptions,
+	removeEmptyKeys, keys, hasKey, hasKeys, missingKeys,
+	merge, hit, sleep, spaces, tabs,
+	rtrim, countChars, wsSplit, words,
+	blockToArray, allLinesInBlock, toArray,
+	isArray, isHash,
+	arrayToBlock, toBlock,
+	escapeStr, escapeBlock,
+	LOG, DBG, WARN, ERR, getCmdArgs,
+	getNExtra, rpad, lpad, centered, relpath,
+	alignment, isAlignment, alignString, zpad,
+	blockSpec, isBlockSpec, allMatches,
+	TNodeInfo, NodeGenerator,
+	} from '../src/lib/utils.lib.ts'
+import {
+	equal, truthy, falsy, succeeds, fails, isType, notType,
+	} from '../src/lib/unit-test.lib.ts'
+
+hArgs := getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+DBG "sinceLoad()"
+
+succeeds () => LOG sinceLoad()
+
+DBG "sinceLoadStr()"
+
+succeeds () => LOG sinceLoadStr()
+
+DBG "croak()"
+
+fails () => croak("Bad")
+
+DBG "throwsError()"
+
+succeeds () => throwsError(() => throw new Error("why?"))
+# fails () => throwsError(() => return)
+
+DBG "pass()"
+
+succeeds () => pass()
+
+DBG "deeplyEquals()"
+
+truthy deeplyEquals(2, 2)
+truthy deeplyEquals('a', 'a')
+truthy deeplyEquals(['a','b'], ['a','b'])
+falsy  deeplyEquals(['a','b'], ['a','b','c'])
+
+DBG "OL()"
+
+equal OL({a:1, b:2}), '{"a":1,"b":2}'
+equal OL('abc'), '"abc"'
+equal OL([1, 2, 3]), '[1,2,3]'
+equal OL(undefined), 'undef'
+equal OL(null), 'null'
+
+DBG "ML()"
+
+equal ML(undefined), 'undef'
+equal ML(null), 'null'
+equal ML('abc'), '"abc"'
+equal ML({a:1, b:2}), """
+	{
+	   "a": 1,
+	   "b": 2
+	}
+	"""
+equal ML([1,'abc']), """
+	[
+	   1,
+	   "abc"
+	]
+	"""
+
+DBG "strToHash()"
+
+equal strToHash('debug'), {debug: true}
+equal strToHash('debug force'), {
+	debug: true
+	force: true
+	}
+equal strToHash('debug !force'), {
+	debug: true
+	force: false
+	}
+equal strToHash('debug !force  size=3'), {
+	debug: true
+	force: false
+	size: 3
+	}
+equal strToHash('hide=1,2'), {
+	hide: '1,2'
+	}
+
+DBG "o()"
+
+equal o"debug", {debug: true}
+equal o"!debug", {debug: false}
+equal o"  debug  ", {debug: true}
+equal o"  !debug  ", {debug: false}
+equal o"debug label=abc n=42", {debug: true, label: 'abc', n: 42}
+
+DBG "addDefaults()"
+
+equal addDefaults({debug: true}, {force: true}), {
+	debug: true
+	force: true
+	}
+
+DBG "getOptions()"
+
+equal getOptions({debug: true}), {debug: true}
+equal getOptions({debug: true}, {force: false}), {
+	debug: true
+	force: false
+	}
+equal getOptions(o'debug'), {debug: true}
+equal getOptions(o'!debug'), {debug: false}
+equal getOptions(o'debug', {force: false}), {
+	debug: true
+	force: false
+	}
+
+DBG "removeEmptyKeys()"
+
+equal removeEmptyKeys({a: 1, b: undef}), {a: 1}
+
+DBG "keys()"
+
+equal keys({a:1, b:2, c:3}), ['a','b','c']
+equal keys({a:1, b:2, c:3}, {except: 'b'}), ['a','c']
+equal keys({a:1, b:2, c:3}, o'except=b'), ['a','c']
+
+DBG "hasKey()"
+
+truthy hasKey({a:1, b:2}, 'b')
+truthy hasKey({a:1, b:2}, 'a', 'b')
+falsy  hasKey({a:1, b:2}, 'c')
+falsy  hasKey({a:1, b:2}, 'a', 'c')
+
+DBG "hasKeys()"   # --- a synonym for hasKey()
+
+truthy hasKeys({a:1, b:2}, 'b')
+truthy hasKeys({a:1, b:2}, 'a', 'b')
+falsy  hasKeys({a:1, b:2}, 'c')
+falsy  hasKeys({a:1, b:2}, 'a', 'c')
+
+DBG "missingKeys()"
+
+(() =>
+	h := {a:1, b:2}
+	equal missingKeys(h, 'a','b','c','d'), ['c','d']
+	)()
+
+DBG "merge()"
+
+equal merge({a:1}, {b:2}), {a:1, b:2}
+equal merge({a:1, b:2}, {b:3, c:4}), {a:1, b:3, c:4}
+
+DBG "hit()"
+
+succeeds () => hit(25)
+truthy hit(100)
+falsy  hit(0)
+
+DBG "sleep()"
+
+ms0 := Date.now()
+await sleep(2)   # 2 seconds
+truthy (Date.now()-ms0 > 1000)
+
+DBG "spaces()"
+
+equal spaces(3), '   '
+
+DBG "tabs()"
+
+equal tabs(3), '\t\t\t'
+
+DBG "rtrim(str)"
+
+equal rtrim('abc   \t\t'), 'abc'
+
+DBG "countChars(str, ch)"
+
+equal countChars('abcabcabc', 'a'), 3
+
+DBG "blockToArray(block)"
+
+equal blockToArray("""
+	abc
+	def
+	"""), ['abc','def']
+
+DBG "allLinesInBlock(block)"
+
+equal Array.from(allLinesInBlock("""
+	abc
+	def
+	""")), ['abc', 'def']
+
+equal Array.from(allLinesInBlock("""
+	abc
+
+	def
+	""")), ['abc', '', 'def']
+
+equal Array.from(allLinesInBlock("a\nb\n")), [
+	'a'
+	'b'
+	]
+
+DBG "type blockSpec", "isBlockSpec()"
+
+truthy isBlockSpec('abc')
+truthy isBlockSpec(['abc','def'])
+falsy  isBlockSpec(42)
+
+DBG "toArray(strOrArray)"
+
+equal toArray("abc\ndef\nx"), ['abc','def','x']
+equal toArray(['a','b']), ['a', 'b']
+
+DBG "arrayToBlock(x)"
+
+equal arrayToBlock(['a','b']), 'a\nb'
+
+DBG "toBlock(strOrArray)"
+
+equal toBlock(['a','b']), 'a\nb'
+equal toBlock("abc\ndef"), "abc\ndef"
+
+DBG "escapeStr()"
+
+equal escapeStr('abc'), 'abc'
+equal escapeStr('   abc'), '˳˳˳abc'
+equal escapeStr('\t\t\tabc'), '→→→abc'
+equal escapeStr('abc\r\ndef'), 'abc←↓def'
+
+DBG "escapeBlock()"
+
+equal escapeBlock('abc'), 'abc'
+equal escapeBlock('   abc'), '˳˳˳abc'
+equal escapeBlock('\t\t\tabc'), '→→→abc'
+equal escapeBlock('abc\r\ndef'), """
+	abc←
+	def
+	"""
+equal escapeBlock('abc\ndef'), """
+	abc
+	def
+	"""
+equal escapeBlock('abc\ndef'), """
+	abc
+	def
+	"""
+equal escapeBlock('   abc\n\t\t\tdef'), """
+	˳˳˳abc
+	→→→def
+	"""
+
+DBG "relpath()"
+
+equal relpath('C:/Users/johnd/utils/deno.jsonc'), 'deno.jsonc'
+
+DBG "wsSplit()"
+
+equal wsSplit("abc def"), ["abc", "def"]
+equal wsSplit("abc"), ["abc"]
+equal wsSplit(""), []
+equal wsSplit("  "), []
+equal wsSplit("\t"), []
+equal wsSplit("  abc  def\t\t"), ["abc", "def"]
+
+DBG "words()"
+
+equal words("abc def"), ["abc", "def"]
+equal words("abc"), ["abc"]
+equal words(""), []
+equal words("  "), []
+equal words("\t"), []
+equal words("  abc  def\t\t"), ["abc", "def"]
+equal words(" abc  def", "ghi j "), [
+	"abc"
+	"def"
+	"ghi"
+	"j"
+	]
+
+DBG "getNExtra()"
+
+equal getNExtra('abcd', 10), 6
+equal getNExtra('abcd', 2), 0
+
+DBG "rpad()"
+
+equal rpad('abcd', 10, '-'), 'abcd------'
+
+DBG "lpad()"
+
+equal lpad('abcd', 10, '-'), '------abcd'
+
+DBG "centered()"
+
+equal centered('abcd', 12, '-'), '--  abcd  --'
+
+DBG "type alignment", "isAlignment()"
+
+truthy isAlignment('l')
+truthy isAlignment('left')
+falsy  isAlignment('x')
+
+DBG "alignString()"
+
+equal alignString('abc', 5, 'left'), 'abc  '
+equal alignString('abc', 5, 'center'), ' abc '
+equal alignString('abc', 5, 'right'), '  abc'
+equal alignString('abc', 5, 'l'), 'abc  '
+equal alignString('abc', 5, 'c'), ' abc '
+equal alignString('abc', 5, 'r'), '  abc'
+
+DBG "zpad()"
+
+equal zpad(23, 5), '00023'
+
+DBG "allMatches()"
+
+(() =>
+	str := '"a,b", "c,d"'
+	re := /"([^"]*)"/
+	equal Array.from(allMatches(str, re)).map((x) => x[1]), [
+		'a,b'
+		'c,d'
+		]
+	)()
+
+(() =>
+	str := 'DBG "type blockSpec", "function isBlockSpec"'
+	re := ///
+		"
+		\s*             # optional whitespace
+		(?:
+			(
+				  type
+				| const
+				| interface
+				| enum
+				| class
+				| function
+				)
+			\s+
+			)?
+		([A-Za-z0-9_]+)   # an identifier
+		(
+			\(
+			.*
+			\)
+			)?
+		\s*
+		"
+		///
+	lMatches := Array.from(allMatches(str, re))
+	equal lMatches.map((x) => x[1]), ['type', 'function']
+	equal lMatches.map((x) => x[2]), ['blockSpec', 'isBlockSpec']
+	equal lMatches.map((x) => x[3]), [undef, undef]
+	)()
+
+(() =>
+	str := 'DBG "type blockSpec", "function isBlockSpec"'
+	re := ///
+		"
+		\s*             # optional whitespace
+		(?:
+			(
+				  type
+				| const
+				| interface
+				| enum
+				| class
+				| function
+				)
+			\s+
+			)?
+		([A-Za-z0-9_]+)   # an identifier
+		(
+			\(
+			.*
+			\)
+			)?
+		\s*
+		"
+		///
+	lIdents: string[] := []
+	for x of allMatches(str, re)
+		lIdents.push x[2]
+	equal lIdents, ['blockSpec', 'isBlockSpec']
+	)()
+
+DBG "type TNodeInfo"
+
+isType  'TNodeInfo', {node: 42, level: 1}
+notType 'TNodeInfo', {node: 42, level: 'abc'}
+
+DBG "class NodeGenerator"
+
+(() =>
+	hStudents := {
+		name: 'John'
+		gender: 'male'
+		address: {
+			street: '1749 Main St.'
+			city: 'Blacksburg'
+			state: 'VA'
+			}
+		friends: ['John', 'Julie']
+		}
+	gen := new NodeGenerator()
+	lParts := Array.from(gen.allNodes(hStudents))
+	console.dir lParts, {level: null}
+
+	truthy isHash(lParts[0].node)
+	equal lParts[0].level, 0
+
+	truthy isHash(lParts[1].node)
+	equal lParts[1].level, 1
+
+	truthy isArray(lParts[2].node)
+	equal lParts[2].level, 1
+
+	)()
+
+(() =>
+	hAST := {
+		type: 'Block'
+		expressions: [
+			'abc',
+			{
+				type: 'Declaration',
+				parent: null
+				},
+			]
+		}
+	# @ts-ignore
+	hAST.expressions[1].parent = hAST
+
+	gen := new NodeGenerator()
+	lParts := Array.from(gen.allNodes(hAST))
+	console.dir lParts, {level: null}
+
+	truthy isHash(lParts[0].node)
+	equal lParts[0].level, 0
+
+	truthy isArray(lParts[1].node)
+	equal lParts[1].level, 1
+
+	truthy isHash(lParts[2].node)
+	equal lParts[2].level, 2
+
+	)()

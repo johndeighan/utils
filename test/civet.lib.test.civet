@@ -1,0 +1,24 @@
+# civet.lib.test.civet
+
+import {getCmdArgs, DBG, isHash} from '../src/lib/utils.lib.ts'
+import {
+	civet2ast, pprintAST,
+	} from '../src/lib/civet.lib.ts'
+import {
+	equal, like, succeeds, fails, truthy, falsy,
+	} from '../src/lib/unit-test.lib.ts'
+
+hArgs := getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+DBG "civet2ast(code)"
+
+truthy isHash(await civet2ast('x := 42'))
+
+DBG "pprintAST(hAST)"
+
+equal pprintAST({type: 'Block', size: 4}), """
+	[Block]
+	size: 4
+	"""

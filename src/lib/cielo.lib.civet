@@ -1,0 +1,53 @@
+# cielo.lib.civet
+
+import {
+	undef, defined, notdefined, assert,
+	} from './datatypes.lib.ts'
+import {
+	croak, pass, keys, hasKey, hasKeys, OL,
+	} from './llutils.lib.ts'
+import {
+	LogCmd, DBG, LOG, WARN, ERR,
+	pushLogLevel, popLogLevel,
+	} from './logger.lib.ts'
+import {
+	isFile, fileExt, withExt, slurp, barf,
+	} from './fs.lib.ts'
+import {
+	execCmdSync,
+	} from './exec.lib.ts'
+
+# ---------------------------------------------------------------------------
+
+/**
+ * cielo2civet() - convert cielo code to civet code
+ */
+
+export cielo2civet := (code: string): string =>
+
+	return code
+
+# ---------------------------------------------------------------------------
+
+/**
+ * cielo2civetFile(cieloPath, civetPath)
+ *    - pre-process the .cielo file to .civet file
+ */
+
+export cielo2civetFile := (
+		cieloPath: string
+		civetPath: string?=undef
+		): void =>
+
+	assert isFile(cieloPath), "No such file: #{OL(cieloPath)} (cielo2civet)"
+	assert (fileExt(cieloPath) == '.cielo'), "Not a cielo file: #{OL(cieloPath)}"
+	if notdefined(civetPath)
+		civetPath = withExt(cieloPath, '.civet')
+	else
+		assert (fileExt(civetPath) == '.civet'), "Not a civet file: #{OL(civetPath)}"
+	code := slurp cieloPath
+	barf civetPath, cielo2civet(code)
+	assert isFile(civetPath), "File not created: #{OL(civetPath)}"
+	return
+
+# ---------------------------------------------------------------------------

@@ -1,0 +1,382 @@
+# datatypes.lib.civet
+
+/**
+ * @module datatypes - TypeScript datatype checking
+ */
+
+# ---------------------------------------------------------------------------
+
+/**
+ * An alias for JavaScript's `undefined`
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,undef)
+ */
+
+export undef := undefined
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns true if the provided value is defined
+ * (i.e. not null or undefined), else returns false
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,defined)
+ */
+
+export function defined<T extends any>(x: T): x is NonNullable<T> {
+
+	return (x != undef) && (x != null)
+	}
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Returns true if the value provided is not defined
+ * (i.e. either null or undefined), else returns false
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,notdefined)
+ */
+
+export notdefined := (x: any): x is undefined =>
+
+	return (x == undefined) || (x == null)
+
+# ---------------------------------------------------------------------------
+
+export type FilterFunc = (item: any) => boolean
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Asserts that `cond` is true. If it isn't, an exception is
+ * thrown with the given `msg`
+ */
+
+export type AssertFunc = (cond: boolean, msg?: string) => void
+export assert: AssertFunc := (
+		cond: boolean,
+		msg: string="An error occurred"
+		): asserts cond =>
+
+	if !cond
+		throw new Error(msg)
+	return
+
+# ---------------------------------------------------------------------------
+
+/**
+ * An array containing anything
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,array)
+ */
+
+export type array = any[]
+export type arrayof<T> = T[]
+
+/**
+ * Test if something is an array
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isArray)
+ */
+
+export isArray := (x: any): x is array =>
+
+	return Array.isArray(x)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * An alias for TypeScript type 'object' with string keys
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,hash)
+ */
+
+export interface hash
+	[key: string | symbol]: any
+
+export interface hashof<T>
+	[key: string | symbol]: T
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Test if something is a hash
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isHash)
+ */
+
+export isHash := (x: any): x is hash =>
+
+	return isObject(x) && not (isArray(x) || isRegExp(x))
+
+# ---------------------------------------------------------------------------
+
+/**
+ * a function that takes no arguments and returns nothing
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,voidFunc)
+ */
+
+export type voidFunc = () => void
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns true if (typeof item == 'string') or item instanceof String
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isString)
+ */
+
+export isString := (x: any): x is string =>
+
+	return (typeof x == 'string') || (x instanceof String)
+
+# ---------------------------------------------------------------------------
+
+export type char = string
+
+export isChar := (x: any): x is char =>
+
+	return isString(x) && (x.length == 1)
+
+# ---------------------------------------------------------------------------
+
+export type nonEmptyString = string
+
+/**
+ * Test if something is a non-empty string,
+ * i.e. isn't all whitespace
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isNonEmptyString)
+ */
+
+export isNonEmptyString := (x: any): x is nonEmptyString =>
+
+	# --- must contain non-whitespace character
+	return isString(x) && defined(x.match(/\S/))
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Test if something is a boolean
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isBoolean)
+ */
+
+export isBoolean := (x: any): x is boolean =>
+
+	return (typeof x == 'boolean') || (x instanceof Boolean)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Test if something is a number
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isNumber)
+ */
+
+export isNumber := (x: any): x is number =>
+
+	return (
+		  (typeof x == 'bigint')
+		|| (typeof x == 'number')
+		|| (x instanceof Number)
+		)
+
+# ---------------------------------------------------------------------------
+
+export isPrimitive := (x: any): boolean =>
+
+	return isString(x) || isNumber(x) || isBoolean(x)
+
+# ---------------------------------------------------------------------------
+
+export isNonPrimitive := (x: any): boolean =>
+
+	return (x != null) && (typeof x == 'object')
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Type integer
+ */
+
+export type integer = number
+
+/**
+ * Test if something is an integer
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isInteger)
+ */
+
+export isInteger := (x: any): x is integer =>
+
+	return isNumber(x) && Number.isInteger(x.valueOf())
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Type intArray
+ */
+
+export type intArray = integer[]
+
+export isArrayOfIntegers := (x: any): x is intArray =>
+
+	if not Array.isArray(x)
+		return false
+	for item of x
+		if not isInteger(item)
+			return false
+	return true
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Test if something is an array of strings
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isArrayOfStrings)
+ */
+
+export isArrayOfStrings := (x: any): x is string[] =>
+
+	if not Array.isArray(x)
+		return false
+	for item of x
+		if not isString(item)
+			return false
+	return true
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Type regexp - a regular expression
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,regexp)
+ */
+
+export type regexp = object
+
+/**
+ * Test if something is a regular expression
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isRegExp)
+ */
+
+export isRegExp := (item: any): item is regexp =>
+
+	return (item instanceof RegExp)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Test if something is an object
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isObject)
+ */
+
+export isObject := (x: any): x is object =>
+
+	return (typeof x == 'object') && (x != null)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Test if something is a function
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isFunction)
+ */
+
+export isFunction := (item: any): boolean =>
+
+	return (typeof item == 'function')
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns true if any of these is true:
+ * 	- x is null or undef
+ * 	- x is a string consisting of only whitespace
+ * 	- x is an array of length 0
+ * 	- x is a hash that has no keys
+ * else returns false
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isEmpty)
+ */
+
+export isEmpty := (x: any): boolean =>
+
+	if (x == undef) || (x == null)
+		return true
+	if isString(x)
+		return (x.match(/^\s*$/) != null)
+	if isArray(x)
+		return (x.length == 0)
+	if isHash(x)
+		return (Object.keys(x).length == 0)
+	else
+		return false
+
+# ---------------------------------------------------------------------------
+
+/**
+ * returns not isEmpty(x)
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,nonEmpty)
+ */
+
+export nonEmpty := (x: any): boolean =>
+
+	return not isEmpty(x)
+
+# ---------------------------------------------------------------------------
+
+export lMark := '⸂'    # --- U+2E02
+export rMark := '⸃'    # --- U+2E03
+
+export hide := (str: string): string =>
+
+	return lMark + str + rMark
+
+# ---------------------------------------------------------------------------
+
+export unhide := (str: string): string =>
+
+	lParts: string[] := []
+	let pos = 0
+	let start = str.indexOf('"'+lMark, pos)
+	while (start >= 0)
+		end := str.indexOf(rMark+'"', start)
+		if (end == -1)
+			break
+		else
+			lParts.push str.substring(pos, start)
+			lParts.push str.substring(start+2, end)
+			pos = end+2
+		start = str.indexOf('"'+lMark, pos)
+	lParts.push str.substring(pos)
+	return lParts.join('')
+
+# ---------------------------------------------------------------------------
+
+stringifyFunc := (
+		x: Function,
+		space: string|number=0
+		): string =>
+
+	if (space == 0)
+		return x.toString().replaceAll(/\s+/g, ' ')
+	else
+		return x.toString().replaceAll(/[\t\ ]+/g, ' ')
+
+# ---------------------------------------------------------------------------
+
+/**
+ * stringify any value
+ * NOTE: JSON.stringify sucks! - it can't handle undefined, functions,
+ * and other standard JavaScript values. Fortunately,
+ * it provides a mechanism to handle that and other anomolies - a
+ * replacer function
+ */
+
+export stringify := (x: any, hOptions: hash={}): string =>
+
+	strict := hOptions.strict || false
+	space := hOptions.space || 0
+	if (x == undef)
+		return strict ? 'undefined' : 'undef'
+	else if (x == null)
+		return 'null'
+	else if (typeof x == 'function')
+		return stringifyFunc(x, space)
+
+	replacer := (key: string, value: any) =>
+		return (
+			  (value == undef)             ? hide(strict ? 'undefined' : 'undef')
+			: (value == null)              ? hide('null')
+			: (typeof value == 'function') ? hide(stringifyFunc(value, space))
+			: (typeof value == 'symbol')   ? '[SYMBOL]'
+			:                                value
+			)
+	str := JSON.stringify(x, replacer, space)
+	return unhide(str)

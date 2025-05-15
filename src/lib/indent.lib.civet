@@ -1,0 +1,156 @@
+# indent.lib.civet
+
+import {
+	undef, defined, notdefined, assert, array,
+	isString, isArray, isArrayOfStrings, isHash, integer, isInteger,
+	} from './datatypes.lib.ts'
+import {
+	pass, OL, ML, rtrim, countChars,
+	blockToArray, arrayToBlock, toArray, toBlock,
+	croak, escapeStr,
+	} from './llutils.lib.ts'
+import {DBG} from './logger.lib.ts'
+
+/**
+ * @module indent - indent level utilities
+ */
+
+export let oneIndent: string? = undef
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Reset the text for one indent level
+ */
+
+export resetOneIndent := (str: string?=undef): void =>
+
+	oneIndent = str
+	return
+
+# ---------------------------------------------------------------------------
+
+/**
+ * indentLevel - determine indent level of a string
+ *               it's OK if the string is ONLY indentation
+ */
+
+export indentLevel := (line: string): number =>
+
+	# --- This will always match, and it's greedy
+	#     (but TypeScript doesn't know that)
+	[prefix] := line.match(/^\s*/) || ['']
+
+	if (prefix.length == 0)
+		return 0
+
+	# --- Check if we're using TABs or spaces
+	numTABs := countChars(prefix, "\t")
+	numSpaces := countChars(prefix, " ")
+	assert (numTABs==0) || (numSpaces==0),
+		"Invalid mix of TABs and spaces in #{escapeStr(line)}"
+
+	# --- oneIndent must be one of:
+	#        undef
+	#        a single TAB character
+	#        some number of space characters
+
+	# --- Set variables oneIndent & level
+	switch oneIndent
+		when undef
+			if (numTABs > 0)
+				oneIndent = "\t"
+				return numTABs
+			else
+				oneIndent = ' '.repeat(numSpaces)
+				return 1
+		when "\t"
+			assert (numSpaces==0), "Expecting TABs, found spaces"
+			return numTABs
+		else
+			# --- using some number of spaces
+			assert (numTABs == 0), "Expecting spaces, found TABs"
+			assert (numSpaces % oneIndent.length == 0), """
+					Invalid num spaces: #{numSpaces},
+					oneIndent = #{escapeStr(oneIndent)}
+					"""
+			return numSpaces / oneIndent.length
+
+# ---------------------------------------------------------------------------
+
+/**
+ * splitLine - separate a line into [level, line]
+ */
+
+export type lineDesc = [
+	level: number
+	text: string
+	]
+
+export splitLine := (line: string): lineDesc =>
+
+	[_, prefix, str] := line.match(/^(\s*)(.*)$/) || ['', '', '']
+	return [indentLevel(prefix), str.trim()]
+
+# ---------------------------------------------------------------------------
+
+/**
+ * indented - add indentation to each string in a block or array
+ *          - returns the same type as input, i.e. array or string
+ */
+
+export function indented(
+		input: string,
+		level?: number
+		): string
+export function indented(
+		input: string[],
+		level?: number
+		): string[]
+export function indented(
+		input: string | string[],
+		level: number=1
+		): string | string[] {
+	if notdefined(oneIndent)
+		oneIndent = '\t'
+	lLines: string[] := isArray(input) ? input : input.split('\n')
+	lNewLines: string[] := for line of lLines
+		oneIndent.repeat(level) + line
+	return isArray(input) ? lNewLines : lNewLines.join('\n')
+	}
+
+# ---------------------------------------------------------------------------
+
+/**
+ * undented - string with 1st line indentation removed for each line
+ *          - returns same type as input, i.e. either string or array
+ */
+
+export undented := (input: string | string[]): string | string[] =>
+
+	# --- input must be either a string or array of strings
+	lLines := toArray(input)
+
+	# --- NOTE: leave empty lines empty
+
+	let toRemove: string?  = undef
+	let nToRemove: number = 0
+	lNewLines := lLines.map((line) =>
+		line = rtrim(line)
+		if (line == '')
+			return ''
+		else if notdefined(toRemove)
+			[_, prefix, rest] := line.match(/^(\s*)(.*)$/) || ['','','']
+			if (prefix.length == 0)
+				return line
+			else
+				toRemove = prefix
+				nToRemove = prefix.length
+				return rest
+		else
+			assert (line.indexOf(toRemove)==0),
+				"can't remove #{OL(toRemove)} from #{OL(line)}"
+			return line.substr(nToRemove)
+		)
+
+	return isString(input) ? arrayToBlock(lNewLines) : lNewLines

@@ -1,0 +1,48 @@
+# coverage.cmd.civet
+
+import {
+	undef, strToHash, getCmdArgs, words, LOG, LOGVALUE, DBG,
+	} from '../lib/utils.lib.ts'
+import {
+	allExportsIn, allUnitTestsIn, mergeAnalyses, dumpSymbols,
+	} from '../lib/analyze.lib.ts'
+
+lValidStubs: string[] := words(
+	'datatypes llutils logger text-table indent tokens fs',
+	'symbols exec cielo compile utils analyze v8-stack unit-test'
+	)
+
+# ---------------------------------------------------------------------------
+# ASYNC !
+
+analyze := (stub: string): void =>
+
+	DBG "stub = #{stub}"
+
+	libPath := "src/lib/#{stub}.lib.civet"
+	lExports := await Array.fromAsync(allExportsIn(libPath))
+
+	testPath := "test/#{stub}.lib.test.civet"
+	lTestLabels := await Array.fromAsync(allUnitTestsIn(testPath))
+
+	lFinal := mergeAnalyses lExports, lTestLabels
+	LOG ''
+	numMissing := dumpSymbols "Symbols in #{stub}", lFinal
+	if (numMissing == 0)
+		LOG "OK"
+	else
+		LOG "#{numMissing} missing"
+	LOG ''
+	return
+
+# ---------------------------------------------------------------------------
+
+hArgs := getCmdArgs()
+
+lStubs := hArgs._
+if (lStubs.length == 0)
+	for stub of lValidStubs
+		await analyze(stub)
+else
+	for stub of lStubs
+		await analyze(stub)

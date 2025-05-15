@@ -1,0 +1,132 @@
+# symbols.lib.civet
+
+import {
+	undef, defined, notdefined, assert,
+	hash, hashof, nonEmpty,
+	} from './datatypes.lib.ts'
+import {
+	pass, OL, ML, croak, o, getOptions, hasKey, keys,
+	} from './llutils.lib.ts'
+import {LOG, DBG, DBGVALUE} from './logger.lib.ts'
+import {resetOneIndent} from './indent.lib.ts'
+import {
+	Token, tokenGenerator, allTokensInBlock,
+	} from './tokens.lib.ts'
+import {isFile, slurp} from './fs.lib.ts'
+
+/**
+ * @module symbols - locate common symbols
+ *    parses a file (default: src/.symbols) that looks like:
+ *       src/lib/indent.lib.ts
+ *          oneIndent resetOneIndent indentLevel
+ *          lineDesc splitLine indented
+ *       src/lib/fs.lib.ts
+ *          isFile isDir
+ *          fileExt withExt
+ *
+ *    and implements function:
+ *       sourceLib := (symbol: string): string?
+ */
+
+# --- not exported!
+let hSymbols: hashof<string> = {}     # --- {<sym>: <lib>, ...}
+
+# ---------------------------------------------------------------------------
+
+export loadSymbols := (
+		strSymbols: string
+		hOptions: hash={}
+		): hashof<string> =>
+
+	# --- Check if libraries actually exist
+	{checkFiles} := getOptions hOptions, {
+		checkFiles: false
+		}
+
+	let level = 0   # --- symGen must know the current level
+
+	symGen: tokenGenerator := (line: string) ->
+
+		if (level == 0)
+			yield {kind: 'lib', str: line}
+		else if (level == 1)
+			for str of line.split(/\s+/)
+				yield {kind: 'symbol', str}
+		else
+			croak "level = #{level}"
+		return
+
+	hSymbols: hashof<string> := {}  # --- {<symbol>: <lib>, ...}
+	let curLib: string? = undef
+	for {kind, str} of allTokensInBlock(strSymbols, symGen)
+		switch kind
+			when 'indent'
+				level += 1
+			when 'undent'
+				level -= 1
+			when 'lib'
+				curLib = str
+			when 'symbol', 'guard'
+				assert defined(str), "undefined str!"
+				if (level == 0)
+					if checkFiles
+						assert isFile(str), "No such file: #{str}"
+					curLib = str
+				else if defined(curLib)
+					DBG "ADD #{str} from #{curLib}"
+					hSymbols[str] = curLib
+				else
+					croak "curLib empty at level > 0"
+			else
+				croak "Unknown kind: #{kind}"
+	resetOneIndent()
+	return hSymbols
+
+# ---------------------------------------------------------------------------
+
+export sourceLib := (
+		symbol: string
+		h: hashof<string>=hSymbols
+		): string =>
+
+	return h[symbol]
+
+# ---------------------------------------------------------------------------
+
+export libsAndSymbols := (
+		lSymbols: string[]
+		): hashof<string[]> =>
+
+	hLibs: hashof<string[]> := {}
+	for sym of lSymbols
+		srcLib := sourceLib(sym)
+		if defined(srcLib)
+			if hasKey(hLibs, srcLib)
+				hLibs[srcLib].push sym
+			else
+				hLibs[srcLib] = [sym]
+	return hLibs
+
+# ---------------------------------------------------------------------------
+
+export getNeededImportStmts := (
+		lSymbols: string[]
+		): string[] =>
+
+	DBG "CALL getNeededImportStmts(#{OL(lSymbols)})"
+	hLibs := libsAndSymbols(lSymbols)
+	DBGVALUE 'hLibs', hLibs
+	lStmts := for lib of keys(hLibs)
+		lSyms := hLibs[lib]
+		strSyms := lSyms.join(', ')
+		if lib.match(/^[\@\.\/]/)
+			"import {#{strSyms}} from '#{lib}';"
+		else
+			"import {#{strSyms}} from './#{lib}';"
+	return lStmts
+
+# ---------------------------------------------------------------------------
+
+if isFile('src/.symbols')
+	contents := slurp('src/.symbols')
+	hSymbols = loadSymbols(contents, o"checkFiles")

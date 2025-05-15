@@ -1,0 +1,20 @@
+# compile.cmd.test.civet
+
+import {
+	LOG,
+	} from '../src/lib/logger.lib.ts'
+import {
+	getCmdArgs, execCmdSync, ML,
+	} from '../src/lib/utils.lib.ts'
+import {
+	equal,
+	} from '../src/lib/unit-test.lib.ts'
+
+hArgs := getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+equal 2+2, 4
+
+hResult := execCmdSync 'compile', ['-h'], 'collect'
+LOG ML(hResult)

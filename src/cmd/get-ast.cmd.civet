@@ -1,0 +1,12 @@
+# get-ast.cmd.civet
+
+import {
+	LOG, LOGVALUE, DBG, DBGVALUE, civet2ast,
+	} from '../src/lib/utils.lib.ts'
+
+hArgs := getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+hAST := civet2ast('x = 42')
+LOG hAST

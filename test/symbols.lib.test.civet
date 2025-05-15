@@ -1,0 +1,56 @@
+# symbols.lib.test.civet
+
+import {
+	undef, LOG, DBG, loadSymbols,
+	sourceLib, libsAndSymbols, getNeededImportStmts,
+	} from '../src/lib/utils.lib.ts'
+import {
+	equal, succeeds,
+	} from '../src/lib/unit-test.lib.ts'
+
+hSymbols := loadSymbols("""
+	datatypes.lib.ts
+		undef defined
+	indent.lib.ts
+		splitLine
+	""")
+
+# ---------------------------------------------------------------------------
+
+DBG "loadSymbols()"
+
+equal hSymbols, {
+	undef: 'datatypes.lib.ts'
+	defined: 'datatypes.lib.ts'
+	splitLine: 'indent.lib.ts'
+	}
+
+DBG "sourceLib()"
+
+equal sourceLib('x', {x: 'temp.ts', y: 'dummy.ts'}), 'temp.ts'
+equal sourceLib('defined'), 'src/lib/datatypes.lib.ts'
+equal sourceLib('defined', hSymbols), 'datatypes.lib.ts'
+equal sourceLib('isArray'), 'src/lib/datatypes.lib.ts'
+equal sourceLib('isArray', hSymbols), undef
+
+equal sourceLib('array'), 'src/lib/datatypes.lib.ts'
+equal sourceLib('hash'), 'src/lib/datatypes.lib.ts'
+
+DBG "libsAndSymbols()"
+
+equal libsAndSymbols(['defined','array']), {
+	'src/lib/datatypes.lib.ts': ['defined','array']
+	}
+equal libsAndSymbols(['defined','splitLine']), {
+	'src/lib/datatypes.lib.ts': ['defined']
+	'src/lib/indent.lib.ts': ['splitLine']
+	}
+
+DBG "getNeededImportStmts()"
+
+equal getNeededImportStmts(['defined','array']), [
+	"import {defined, array} from './src/lib/datatypes.lib.ts';"
+	]
+equal getNeededImportStmts(['arrayof','integer']), [
+	"import {arrayof, integer} from './src/lib/datatypes.lib.ts';"
+	]

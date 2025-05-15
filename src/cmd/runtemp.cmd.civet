@@ -1,0 +1,33 @@
+# runtemp.cmd.civet
+
+import {
+	undef, getCmdArgs, assert, DBG, LOG, isFile,
+	compileFile, execCmd, curLogLevel,
+	} from "../lib/utils.lib.ts"
+
+hArgs := getCmdArgs()
+lStubs := (hArgs._.length == 0) ? ['temp'] : hArgs._
+
+# ---------------------------------------------------------------------------
+
+DBG "in cmd runtemp"
+for stub of lStubs
+	compileFile "test/#{stub}.test.civet"
+
+	assert isFile('test/temp.ts'), "Compile of test/temp.civet failed"
+	{code} := if (curLogLevel() == 'debug')
+		await execCmd 'deno', [
+			'run',
+			'-A',
+			'--inspect-brk'
+			'test/temp.ts'
+			Deno.args...
+			]
+	else
+		await execCmd 'deno', [
+			'run',
+			'-A',
+			'test/temp.ts'
+			Deno.args...
+			]
+	DBG "Final result code from temp file: #{code}"

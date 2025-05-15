@@ -1,0 +1,296 @@
+# datatypes.lib.test.civet
+
+import {
+	lMark, rMark, hide, unhide,
+	} from '../src/lib/datatypes.lib.ts'
+import {
+	undef, defined, notdefined, assert,
+	array, arrayof, isArray,
+	hash, hashof, isHash,
+	voidFunc, nonEmptyString,
+	isString, char, isChar, isNonEmptyString, isBoolean,
+	isNumber, isPrimitive, isNonPrimitive, isInteger,
+	isArrayOfStrings, isArrayOfIntegers,
+	isFunction, isObject, isRegExp,
+	isEmpty, nonEmpty,
+	DBG, getCmdArgs, stringify,
+	} from '../src/lib/utils.lib.ts'
+import {
+	equal, truthy, falsy, fails, succeeds, isType, notType,
+	} from '../src/lib/unit-test.lib.ts'
+
+# --- This interprets options like -D for "debug logging"
+hArgs := getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+DBG "const undef"
+
+truthy (undef == undefined)
+falsy  defined(undef)
+truthy notdefined(undef)
+
+DBG "defined(x)"
+
+truthy defined(42)
+truthy defined('abc')
+truthy defined([1,2])
+truthy defined({a: 13})
+truthy not defined(undefined)
+falsy  defined(null)
+
+# --- test if defined(x) is properly analyzed
+(() =>
+	logit := (x: string?) =>
+		let y: string = ''
+		if defined(x)
+			y = x
+		else
+			y = '<undef>'
+		console.log y
+
+	succeeds () => logit undef
+	succeeds () => logit 'abc'
+	)()
+
+DBG "notdefined(x)"
+
+truthy notdefined(null)
+truthy notdefined(undef)
+falsy  notdefined(42)
+falsy  notdefined('abc')
+
+# --- test if notdefined(x) is properly analyzed
+
+(() =>
+	logit := (x: string?) =>
+		let y: string = ''
+		if notdefined(x)
+			y = '<undef>'
+		else
+			y = x
+		console.log y
+
+	succeeds () => logit undef
+	succeeds () => logit 'abc'
+	)()
+
+DBG "type FilterFunc"
+
+isType 'FilterFunc', (x: any) => return true
+
+DBG "type AssertFunc", "assert()"
+
+succeeds () => assert 2+2 == 4
+fails    () => assert 2+2 == 5
+
+DBG "type array"
+
+isType 'array', [1,2]
+isType 'array', ['a', 42]
+notType 'array', 42
+
+DBG "isArray()"
+
+truthy isArray([undef, 42, 'abc', []])
+truthy isArray([1,2])
+falsy  isArray('abc')
+falsy  isArray(42)
+falsy  isArray(undef)
+falsy  isArray(null)
+
+DBG "type arrayof<T>"
+
+isType "arrayof<integer>", [1,2]
+isType "arrayof<string>", ['a','b']
+notType "arrayof<integer>", [1,'b']
+notType "arrayof<string>", [1,'b']
+
+DBG "type hash"
+
+isType 'hash', {a: 1}
+isType 'hash', {}
+isType 'hash', {a:1, b:'def'}
+
+DBG "isHash()"
+
+truthy isHash({a:1, b:2})
+falsy  isHash(42)
+falsy  isHash([1, 2])
+falsy  isHash(/abc/)
+falsy  isHash(undef)
+falsy  isHash(null)
+
+DBG "type hashof<T>"
+
+isType  'hashof<integer>', {a: 1}
+notType 'hashof<string>',  {a: 1}
+isType  'hashof<integer>', ({a:1, b:2})
+isType  'hashof<integer>', {}
+
+DBG "type voidFunc"
+
+isType 'voidFunc', () => return
+
+dump := () =>
+	console.log "Hello, World!"
+	return
+
+isType 'voidFunc', dump
+
+DBG "isString(x)"
+
+truthy isString('abc')
+truthy isString('')
+falsy isString(42)
+falsy isString(undef)
+falsy isString([1,2])
+falsy isString({a:1, b:2})
+falsy isString(/\s/)
+
+DBG "type char", "isChar()"
+
+truthy isChar('a')
+falsy  isChar(undef)
+falsy  isChar(42)
+falsy  isChar('abc')
+
+DBG "type nonEmptyString", "isNonEmptyString()"
+
+str: nonEmptyString := 'abc'
+truthy isNonEmptyString('a')
+falsy  isNonEmptyString('')
+falsy  isNonEmptyString(undef)
+falsy  isNonEmptyString(42)
+
+DBG "isBoolean(x)"
+
+truthy isBoolean(true)
+falsy  isBoolean(42)
+
+DBG "isNumber(x)"
+
+truthy isNumber(42)
+truthy isNumber(new Number(42))
+falsy isNumber('abc')
+truthy isNumber(3.14159)
+
+DBG "isPrimitive(x)"
+
+truthy isPrimitive('abc')
+truthy isPrimitive(42)
+truthy isPrimitive(false)
+falsy  isPrimitive([])
+falsy  isPrimitive([1,2])
+falsy  isPrimitive({})
+falsy  isPrimitive({a:1, b:2})
+
+DBG "isNonPrimitive(x)"
+
+falsy  isNonPrimitive('abc')
+falsy  isNonPrimitive(42)
+falsy  isNonPrimitive(false)
+truthy isNonPrimitive([])
+truthy isNonPrimitive([1,2])
+truthy isNonPrimitive({})
+truthy isNonPrimitive({a:1, b:2})
+
+DBG "type integer", "isInteger()"
+
+truthy isInteger(42)
+falsy  isInteger(3.14159)
+falsy  isInteger('42')
+
+DBG "type intArray", "isArrayOfIntegers()"
+
+truthy isArrayOfIntegers([1,13])
+falsy  isArrayOfIntegers(42)
+falsy  isArrayOfIntegers([1,'abc'])
+
+DBG "isArrayOfStrings(x)"
+
+truthy isArrayOfStrings(['abc','def'])
+falsy  isArrayOfStrings(42)
+falsy  isArrayOfStrings([1,2])
+falsy  isArrayOfStrings(['abc',2])
+
+DBG "type regexp", "isRegExp()"
+
+truthy isRegExp(/^abc$/)
+falsy  isRegExp('abc')
+
+DBG "isObject(x)"
+
+truthy isObject({})
+falsy  isObject(42)
+truthy isObject({a:1, b:2})
+truthy isObject([1, 2])
+
+DBG "isFunction(x)"
+
+truthy isFunction((x: any) => return 42)
+falsy  isFunction(42)
+
+DBG "isEmpty(x)"
+
+truthy isEmpty(undefined)
+truthy isEmpty(null)
+truthy isEmpty('')
+truthy isEmpty('   ')
+truthy isEmpty('\t\t')
+truthy isEmpty([])
+truthy isEmpty({})
+falsy  isEmpty('abc')
+falsy  isEmpty([1,2])
+falsy  isEmpty({a:1})
+
+DBG "nonEmpty(x)"
+
+falsy  nonEmpty(undefined)
+falsy  nonEmpty(null)
+falsy  nonEmpty('')
+falsy  nonEmpty('   ')
+falsy  nonEmpty('\t\t')
+falsy  nonEmpty([])
+falsy  nonEmpty({})
+truthy nonEmpty('abc')
+truthy nonEmpty([1,2])
+truthy nonEmpty({a:1})
+
+DBG "hide(str)", "const lMark", "const rMark"
+
+equal hide('abc'), "#{lMark}abc#{rMark}"
+
+DBG "unhide(str)"
+
+equal unhide("\"#{lMark}abc#{rMark}\""), 'abc'
+equal unhide("\"#{lMark}a#{rMark}\"b\"#{lMark}c#{rMark}\""), 'abc'
+
+(() =>
+	hideq := (str: string) =>
+		return '"' + hide(str) + '"'
+	equal unhide("#{hideq('abc')}"), 'abc'
+	equal unhide("#{hideq('abc')}def#{hideq('ghi')}"), 'abcdefghi'
+	)()
+
+DBG "stringify(x)"
+
+equal stringify(undef),        'undef'
+equal stringify(null),         'null'
+equal stringify('abc'),        '"abc"'
+equal stringify(42),           '42'
+equal stringify(true),         'true'
+equal stringify(['a',1]),      '["a",1]'
+equal stringify({a:1, b:'c'}), '{"a":1,"b":"c"}'
+equal stringify((a: string) => return), '(a)=>{ return; }'
+equal stringify({a: undef}),   '{"a":undef}'
+equal stringify({a: null}),    '{"a":null}'
+equal stringify({f: (a: string) => return}), '{"f":(a)=>{ return; }}'
+equal stringify({
+	a: undef
+	b: null
+	c: 'abc'
+	d: 42
+	e: false
+	f:(a: string) => return
+	}), '{"a":undef,"b":null,"c":"abc","d":42,"e":false,"f":(a)=>{ return; }}'

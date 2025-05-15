@@ -1,0 +1,318 @@
+import { parse, parseProgram, ParseError, getConfig, getStateKey } from ./parser.hera
+import generate, { prune } from ./generate.civet
+import * as lib from ./parser/lib.civet
+import * as sourcemap from ./sourcemap.civet
+{ SourceMap } := sourcemap
+export { parse, parseProgram, ParseError, generate, prune, lib, sourcemap, SourceMap }
+import type { BlockStatement } from ./parser/types.civet
+export type { ASTError, BlockStatement } from ./parser/types.civet
+
+import StateCache from "./state-cache.civet"
+import { WorkerPool } from "./worker-pool.civet"
+
+export class ParseErrors extends Error
+  name = "ParseErrors"
+  errors: ParseError[]
+  @(errors: ParseError[])
+    message := errors.map(.message).join("\n")
+    super errors.map(.message).join("\n")
+    @message = message
+    @errors = errors
+
+// Need to no-cache any rule that directly modifies parser state
+// indentation stack, jsx stack, etc.
+
+uncacheable := new Set [
+  // Meta
+  "DebugHere"
+  "Init"
+  "Program"
+  "Reset"
+
+  // Indentation
+  // We need to no-cache the state modifying rules up to the point where they
+  // balance within a parent so PushIndent needs to be marked no-cache even
+  // though it only calls TrackIndented which does the actual work.
+  "PushIndent"
+  "PopIndent"
+  "TrackIndented"
+  "BulletIndent"
+  "PushExtraIndent1"
+
+  // JSX
+  "PushJSXOpeningElement"
+  "PushJSXOpeningFragment"
+  "PopJSXStack"
+
+  // State
+  "AllowAll"
+  "AllowClassImplicitCall"
+  "AllowBracedApplication"
+  "AllowIndentedApplication"
+  "AllowMultiLineImplicitObjectLiteral"
+  "AllowNestedBinaryOp"
+  "AllowNewlineBinaryOp"
+  "AllowTrailingMemberProperty"
+  "AllowPipeline"
+
+  "ForbidClassImplicitCall"
+  "ForbidBracedApplication"
+  "ForbidIndentedApplication"
+  "ForbidMultiLineImplicitObjectLiteral"
+  "ForbidNestedBinaryOp"
+  "ForbidNewlineBinaryOp"
+  "ForbidTrailingMemberProperty"
+  "ForbidPipeline"
+
+  "RestoreAll"
+  "RestoreClassImplicitCall"
+  "RestoreMultiLineImplicitObjectLiteral"
+  "RestoreBracedApplication"
+  "RestoreIndentedApplication"
+  "RestoreTrailingMemberProperty"
+  "RestoreNestedBinaryOp"
+  "RestoreNewlineBinaryOp"
+  "RestorePipeline"
+
+]
+
+export type CompilerOptions
+  filename?: string
+  sourceMap?: boolean
+  inlineMap?: boolean
+  ast?: boolean | "raw"
+  js?: boolean
+  sync?: boolean
+  noCache?: boolean
+  hits?: string
+  trace?: string
+  parseOptions?:
+    coffeeCompat?: boolean
+    comptime?: boolean
+    globals?: string[]
+    symbols?: string[]
+  /** Specifying an empty array will prevent ParseErrors from being thrown */
+  errors?: ParseError[]
+  /** Number of parallel threads to compile with (Node only) */
+  threads?: number
+
+type CompileOutput<T extends CompilerOptions> =
+  T extends { ast: true } ? BlockStatement : T extends { sourceMap: true } ? { code: string, sourceMap: ReturnType<typeof SourceMap> } : string
+
+let workerPool: WorkerPool?
+
+export function compile<const T extends CompilerOptions>(src: string, options?: T): T extends { sync: true } ? CompileOutput<T> : Promise<CompileOutput<T>>
+  // `CIVET_THREADS=0` (including in browser build) forces no threads
+  unless process.env.CIVET_THREADS == 0
+    threads := parseInt options?.threads ?? process.env.CIVET_THREADS, 10
+    if threads is 0 // explicit 0 terminates existing threads
+      workerPool?.setThreads 0
+    else if not isNaN(threads) and threads > 0 and not options.sync
+      if workerPool?
+        workerPool.setThreads threads
+      else
+        workerPool = new WorkerPool threads
+      // Prevent worker from recursively spawning its own worker
+      return workerPool.run 'compile', src, {...options, threads: 0}
+
+  unless options
+    options = {} as T
+  else
+    options = {...options}
+
+  // Handle undefined parseOptions, and avoid mutating the original object
+  options.parseOptions = {...options.parseOptions}
+
+  filename := options.filename or "unknown"
+
+  if filename.endsWith('.coffee') and not /^(#![^\r\n]*(\r\n|\n|\r))?\s*['"]civet/.test src
+    options.parseOptions.coffeeCompat = true
+
+  {hits, trace, noCache} := options
+
+  let events: CacheEvents | undefined
+  unless noCache
+    events = makeCache {
+      hits: !!hits
+      trace: !!trace
+    }
+
+  let ast
+
+  try
+    //@ts-ignore
+    ast = parseProgram(src, {
+      options.parseOptions
+      options.sync
+      filename
+      events
+    })
+  finally
+    if hits or trace
+      import("node:fs").then ({ writeFileSync }) ->
+        if { logs } := events?.meta
+          if trace
+            writeFileSync trace, logs.join "\n"
+
+        if hits
+          if hitData := events?.meta.hits
+            total .= 0
+            data := [...hitData.entries()]
+
+            // sort hit count and write to hits.out
+            counts := data
+            .sort ([, a], [, b]) => b - a
+            .map ([k, v]) =>
+              total+=v
+              `${k}: ${v}`
+            .join "\n"
+
+            hitSummary := ```
+              Total: ${total}
+
+              ${counts}
+            ```
+
+            writeFileSync hits, hitSummary
+
+  throwOnErrors := not options.errors?
+
+  function rest(ast)
+    options = options!
+    ast = prune ast unless options.ast is "raw"
+
+    if options.ast
+      return ast
+
+    function checkErrors
+      return unless throwOnErrors
+      options = options!
+      if options.errors?.length
+        throw new ParseErrors options.errors
+
+    if options.sourceMap or options.inlineMap
+      //@ts-ignore sourceMap option for generate
+      options.sourceMap = new SourceMap src
+      code := generate ast, options
+      checkErrors()
+
+      if options.inlineMap
+        //@ts-ignore
+        return SourceMap.remap code, options.sourceMap, filename, filename + '.tsx'
+      else
+        return {
+          code,
+          sourceMap: options.sourceMap
+        }
+
+    result := generate ast, options
+
+    // If there are errors, run generate again with sourcemap to get locations
+    if options!.errors?.length
+      delete options.errors
+      //@ts-ignore sourceMap option for generate
+      options.sourceMap = new SourceMap src
+      generate ast, options
+      checkErrors()
+
+    return result
+
+  if ast.then?
+    ast.then rest
+  else
+    rest ast
+
+type CacheKey = [string, number, number, string]
+
+type ParseState =
+  input: string
+  pos: number
+
+type ParseResult = {
+  pos: number
+  value: unknown
+} | undefined
+
+type MetaData
+  hits?: Map<string, number>
+  logs?: string[]
+
+type CacheOptions
+  hits?: boolean | undefined
+  trace?: boolean | undefined
+
+type CacheEvents
+  meta: MetaData
+  enter: (ruleName: string, state: ParseState) => { cache: ParseResult } | undefined
+  exit: (ruleName: string, state: ParseState, result: ParseResult) => void
+
+makeCache := ({hits, trace}: CacheOptions = {}): CacheEvents ->
+  meta: MetaData := {}
+  let hitCount: Map<string, number>
+  if hits
+    hitCount = new Map
+    meta.hits = hitCount
+
+  let logs: string[]
+  if trace
+    logs = []
+    meta.logs = logs
+
+  stateCache := new StateCache<ParseResult>
+
+  stack: string[] := []
+
+  events := {
+    meta
+    enter: (ruleName: string, state: ParseState) ->
+      hitCount.set ruleName, (hitCount.get(ruleName) or 0) + 1 if hits
+
+      return if uncacheable.has(ruleName)
+
+      [stateKey, tagKey] := getStateKey()
+      key: CacheKey := [tagKey, stateKey, state.pos, ruleName ]
+
+      // We cache `undefined` when a rule fails to match so we need to use `has` here.
+      if stateCache.has(key)
+        result := stateCache.get(key)
+        if trace
+          logs.push "".padStart(stack.length * 2, " ") + ruleName + ":" + state.pos + "💰" + (if result then "✅" else "❌")
+        return {
+          cache: if result then { ...result }
+        }
+
+      if trace
+        logs.push "".padStart(stack.length * 2, " ") + ruleName + ":" + state.pos + "{"
+        stack.push ruleName
+
+      return
+
+    exit: (ruleName: string, state: ParseState, result: ParseResult) ->
+      if uncacheable.has(ruleName)
+        if trace
+          logs.push "".padStart(stack.length * 2, " ") + ruleName + ":" + state.pos + "⚠️ " + (if result then "✅" else "❌")
+        return
+
+      [stateKey, tagKey] := getStateKey()
+      key: CacheKey := [tagKey, stateKey, state.pos, ruleName ]
+      result = {...result} if result?
+      stateCache.set(key, result)
+
+      //@ts-ignore
+      if getConfig().verbose and result
+        console.log `Parsed ${JSON.stringify state.input[state.pos...result.pos]} [pos ${state.pos}-${result.pos}] as ${ruleName}`//, JSON.stringify(result.value)
+
+      if trace
+        stack.pop()
+        logs.push "".padStart(stack.length * 2, " ") + ruleName + ":" + state.pos + "} " + (if result then "✅" else "❌")
+
+      return
+  }
+
+  return events
+
+export isCompileError = (err: ???): err is ParseError | ParseErrors ->
+  err <? ParseError or err <? ParseErrors
+  //[err.message, err.name, err.filename, err.line, err.column, err.offset].every & !== undefined
+
+export default { parse, parseProgram, ParseError, ParseErrors, generate, sourcemap, SourceMap, compile, isCompileError }

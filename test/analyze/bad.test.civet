@@ -1,0 +1,21 @@
+DBG "type hash", "isHash()"
+
+truthy isHash({a:1, b:2})
+falsy  isHash(42)
+
+DBG "type voidFunc"
+
+dump: voidFunc := () =>
+	console.log "Hello, World!"
+	return
+	
+DBG "type char isChar"
+
+truthy isChar('a')
+falsy  isChar(undef)
+
+DBG "type nonEmptyString", "isNonEmptyString()"
+
+str: nonEmptyString := 'abc'
+truthy isNonEmptyString('a')
+falsy  isNonEmptyString('')

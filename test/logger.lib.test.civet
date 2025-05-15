@@ -1,0 +1,183 @@
+# logger.lib.test.civet
+
+import {
+	assert, throwsError,
+	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
+	getLog, getFullLog, setLogLevel, clearLog,
+	curLogLevel, pushLogLevel, popLogLevel,
+	LogCmd, getCmdArgs, spaces,
+	} from '../src/lib/utils.lib.ts'
+import {
+	equal, truthy, falsy, succeeds, fails, matches,
+	} from '../src/lib/unit-test.lib.ts'
+
+hArgs := getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+DBG "enum LogCmd"
+
+succeeds () =>
+	clearLog()
+	setLogLevel 'info'
+	LOG "info", LogCmd.INDENT
+	LOG "stuff", LogCmd.UNDENT
+	LOG "done"
+	equal getLog(), """
+		I info
+		I    stuff
+		I done
+		"""
+
+DBG "clearLog()", "getLog()"
+
+succeeds () =>
+	clearLog()
+	setLogLevel 'info'
+	LOG "info", LogCmd.INDENT
+	LOG "stuff", LogCmd.UNDENT
+	LOG "finished"
+	equal getLog(), """
+		I info
+		I    stuff
+		I finished
+		"""
+
+succeeds () =>
+	clearLog()
+	setLogLevel 'profile'
+	LOG "info", LogCmd.INDENT
+	LOG "stuff", LogCmd.UNDENT
+	LOG "done"
+
+	matches getLog(), ///^
+		ms \n
+		-{5} \n
+		\s* \d+ \s I \s info \n
+		\s* \d+ \s I \s{4} stuff
+		\s* \d+ \s I \s done
+		$///
+
+DBG "pushLogLevel()", "popLogLevel()", "curLogLevel()"
+
+(() =>
+	save := curLogLevel()
+	pushLogLevel 'warn'
+	equal curLogLevel(), 'warn'
+	pushLogLevel 'debug'
+	equal curLogLevel(), 'debug'
+	popLogLevel()
+	equal curLogLevel(), 'warn'
+	popLogLevel()
+	equal curLogLevel(), save
+	)()
+
+DBG "DBG()", "DBGVALUE()", "LOG()", "LOGVALUE()", "WARN()", "ERR()", "setLogLevel()", "getFullLog()"
+
+# --- Define 2 functions, useful in unit tests
+
+logAll := (): void =>
+	DBG "debug"
+	DBGVALUE "lItems", ['a','b']
+	LOG "info"
+	LOGVALUE "hItems", {meaning: 42}
+	WARN "warning"
+	ERR "error"
+	return
+
+getTestLog := (level: string='info'): string =>
+	clearLog()
+	setLogLevel level
+	logAll()
+	return getLog()
+
+succeeds () =>
+	clearLog()
+	setLogLevel 'warn'
+	logAll()
+	assert (curLogLevel() == 'warn')
+
+	setLogLevel('info')
+	logAll()
+	assert (curLogLevel() == 'info')
+
+	pushLogLevel('error')
+	logAll()
+	assert (curLogLevel() == 'error')
+
+	popLogLevel()
+	logAll()
+	assert (curLogLevel() == 'info')
+
+	assert (getLog() == """
+		W warning
+		ERROR: error
+		I info
+		I hItems = {
+		#{spaces(3)}"meaning": 42
+		}
+		W warning
+		ERROR: error
+		ERROR: error
+		I info
+		I hItems = {
+		#{spaces(3)}"meaning": 42
+		}
+		W warning
+		ERROR: error
+		""")
+
+	assert (getFullLog() == """
+		W warning
+		ERROR: error
+		I info
+		I hItems = {
+		#{spaces(3)}"meaning": 42
+		}
+		W warning
+		ERROR: error
+		ERROR: error
+		I info
+		I hItems = {
+		#{spaces(3)}"meaning": 42
+		}
+		W warning
+		ERROR: error
+		""")
+
+# ---------------------------------------------------------------------------
+
+DBG "getLog()"
+
+(() =>
+	equal getTestLog(), """
+		I info
+		I hItems = {
+		#{spaces(3)}"meaning": 42
+		}
+		W warning
+		ERROR: error
+		"""
+	)()
+
+(() =>
+	equal getTestLog('debug'), """
+		D debug
+		D lItems = [
+		#{spaces(3)}"a",
+		#{spaces(3)}"b"
+		]
+		I info
+		I hItems = {
+		#{spaces(3)}"meaning": 42
+		}
+		W warning
+		ERROR: error
+		"""
+	)()
+
+(() =>
+	equal getTestLog('error'), """
+		ERROR: error
+		"""
+	)()

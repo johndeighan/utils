@@ -1,0 +1,529 @@
+/**
+ * utils - utility functions
+ * @module
+ */
+
+# utils.lib.civet
+
+import {
+	undef, defined, notdefined,
+	isString, char, integer, isChar, isNonEmptyString,
+	isBoolean, isNumber, isInteger,
+	isPrimitive, isNonPrimitive,
+	isArray, isArrayOfIntegers, isArrayOfStrings,
+	isHash, isFunction, isObject, isRegExp,
+	isEmpty, nonEmpty, assert,
+	hash, hashof, array, arrayof,
+	regexp, voidFunc, nonEmptyString, stringify,
+	} from './datatypes.lib.ts'
+import {
+	pass, deeplyEquals, OL, ML, getOptions, croak, throwsError,
+	strToHash, o, removeEmptyKeys, keys,
+	hasKey, hasKeys, missingKeys, merge, hit,
+	spaces, tabs, rtrim, countChars,
+	blockToArray, allLinesInBlock,
+	blockSpec, isBlockSpec, toArray,
+	arrayToBlock, toBlock,
+	escapeStr, escapeBlock, relpath, wsSplit, words, addDefaults,
+	sinceLoad, sinceLoadStr, sleep,
+	getNExtra, rpad, lpad, centered,
+	alignment, isAlignment, alignString, zpad,
+	allMatches, NodeGenerator, TNodeInfo,
+	} from './llutils.lib.ts'
+import {
+	setLogLevel, pushLogLevel, popLogLevel,
+	curLogLevel, clearLog, getLog, getFullLog,
+	LogCmd,
+	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
+	} from './logger.lib.ts'
+import {TextTable} from './text-table.lib.ts'
+import {
+	oneIndent, resetOneIndent, indentLevel, splitLine,
+	indented, undented,
+	} from './indent.lib.ts'
+import {
+	Token, allTokensIn, allTokensInBlock, tokenTable, tokenGenerator,
+	} from './tokens.lib.ts'
+import {
+	isFile, isDir, fileExt, withExt,
+	rmFile, rmDir, pathType, getPathType, getStats,
+	isStub, pathInfo, parsePath, slurp, barf,
+	allFilesMatching, allLinesIn, watchFile, watchFiles, FileEventHandler,
+	normalizePath, mkpath, pathToURL, newerDestFileExists,
+	pathSubDirs, clearDir, mkDir, mkDirsForFile, lStatFields,
+	myself, removeFilesMatching, removeFilesExcept,
+	watcherCallbackFunc, fsChangeType, fsCallbackFunc, setDirTree,
+	FileOp, fileOpsTable, allTokensInFile,
+	} from './fs.lib.ts'
+import {
+	loadSymbols, sourceLib, libsAndSymbols, getNeededImportStmts,
+	} from './symbols.lib.ts'
+import {
+	execCmd, execCmdSync, cmdSucceeds,
+	mkstr, getCmdLine, getProcOpt,
+	execCmdResult, typeCheck,
+	} from './exec.lib.ts'
+import {
+	testerFunc, compilerFunc, postProcessor,
+	isCompilerFunc, isPostProcessor,
+	compilerInfo, isCompilerInfo,
+	compilerConfigHash, isConfigHash,
+	hDefaultConfig,
+	userConfigPath, hCompilerConfig, loadCompilerConfig,
+	installCmd, uninstallCmd, getCompilerInfo, getPostProcessor,
+	compileStatus, compileResult, compileFile,
+	getCompilerGlobPattern, allCompilableFiles,
+	runUnitTestsFor, runAllUnitTests,
+	} from './compile.lib.ts'
+import {
+	civet2ast,
+	} from './civet.lib.ts'
+
+export {
+	undef, defined, notdefined,
+	isString, isChar, isNonEmptyString,
+	isBoolean, isNumber, isInteger,
+	isPrimitive, isNonPrimitive
+	isArray, isArrayOfIntegers, isArrayOfStrings,
+	isHash, isFunction, isObject, isRegExp,
+	isEmpty, nonEmpty, assert, stringify,
+
+	pass, deeplyEquals, OL, ML, getOptions, croak, throwsError,
+	strToHash, o, removeEmptyKeys, keys,
+	hasKey, hasKeys, missingKeys, merge, hit,
+	spaces, tabs, rtrim, countChars,
+	blockToArray, allLinesInBlock, toArray,
+	arrayToBlock, toBlock,
+	escapeStr, escapeBlock, relpath, wsSplit, words, addDefaults,
+	sinceLoad, sinceLoadStr, sleep,
+	getNExtra, rpad, lpad, centered,
+	isAlignment, alignString, zpad,
+	allMatches, NodeGenerator,
+
+	TextTable,
+
+	isFile, isDir, fileExt, withExt,
+	rmFile, rmDir, getPathType, getStats,
+	parsePath, slurp, barf, isStub,
+	allFilesMatching, allLinesIn, watchFile, watchFiles, FileEventHandler,
+	normalizePath, mkpath, pathToURL, newerDestFileExists, setDirTree,
+	fileOpsTable, allTokensInFile,
+	pathSubDirs, clearDir, mkDir, mkDirsForFile, lStatFields,
+	myself, removeFilesMatching, removeFilesExcept,
+
+	loadSymbols, sourceLib, libsAndSymbols, getNeededImportStmts,
+
+	setLogLevel, pushLogLevel, popLogLevel,
+	curLogLevel, clearLog, getLog, getFullLog,
+	LogCmd,
+	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
+
+	oneIndent, resetOneIndent, indentLevel, splitLine,
+	indented, undented,
+
+	allTokensIn, allTokensInBlock, tokenTable,
+
+	execCmd, execCmdSync, cmdSucceeds,
+	mkstr, getCmdLine, getProcOpt, typeCheck,
+
+	isCompilerFunc, isPostProcessor,
+	isCompilerInfo, isConfigHash,
+	hDefaultConfig,
+	userConfigPath, hCompilerConfig, loadCompilerConfig,
+	installCmd, uninstallCmd, getCompilerInfo, getPostProcessor,
+	compileFile,
+	getCompilerGlobPattern, allCompilableFiles,
+	runUnitTestsFor, runAllUnitTests, isBlockSpec,
+	civet2ast,
+	}
+
+export type {
+	hash, hashof, array, arrayof, regexp, char, integer,
+	voidFunc, nonEmptyString,
+	execCmdResult, blockSpec, pathType, pathInfo,
+	watcherCallbackFunc, fsChangeType, fsCallbackFunc, FileOp,
+	Token, tokenGenerator, alignment, TNodeInfo,
+
+	testerFunc, compilerFunc, postProcessor,
+	compilerInfo, compilerConfigHash,
+
+	compileStatus, compileResult,
+	}
+
+# ---------------------------------------------------------------------------
+
+/**
+ * A generator that yields integers starting with 0 and
+ * continuing to n-1
+ */
+
+export range := (n: number): Generator<number, void, void> ->
+
+	let i = 0
+	while (i < n)
+		yield i
+		i = i + 1
+	return
+
+# ---------------------------------------------------------------------------
+
+/**
+ * converts x to a string, removing any carriage returns
+ * and removing leading and trailing whitespace
+ */
+
+export normalizeStr := (x: any): string =>
+
+	return x.toString().replaceAll('\r', '').trim()
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Remove lines from a string or array
+ * pat can be a string or a regular expression
+ */
+
+export removeLines := (
+	strOrArray: string | string[],
+	pat: string | RegExp
+	): string | string[] =>
+
+	assert isString(pat) || isRegExp(pat),  "Bad arg 2: #{OL(pat)}"
+	lLines := isString(strOrArray) ? blockToArray(strOrArray) : strOrArray
+	lNewLines := (
+		if (typeof pat == 'string')
+			lLines.filter((line) => (line != pat))
+		else
+			lLines.filter((line) => (line.match(pat) == null))
+		)
+	if isString(strOrArray)
+		return lNewLines.join('\n')
+	else
+		return lNewLines
+
+# ---------------------------------------------------------------------------
+
+hKeyToLogger: hash := {
+	I: 'info'
+	P: 'profile'
+	D: 'debug'
+	Q: 'quiet'
+	S: 'silent'
+	}
+
+export logLevelFromArgs := (lArgs: string[]): string? =>
+
+	for str of lArgs
+		lMatches := str.match(///^
+			-
+			([A-Za-z0-9_-]*)
+			(=)?
+			///)
+		if (lMatches == null)
+			pass()
+		else
+			keyStr := lMatches[1]
+			hasEq := lMatches[2]
+			if isEmpty(hasEq)
+				for key of keys(hKeyToLogger)
+					if keyStr.includes(key)
+						return hKeyToLogger[key]
+	return undef
+
+# ---------------------------------------------------------------------------
+
+/**
+ * Parse command line arguments, optionally specifying which
+ * options to expect and/or the expected number of non-options
+ *
+ * There are 3 kinds of items allowed on the command line:
+ *
+ * 1. flags, e.g.
+ * 	`-fnx` - sets flags `f`, 'n' and `x` to true
+ *    flags must be upper or lower case letters
+ *
+ * 2. an option with a value, e.g.
+ * 	`-label=mylabel` - sets option `label` to `'mylabel'`
+ * 	if the value contains a space char, it must be quoted
+ * 	if the value looks like a number, it's set to a number
+ *
+ * 3. anything else is a non-option, e.g.
+ * 	c:/temp/temp.txt
+ * 	if it includes a space char or starts with `-`,
+ * 		it must be quoted
+ *
+ * the 1st argument to getCmdArgs() is optional, and is a hash
+ * of information about the expected arguments.
+ *
+ * If key '_' is present, it must be a hash possibly including keys:
+ *    'range' - either an integer specifying the exact number of
+ *              non-options expected, of an array of 2 integers
+ *              specifying the minimum and maximum number of
+ *              non-options expected. The 2nd of these may be
+ *              the string 'inf' to indicate no maximum number
+ *    'desc' - a text description of what non-options are
+ *
+ * All other keys are names of options allowed
+ *    the associated value
+ * must be a hash with possibly these keys:
+ *    type - the type of value expected (defaults to 'boolean')
+ *    desc - a text description of the option (used on help screens)
+ *
+ * the 2nd argument to getCmdArgs() is an array of string arguments
+ * from the command line (defaults to Deno.args)
+ *
+ * the 3rd argument to getCmdArgs() is a hash of possible options:
+ *    doSetLogger - defaults to true - if false, then options
+ *                  -P, -D, -Q, -I and -S no longer set logging options
+ *                  and may therefore be used for other purposes
+ *
+ * By default, the following flags are recognized, and therefore
+ * cannot be included in hDesc (this behavior can be
+ * disabled by setting hOptions.doSetLogger to false):
+ *
+ * `-P` - set the current log level to 'profile'
+ * `-D` - set the current log level to 'debug'
+ * `-Q` - set the current log level to 'warn'
+ * `-I` - set the current log level to 'info'
+ * `-S` - set the current log level to 'silent'
+ *
+ * (see library @jdeighan/logger)
+ */
+
+export getCmdArgs := (
+	hDesc: hash? = undef,
+	lArgs: string[] = Deno.args,
+	hOptions: hash = {}
+	): hash =>
+
+	{doSetLogger} := getOptions hOptions, {
+		doSetLogger: true
+		}
+
+	if doSetLogger && defined(hDesc)
+		# --- Make sure hDesc does NOT include any of:
+		#        P, D, Q, I, S
+		for key of keys(hKeyToLogger)
+			assert notdefined(hDesc[key]),
+					"invalid key #{OL(key)} set in hDesc"
+		logLevel := logLevelFromArgs(lArgs)
+		if defined(logLevel)
+			setLogLevel logLevel
+
+	if defined(hDesc)
+		DBG "hDesc is: #{OL(hDesc)}"
+	DBG "lArgs is: #{OL(lArgs)}"
+
+	if ((lArgs.length == 1)
+			&& ['-h','--h','-help','--help'].includes(lArgs[0])
+			)
+		if defined(hDesc)
+			LOG helpStr(hDesc)
+		else
+			LOG "No help available"
+		Deno.exit()
+
+	hResult: hash := { _: [] }
+
+	# --- Utility functions
+
+	# --- Even gets called for -D, -Q, -P, -S
+	addOption := (name: string, value: any) =>
+		DBG "addOption(#{OL(name)}, #{OL(value)})"
+		assert isString(name), "Not a string: #{OL(name)}"
+		assert not hasKey(hResult, name),
+				"dup key #{name}, hResult = #{OL(hResult)}"
+
+		if doSetLogger
+			logger := hKeyToLogger[name]
+			if defined(logger)
+				hResult[name] = true
+				setLogLevel logger
+				return
+
+		if notdefined(hDesc)
+			hResult[name] = value
+			return
+		{type} := getOptionInfo(hDesc, name)
+
+		# --- type checking
+		if isArray(type)
+			assert type.includes(value), "type not an array"
+			hResult[name] = value
+		else
+			switch type
+				when 'string'
+					hResult[name] = value
+				when 'boolean'
+					hResult[name] = (
+						  (value == 'true')  ? true
+						: (value == 'false') ? false
+						:                      value
+						)
+				when 'number','float'
+					hResult[name] = parseFloat(value)
+				when 'integer'
+					hResult[name] = parseInt(value)
+		return
+
+	addNonOption := (str: string) =>
+		DBG "addNonOption(#{OL(str)})"
+		hResult._.push str
+
+	for str of lArgs
+		# --- ignore '--'
+		if (str == '--')
+			DBG "skipping --"
+			continue
+
+		# --- check if it's an option
+		lMatches := str.match(///^
+			-
+			([A-Za-z0-9_-]*)
+			(?:
+				(=)
+				(.*)
+				)?
+			$///)
+		if (lMatches == null)
+			# --- it's a non-option
+			addNonOption str
+		else
+			# --- it's an option
+			[_, optStr, eqStr, value] := lMatches
+			if eqStr
+				addOption optStr, value
+			else
+				for ch of optStr.split('')
+					addOption ch, true
+
+	# --- if hDesc is set, then
+	#     Fill in default values if available
+
+	if defined(hDesc)
+		# --- Fill in missing keys with default values
+		DBG "Filling in missing keys with default values"
+		for name of keys(hDesc, o'except=_')
+			if notdefined(hResult[name])
+				{defaultVal} := getOptionInfo(hDesc, name)
+				if defined(defaultVal)
+					hResult[name] = defaultVal
+
+		# --- Check of there's a restriction on the number of non-options
+		if hasKey(hDesc, '_')
+			len := hResult._.length
+			DBG "Check number of non-options (#{len})"
+			hInfo := getNonOptionInfo(hDesc)
+			DBG "Non-option info: #{OL(hInfo)}"
+			if defined(hInfo)
+				{min, max} := hInfo
+				if defined(min)
+					assert (len >= min), "#{len} non-options < min (#{min})"
+				if defined(max)
+					assert (len <= max), "#{len} non-options > max (#{max})"
+
+	DBG "hResult = #{OL(hResult)}"
+	return hResult
+
+# ---------------------------------------------------------------------------
+
+export getOptionInfo := (hDesc: hash, name: string): hash =>
+
+	# --- Return value is a hash with keys: type, desc
+
+	assert (name != '_'), "getOptionInfo(hDesc, '_') called"
+	assert hasKey(hDesc, name), "No such option: -#{name}"
+	h := isHash(hDesc[name]) ? hDesc[name] : {desc: hDesc[name]}
+	if notdefined(h.type)
+		h.type = (name.length == 1) ? 'boolean' : 'string'
+	if notdefined(h.desc)
+		h.desc = '<no description available>'
+	if not hasKey(h, 'defaultVal') && (h.type == 'boolean')
+		h.defaultVal = false
+	return h
+
+# ---------------------------------------------------------------------------
+# --- returns undef if no '_' key in hDesc
+
+type nonOptionInfo = {
+	desc: string
+	min?: number
+	max?: number
+	}
+
+export getNonOptionInfo := (hDesc: hash): nonOptionInfo? =>
+
+	DBG "hDesc = #{OL(hDesc)}"
+	if not hasKey(hDesc, '_')
+		DBG "No '_' key in hDesc"
+		return undef
+	let {desc, range} = hDesc._
+	if isEmpty(desc)
+		desc = '<no description available>'
+	DBG "desc = #{desc}"
+	if defined(range)
+		DBG "range = #{OL(range)}"
+		if isInteger(range)
+			DBG "Integer range: #{range}"
+			return {
+				desc
+				min: range
+				max: range
+				}
+		else if isArray(range)
+			assert (range.length == 2), "Bad '_' key: #{OL(range)}"
+			[min, max] := range
+			DBG "Array range: #{min}..#{max}"
+			assert isInteger(min), "range min not an integer"
+			if (max == 'inf')
+				return {
+					desc
+					min
+					max: Infinity
+					}
+			else
+				assert isInteger(max), "range max not an integer"
+				return {
+					desc
+					min
+					max
+					}
+		else
+			croak "Invalid range: #{OL(range)}"
+	else
+		DBG "No range key"
+		return {desc}
+
+# ---------------------------------------------------------------------------
+
+cntStr := (n: number, str: string): string =>
+	return (n==1) ? "1 #{str}" : "#{n} #{str}s"
+
+export helpStr := (hDesc: hash): string =>
+
+	lLines := ["Available options:"]
+	push := (str: string, level: number=0): void =>
+		lLines.push spaces(3*level) + str
+
+	for name of keys(hDesc, o'except=_')
+		{type, desc} := getOptionInfo(hDesc, name)
+		push "-#{name}: #{type} - #{desc}", 1
+	if defined(hDesc._)
+		push "Non-options:"
+		if isString(hDesc._)
+			push "#{hDesc._}", 1
+		else if isHash(hDesc._)
+			{desc, range} := hDesc._
+			push (desc || '<no description available>'), 1
+			if defined(range)
+				if isInteger(range)
+					push "There must be exactly #{cntStr(range, 'non-option')", 1
+				else if isArray(range)
+					[min, max] := range
+					if (min > 0)
+						push "There must be at least #{cntStr(min, 'non-option')}", 1
+					if (max != 'inf')
+						push "There must be at most #{cntStr(max, 'non-option')}", 1
+		else
+			croak "Bad descriptor for '_'"
+	return lLines.join('\n')

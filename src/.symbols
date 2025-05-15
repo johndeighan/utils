@@ -1,0 +1,60 @@
+src/lib/analyze.lib.ts
+	symbolKind isSymbolKind symbolDesc isSymbolDesc testDesc parseExportLine
+	allUnitTestsIn mergeAnalyses dumpSymbols
+src/lib/cielo.lib.ts
+	cielo2civet cielo2civetFile
+src/lib/civet.lib.ts
+	civet2ast pprintAST
+src/lib/compile.lib.ts
+	testerFunc compilerFunc isCompilerFunc postProcessor isPostProcessor
+	isCompilerInfo compilerConfigHash isConfigHash hDefaultConfig
+	installCmd uninstallCmd getCompilerInfo getPostProcessor compileStatus
+	compileFile getCompilerGlobPattern allCompilableFiles runUnitTestsFor
+	userConfigPath hCompilerConfig
+	compilerInfo compileResult
+src/lib/datatypes.lib.ts
+	undef defined notdefined FilterFunc AssertFunc assert array arrayof isArray
+	hash hashof isHash voidFunc isString char isChar nonEmptyString
+	isBoolean isNumber isPrimitive integer isInteger intArray
+	isArrayOfStrings regexp isRegExp isObject isFunction isEmpty nonEmpty
+	rMark hide unhide stringify
+src/lib/exec.lib.ts
+	mkstr getCmdLine execCmdResult getProcOpt execCmd execCmdSync cmdSucceeds
+src/lib/fs.lib.ts
+	isFile isDir pathType getPathType fileExt withExt lStatFields getStats
+	pathInfo parsePath allFilesMatching allLinesIn normalizePath pathToURL
+	pathDesc pathSubDirs myself slurp barf newerDestFileExists mkDir rmFile
+	mkDirsForFile clearDir removeFilesMatching removeFilesExcept fsChangeType
+	FileEventHandler watcherCallbackFunc watchFile watchFiles allTokensInFile
+	setDirTree fileOpsTable FileOp
+src/lib/indent.lib.ts
+	oneIndent resetOneIndent indentLevel lineDesc splitLine indented undented
+src/lib/llutils.lib.ts
+	sinceLoad sinceLoadStr croak throwsError pass deeplyEquals OL ML strToHash
+	addDefaults getOptions removeEmptyKeys keys hasKey hasKeys missingKeys
+	hit sleep spaces tabs rtrim countChars blockToArray allLinesInBlock
+	isBlockSpec toArray arrayToBlock toBlock escapeStr escapeBlock relpath
+	words getNExtra rpad lpad centered alignment isAlignment alignString zpad
+	allNodes TNodeInfo NodeGenerator
+src/lib/logger.lib.ts
+	LogCmd setLogLevel pushLogLevel popLogLevel curLogLevel DBG LOG WARN ERR
+	DBGVALUE getFullLog getLog clearLog
+src/lib/logger.org.lib.ts
+	LogCmd setLogLevel pushLogLevel popLogLevel curLogLevel DBG LOG WARN ERR
+	getFullLog getLog flushLog clearLog
+src/lib/symbols.lib.ts
+	loadSymbols sourceLib libsAndSymbols getNeededImportStmts
+src/lib/temp.lib.ts
+	indented
+src/lib/text-table.lib.ts
+	TextTable
+src/lib/tokens.lib.ts
+	Token tokenGenerator allTokensIn allTokensInBlock tokenTable
+src/lib/unit-test.lib.ts
+	equal truthy falsy fails succeeds matches like listLike includes
+	getSymbolsFromType getImportCode splitFuncStr getTsCode checkType isType
+src/lib/utils.lib.ts
+	range normalizeStr removeLines logLevelFromArgs getCmdArgs getOptionInfo
+	helpStr
+src/lib/v8-stack.lib.ts
+	stackFrame getV8Stack getV8StackStr getMyCaller getMyOutsideCaller

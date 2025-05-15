@@ -1,0 +1,41 @@
+# list-exports.cmd.civet
+
+import {
+	getCmdArgs, words, LOG, TextTable,
+	} from '../lib/utils.lib.ts'
+import {allExportsIn} from '../lib/analyze.lib.ts'
+
+lValidStubs: string[] := words(
+	'datatypes llutils logger text-table indent tokens fs',
+	'symbols exec cielo compile utils analyze v8-stack unit-test'
+	)
+
+# ---------------------------------------------------------------------------
+# ASYNC !
+
+listExports := (stub: string): void =>
+
+	libPath := "src/lib/#{stub}.lib.civet"
+	lExports := await Array.fromAsync(allExportsIn(libPath))
+
+	tt := new  TextTable('l')
+	tt.fullsep '-'
+	tt.title stub
+	tt.fullsep '-'
+	for {name} of lExports
+		tt.data [name]
+	tt.fullsep '-'
+	LOG tt.asString()
+	return
+
+# ---------------------------------------------------------------------------
+
+hArgs := getCmdArgs()
+
+lStubs := hArgs._
+if (lStubs.length == 0)
+	for stub of lValidStubs
+		await listExports(stub)
+else
+	for stub of lStubs
+		await listExports(stub)

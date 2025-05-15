@@ -1,0 +1,7 @@
+export function indented(input: string): string
+export function indented(input: string[]): string[]
+export function indented(input: string | string[]): string | string[] =>
+	lLines: string[] := Array.isArray(input) ? input : input.split('\n')
+	lNewLines: string[] := for line of lLines
+		'\t' + line
+	return (Array.isArray(input) ? lNewLines : lNewLines.join('\n'))

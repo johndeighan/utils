@@ -1,0 +1,10 @@
+# checkut.cmd.civet
+
+import {
+	getCmdArgs, LOG,
+	} from '../src/lib/utils.ts'
+
+# ---------------------------------------------------------------------------
+
+hArgs := getCmdArgs()
+LOG hArgs

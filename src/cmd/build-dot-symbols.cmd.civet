@@ -1,0 +1,67 @@
+# build-dot-symbols.cmd.civet
+
+import {
+	undef, defined, notdefined, assert, hash, getOptions,
+	isEmpty, nonEmpty, OL,
+	LOG, DBG, WARN, LOGVALUE, DBGVALUE,
+	allFilesMatching, barf,
+	} from '../lib/utils.lib.ts'
+import {
+	allExportsIn,
+	} from '../lib/analyze.lib.ts'
+
+# ---------------------------------------------------------------------------
+# --- ASYNC GENERATOR
+
+export getDotSymbolsLines := (
+		path: string,
+		hOptions: hash={}
+		): AsyncGenerator<string, void, void> ->
+
+	{oneIndent, maxLineLen} := getOptions hOptions, {
+		oneIndent: '\t'
+		maxLineLen: 75
+		}
+	lSymbols: string[] := []
+	let lineLen = 0     # --- always <= maxLineLen
+	let pathYielded = false
+
+	for await {name, kind} of allExportsIn(path)
+		pos := name.indexOf('<')
+		sym := (pos == -1) ? name : name.substring(0, pos)
+		if (lineLen + sym.length + 1 > maxLineLen)
+			if not pathYielded
+				yield path.replace('.civet', '.ts')
+				pathYielded = true
+			yield "#{oneIndent}#{lSymbols.join(' ')}"
+			lSymbols.length = 0
+			lineLen = 0
+		else
+			lSymbols.push sym
+			lineLen += sym.length + 1
+	if (lSymbols.length > 0)
+		if not pathYielded
+			yield path.replace('.civet', '.ts')
+			pathYielded = true
+		yield "#{oneIndent}#{lSymbols.join(' ')}"
+	return
+
+# ---------------------------------------------------------------------------
+
+export getDotSymbols := (
+	hOptions: hash={}
+	): AsyncGenerator<string, void, void> ->
+
+	for {type, relPath} of allFilesMatching('**/*.lib.civet')
+		assert (type == 'file'), "Not a file: #{relPath}"
+		DBG "GET symbols from: #{relPath}"
+		for await line of getDotSymbolsLines(relPath)
+			yield line
+	return
+
+# ---------------------------------------------------------------------------
+
+lLines := await Array.fromAsync(getDotSymbols())
+contents := lLines.join('\n')
+DBGVALUE 'contents', contents
+barf 'src/.symbols', contents

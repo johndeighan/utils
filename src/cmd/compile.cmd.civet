@@ -1,0 +1,91 @@
+# compile.cmd.civet
+
+import {
+	undef, defined, notdefined, pass, OL, assert, croak,
+	getCmdArgs, watchFiles, allFilesMatching,
+	DBG, LOG, WARN, ERR,
+	getCompilerGlobPattern, compileFile, compileResult,
+	} from '../lib/utils.lib.ts'
+
+{_, w: watch} := getCmdArgs {
+	_: """
+		files to compile, as one of the following:
+			'<stub>.lib'  - file <stub>.lib.<ext>
+			'<stub>.cmd'  - file <stub>.cmd.<ext>
+			'<stub>.lib.test'  - file <stub>.lib.test.<ext>
+			'<stub>.cmd.test'  - file <stub>.cmd.test.<ext>
+			- a full or relative file path
+		where <ext> is a valid extension to compile
+		"""
+	w:    "watch for and recompile files if they change"
+	}
+
+let numCompiled = 0
+
+# ---------------------------------------------------------------------------
+
+logResult := (hResult: compileResult): void =>
+
+	{relPath, status, outPath} := hResult
+	switch status
+		when 'compiled'
+			LOG "==> #{OL(relPath)}"
+			numCompiled += 1
+		when 'exists'
+			pass()
+		else
+			ERR "Not compiled: #{OL(relPath)}"
+	return
+
+# ---------------------------------------------------------------------------
+
+if (_.length == 0)
+	pattern := getCompilerGlobPattern()
+	DBG "=====  Compiling all files  ====="
+	DBG "   pattern = #{OL(pattern)}"
+	for {path} of allFilesMatching(pattern)
+		hResult := compileFile path
+		logResult hResult
+
+else
+	# --- Files can be specified as:
+	#        - <stub>.(lib|cmd)
+	#        - <stub>.(lib|cmd).test
+	#        - a full or relative path
+	#     Multiple files can be comma-separated
+
+	for str: string of _
+		DBG "non-option: #{OL(str)}"
+		for str: string of str.split(',')
+			if lMatches := str.match(///^
+					([A-Za-z0-9_-]+)
+					\.
+					(lib|cmd)
+					$///)
+				[_, stub, purpose] := lMatches
+				pat := "**/#{stub}.#{purpose}.*"
+				for {path} of allFilesMatching(pat)
+					DBG "compile file #{OL(path)}"
+					logResult compileFile(path)
+			else if lMatches := str.match(///^
+					([A-Za-z0-9_-]+)
+					\.
+					(lib|cmd)
+					\.
+					test
+					$///)
+				[_, stub, purpose] := lMatches
+				pat := "**/#{stub}.#{purpose}.test.*"
+				for {path} of allFilesMatching(pat)
+					DBG "compile file #{OL(path)}"
+					logResult compileFile(path)
+			else
+				DBG "compile file #{OL(str)}"
+				logResult compileFile(str)
+
+LOG "(#{numCompiled} files compiled)"
+
+if watch
+	watchFiles Deno.cwd(), ({kind, path}) =>
+		console.log "EVENT: #{kind} #{path}"
+		return false

@@ -1,0 +1,162 @@
+# tokens.lib.test.civet
+
+import {
+	DBG, allLinesInBlock,
+	} from '../src/lib/utils.lib.ts'
+import {
+	Token, tokenGenerator,
+	allTokensIn, allTokensInBlock, tokenTable,
+	} from '../src/lib/tokens.lib.ts'
+import {
+	equal, listLike, isType,
+	} from '../src/lib/unit-test.lib.ts'
+
+# ---------------------------------------------------------------------------
+
+DBG "type Token"
+
+isType 'Token', {kind: 'xxx', str: 'yyy'}
+
+DBG "type tokenGenerator"
+
+(() =>
+	identGen := (line: string) ->
+		yield {kind: 'line', str: line}
+		return
+	isType 'tokenGenerator', identGen
+	)()
+
+DBG "allTokensIn()"
+
+listLike Array.from(allTokensIn(allLinesInBlock("abc\ndef"))), [
+	{kind: 'line', str: 'abc'}
+	{kind: 'line', str: 'def'}
+	]
+
+DBG "allTokensInBlock()"
+
+listLike Array.from(allTokensInBlock("""
+	abc
+	def
+	""")), [
+	{kind: 'line', str: 'abc'}
+	{kind: 'line', str: 'def'}
+	]
+
+listLike Array.from(allTokensInBlock("abc\n\tdef")), [
+	{kind: 'line', str: 'abc'}
+	{kind: 'indent'}
+	{kind: 'line', str: 'def'}
+	{kind: 'undent'}
+	]
+
+listLike Array.from(allTokensInBlock("""
+	abc
+		def
+		ghi
+	jkl
+		mno
+			pqr
+	""")), [
+	{kind: 'line', str: 'abc'}
+	{kind: 'indent'}
+	{kind: 'line', str: 'def'}
+	{kind: 'line', str: 'ghi'}
+	{kind: 'undent'}
+	{kind: 'line', str: 'jkl'}
+	{kind: 'indent'}
+	{kind: 'line', str: 'mno'}
+	{kind: 'indent'}
+	{kind: 'line', str: 'pqr'}
+	{kind: 'undent'}
+	{kind: 'undent'}
+	]
+
+listLike Array.from(allTokensInBlock("""
+	abc
+		def
+		ghi
+	jkl
+		mno
+			pqr
+
+	""")), [
+	{kind: 'line', str: 'abc'}
+	{kind: 'indent'}
+	{kind: 'line', str: 'def'}
+	{kind: 'line', str: 'ghi'}
+	{kind: 'undent'}
+	{kind: 'line', str: 'jkl'}
+	{kind: 'indent'}
+	{kind: 'line', str: 'mno'}
+	{kind: 'indent'}
+	{kind: 'line', str: 'pqr'}
+	{kind: 'undent'}
+	{kind: 'undent'}
+	]
+
+listLike Array.from(allTokensInBlock("""
+	abc
+		def
+		ghi
+
+	jkl
+		mno
+			pqr
+	""")), [
+	{kind: 'line',  str: 'abc'}
+	{kind: 'indent'}
+	{kind: 'line',  str: 'def'}
+	{kind: 'line',  str: 'ghi'}
+	{kind: 'empty', str: ''}
+	{kind: 'undent'}
+	{kind: 'line',  str: 'jkl'}
+	{kind: 'indent'}
+	{kind: 'line',  str: 'mno'}
+	{kind: 'indent'}
+	{kind: 'line',  str: 'pqr'}
+	{kind: 'undent'}
+	{kind: 'undent'}
+	]
+
+(() =>
+	charGenerator: tokenGenerator := (line: string) ->
+		for ch of line
+			yield {kind: 'char', str: ch}
+		return
+
+	listLike Array.from(allTokensInBlock("""
+		abc
+			def
+		""", charGenerator)), [
+		{ kind: "char", str: "a" }
+		{ kind: "char", str: "b" }
+		{ kind: "char", str: "c" }
+		{ kind: "indent"}
+		{ kind: "char", str: "d" }
+		{ kind: "char", str: "e" }
+		{ kind: "char", str: "f" }
+		{ kind: "undent"}
+		]
+	)()
+
+DBG "tokenTable()"
+
+equal tokenTable([
+	{kind: 'line',   str: 'abc'}
+	{kind: 'indent', str: ''}
+	{kind: 'line',   str: 'def'}
+	{kind: 'undent', str: ''}
+	]), """
+	==========
+	  Tokens
+	==========
+	 kind  str
+	------ ---
+	line   abc
+	indent
+	line   def
+	undent
+	==========
+	"""
+

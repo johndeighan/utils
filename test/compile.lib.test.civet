@@ -1,0 +1,258 @@
+# compile.lib.test.civet
+
+import {
+	undef, defined, notdefined, o, LOG, DBG,
+	isArray, isFunction, relpath, getCmdArgs,
+	removeFilesExcept, execCmd,
+	setDirTree, isFile, pathInfo, withExt,
+	postProcessor, compilerInfo, compilerConfigHash,
+	isPostProcessor, isCompilerInfo, isCompilerFunc,
+	testerFunc, compilerFunc,
+	isConfigHash, hDefaultConfig,
+	userConfigPath, hCompilerConfig, loadCompilerConfig,
+	installCmd, uninstallCmd, getPostProcessor,
+	compileStatus, compileResult, compileFile,
+	getCompilerGlobPattern, allCompilableFiles,
+	runUnitTestsFor, runAllUnitTests, getCompilerInfo,
+	execCmdSync, cmdSucceeds, rmFile,
+	} from '../src/lib/utils.lib.ts'
+import {
+	equal, like, succeeds, fails, truthy, falsy,
+	matches, isType, notType, listLike,
+	} from '../src/lib/unit-test.lib.ts'
+
+hArgs := getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+setup := (): void =>
+
+	setDirTree('test/compile', """
+		test1.cielo
+			# test1.cielo
+
+			LOG := (str) => console.log str
+			LOG "Hello, World!"
+
+		test2.civet
+			# test2.civet
+
+			LOG := (str) => console.log str
+			LOG "Hello, World!"
+
+		test3.coffee
+			# test3.coffee
+
+			LOG = (str) => console.log str
+			LOG "Hello, World!"
+
+		graph.dot
+			EE -> EO | OE | OO
+			EO -> EE
+			OE -> EE
+			OO -> EE
+		hello.ts
+			console.log("Hello, World!");
+		comp.config.ts
+			import {withExt} from '../../src/lib/utils.lib.ts';
+			export default {
+				hCompilers: {
+					'.test': {
+						getOutPath: (path: string) => withExt(path, '.out'),
+						tester: () => true,
+						compiler: (path: string) => undefined
+						}
+					},
+				hPostProcessors: {}
+				}
+		""", o'clear')
+	return
+
+setup()
+
+# ---------------------------------------------------------------------------
+
+DBG "type testerFunc"
+
+isType 'testerFunc', () =>
+	console.log "Hello, World!"
+	return true
+
+DBG "type compilerFunc"
+
+isType 'compilerFunc', (path: string) =>
+	console.log path
+	return
+
+DBG "isCompilerFunc(func)"
+
+truthy isCompilerFunc((path: string) => undef)
+
+DBG "type postProcessor"
+
+(() =>
+	logit := (hInfo: pathInfo) =>
+		console.log "done"
+		return
+	isType 'postProcessor', logit
+	)()
+
+DBG "isPostProcessor(func)"
+
+truthy isPostProcessor((hInfo: pathInfo) => undef)
+
+DBG "type compilerInfo"
+
+isType 'compilerInfo', {
+	tester: () => true,
+	compiler: (path: string) => return,
+	getOutPath: (path: string) => return 'temp.ts'
+	}
+
+DBG "isCompilerInfo(h)"
+
+truthy isCompilerInfo({
+	tester: () => true,
+	compiler: (path: string) => return,
+	getOutPath: (path: string) => return 'temp.ts'
+	})
+
+DBG "type compilerConfigHash"
+
+isType 'compilerConfigHash', {
+	hCompilers: {}
+	hPostProcessors: {}
+	}
+
+DBG "isConfigHash()"
+
+truthy isConfigHash({
+	hCompilers: {
+		'.dot': {
+			getOutPath: (path: string) => withExt(path, '.js')
+			tester: () => true
+			compiler: () => 'result'
+			}
+		'.cielo': {
+			getOutPath: (path: string) => withExt(path, '.js')
+			tester: () => true
+			compiler: () => 'result'
+			}
+		'.civet': {
+			getOutPath: (path: string) => withExt(path, '.js')
+			tester: () => true
+			compiler: () => 'result'
+			}
+		}
+	hPostProcessors: {
+		'test': (path: string) => undef
+		'lib': (path: string) => undef
+		'cmd': (path: string) => undef
+		}
+	})
+
+DBG "const hDefaultConfig"
+
+truthy isConfigHash(hDefaultConfig)
+
+DBG "const hCompilerConfig"
+
+equal hCompilerConfig, hDefaultConfig
+truthy isConfigHash(hCompilerConfig)
+
+DBG "loadCompilerConfig(path)"
+
+truthy isConfigHash(await loadCompilerConfig('test/compile/comp.config.ts'))
+
+DBG "installCmd()", "uninstallCmd()"
+
+await installCmd 'test/compile/hello.ts', 'hello'
+hResult := await execCmd 'hello', [], o'collect'
+str := hResult.stdout
+equal str, "Hello, World!\n"
+await uninstallCmd 'hello'
+
+DBG "getCompilerInfo()"
+
+truthy isCompilerInfo(getCompilerInfo('.dot'))
+
+DBG "getPostProcessor()"
+
+(() =>
+	pp := getPostProcessor('test')
+	truthy defined(pp)
+	truthy isFunction(pp)
+	)()
+
+(() =>
+	pp := getPostProcessor('lib')
+	truthy defined(pp)
+	truthy isFunction(pp)
+	)()
+
+(() =>
+	pp := getPostProcessor('cmd')
+	truthy defined(pp)
+	truthy isFunction(pp)
+	)()
+
+DBG "type compileStatus"
+
+isType 'compileStatus', 'temp'
+isType 'compileStatus', 'exists'
+isType 'compileStatus', 'compiled'
+notType 'compileStatus', 'dummy'
+
+DBG "type compileResult"
+
+isType 'compileResult', {
+	status: 'compiled'
+	path: 'test/temp.ts'
+
+	}
+
+DBG "compileFile()"
+
+(() =>
+	hResult := compileFile('test/compile/test1.cielo', o'nopp')
+	# truthy isFile('test/compile/test1.civet')
+	)()
+
+DBG "getCompilerGlobPattern()"
+
+equal getCompilerGlobPattern(), "**/*{.svelte,.dot,.cielo,.civet}"
+
+DBG "const userConfigPath"
+
+(() =>
+	matches userConfigPath, /compiler\.config\.ts/
+	dir := Deno.cwd().replaceAll('\\','/')
+	equal userConfigPath, "#{dir}/compiler.config.ts"
+	)()
+
+DBG "allCompilableFiles()"
+
+(() =>
+	lInfo := Array.from(allCompilableFiles(o'root=test/compile'))
+	lFiles := lInfo.map((h) => h.fileName)
+	equal lFiles, [
+		'graph.dot'
+		'test1.cielo'
+		'test2.civet'
+		]
+	)()
+
+DBG "runUnitTestsFor(stub)"
+
+(() =>
+	lResults := Array.from(runUnitTestsFor('llutils.lib'))
+	listLike lResults, [
+		{stub: 'llutils.lib', success: true}
+		]
+	)()
+
+DBG "runAllUnitTests()"
+
+succeeds () =>
+	runAllUnitTests()
+	return

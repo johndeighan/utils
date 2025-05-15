@@ -1,0 +1,86 @@
+export sinceLoad := (datetime: integer=Date.now()) =>
+export sinceLoadStr := (datetime: integer?=undef) =>
+export croak := (msg: string): never =>
+export throwsError := (func: voidFunc, msg: string="Unexpected success"): void =>
+export pass := (): void =>    # do nothing
+export deeplyEquals := (a: any, b: any): boolean =>
+export OL := (x: any): string =>
+export ML := (x: any): string =>
+export strToHash := (str: string): hash =>
+export o := (lStrings: TemplateStringsArray): hash =>
+export addDefaults := (hOptions: hash, hDefaults: hash): hash =>
+export getOptions := (hOptions: hash={}, hDefaults: hash={}): hash =>
+export removeEmptyKeys := (h: hash): hash =>
+export keys := (obj: hash, hOptions: hash={}): string[] =>
+export hasKey := (h: hash, ...lKeys: string[]): boolean =>
+export hasKeys := hasKey
+export missingKeys := (h: hash, ...lKeys: string[]): string[] =>
+export merge := (...lObjects: hash[]): hash =>
+export hit := (pct: number := 50): boolean =>
+export sleep := (sec: number): void =>
+export spaces := (n: number): string =>
+export tabs := (n: number): string =>
+export rtrim := (line: string): string =>
+export countChars := (str: string, ch: string): number =>
+export blockToArray := (block: string): string[] =>
+export allLinesInBlock := (
+export type blockSpec := string | string[]
+export isBlockSpec := (x: any): x is blockSpec =>
+export toArray := (strOrArray: blockSpec): string[] =>
+export arrayToBlock := (lLines: string[]): string =>
+export toBlock := (strOrArray: blockSpec): string =>
+export escapeStr := (
+export escapeBlock := (
+export relpath := (path: string): string =>
+export wsSplit := (str: string): string[] =>
+export words := (...lStrings: string[]): string[] =>
+export getNExtra := (str: string, len: number): number =>
+export rpad := (str: string, len: number, ch: string=' '): string =>
+export lpad := (str: string, len: number, ch: string=' '): string =>
+export centered := (
+export type alignment := 'l'|'c'|'r'|'left'|'center'|'right'
+export isAlignment := (x: any): x is alignment =>
+export alignString := (
+export zpad := (n: number, len: number): string =>
+export allMatches := (str: string, re: RegExp): Generator<string[], void, void> ->
+
+export {relpath}
+export isFile := (path: string): boolean =>
+export isDir := (path: string): boolean =>
+export type pathType =
+export getPathType := (path: string): pathType =>
+export fileExt := (path: string): string =>
+export withExt := (path: string, ext: string): string =>
+export lStatFields: string[] := [
+export getStats := (path: string): hash =>
+export isStub := (str: string): boolean =>
+export type pathInfo := {
+export parsePath := (path: string): pathInfo =>
+export allFilesMatching := (
+export allLinesIn := (
+export normalizePath := (path: string): string =>
+export pathToURL := (lParts...: string[]): string =>
+export mkpath := (lParts...: string[]): string =>
+export type pathDesc := {
+export pathSubDirs := (path: string, hOptions: hash={}): pathDesc =>
+export myself := (url: string): string =>
+export slurp := (path: string): string =>
+export barf := (
+export newerDestFileExists := (
+export mkDir := (dirPath: string, clear: boolean=false): void =>
+export rmFile := (path: string): void =>
+export rmDir := (path: string, hOptions: hash={}): void =>
+export mkDirsForFile := (path: string): void =>
+export clearDir := (dirPath: string): void =>
+export removeFilesMatching := (
+export removeFilesExcept := (
+export type fsChangeType := {
+export type fsCallbackFunc := (change: fsChangeType) => void
+export class FileEventHandler
+export type watcherCallbackFunc := (change: fsChangeType) => boolean
+export watchFile := (
+export watchFiles := watchFile
+export allTokensInFile := (
+export type FileOp := {
+export setDirTree := (
+export fileOpsTable := (lFileOps: FileOp[]): string =>

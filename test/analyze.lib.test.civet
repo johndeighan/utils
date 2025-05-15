@@ -1,0 +1,222 @@
+# analyze.lib.test.civet
+
+import {
+	undef, getCmdArgs, DBG, setDirTree, o,
+	} from '../src/lib/utils.lib.ts'
+import {
+	symbolKind, isSymbolKind, symbolDesc, testDesc,
+	isSymbolDesc, parseExportLine,
+	allExportsIn, allUnitTestsIn,
+	mergeAnalyses, dumpSymbols,
+	} from '../src/lib/analyze.lib.ts'
+import {
+	equal, like, succeeds, fails, truthy, falsy, listLike,
+	isType, notType,
+	} from '../src/lib/unit-test.lib.ts'
+
+hArgs := getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+setup := (): void =>
+
+	DBG "setDirTree()"
+
+	setDirTree 'test/analyze', """
+			exports.civet
+				export type {symbolDesc}
+				export {parseExportLine, allExportsIn}
+				x := 23
+				export type symbolDesc = 'abc' | 'def'
+				export isSymbolDesc := (x: any): x is symbolDesc =>
+				export parseExportLine := (line: string): symbolDesc? =>
+				export getExportsIn := (path: string): symbolDesc[] =>
+				export hExt1 := {'.txt': 3, '.ext': 5}
+				export let hExt2 := {'.txt': 3, '.ext': 5}
+				export var hExt3 := {'.txt': 3, '.ext': 5}
+				export function indented(
+				export interface hashof<T> {
+				export enum LogCmd {
+				export class FileEventHandler
+				export assert: AssertFunc := (
+				export isArrayOfStrings := (x: any): x is string[] =>
+				export getV8Stack = (): stackFrame[] =>
+
+			good.test.civet
+				DBG "type hash", "isHash()"
+
+				truthy isHash({a:1, b:2})
+				falsy  isHash(42)
+
+				DBG "type voidFunc"
+
+				dump: voidFunc := () =>
+					console.log "Hello, World!"
+					return
+
+				DBG "type char", "function isChar"
+
+				truthy isChar('a')
+				falsy  isChar(undef)
+
+				DBG "type nonEmptyString", "isNonEmptyString()"
+
+				str: nonEmptyString := 'abc'
+				truthy isNonEmptyString('a')
+				falsy  isNonEmptyString('')
+
+			bad.test.civet
+				DBG "type hash", "isHash()"
+
+				truthy isHash({a:1, b:2})
+				falsy  isHash(42)
+
+				DBG "type voidFunc"
+
+				dump: voidFunc := () =>
+					console.log "Hello, World!"
+					return
+
+				DBG "type char isChar"
+
+				truthy isChar('a')
+				falsy  isChar(undef)
+
+				DBG "type nonEmptyString", "isNonEmptyString()"
+
+				str: nonEmptyString := 'abc'
+				truthy isNonEmptyString('a')
+				falsy  isNonEmptyString('')
+
+		""", o'clear'
+	return
+
+setup()
+
+# ---------------------------------------------------------------------------
+
+DBG "type symbolKind", "isSymbolKind()"
+
+isType 'symbolKind', 'var'
+isType 'symbolKind', 'function'
+notType 'symbolKind', 'dummy'
+
+truthy isSymbolKind('const')
+falsy  isSymbolKind('dummy')
+
+# ---------------------------------------------------------------------------
+
+DBG "type symbolDesc", "isSymbolDesc()"
+
+truthy isSymbolDesc({kind: 'function', name: 'f', numTests: 0})
+falsy  isSymbolDesc({kind: 'function', name: 'f', numTests: -1})
+
+# ---------------------------------------------------------------------------
+
+DBG "type testDesc"
+
+isType 'testDesc', {kind: 'function', name: 'f', numTests: 0}
+
+# ---------------------------------------------------------------------------
+
+DBG "parseExportLine()"
+
+# --- re-exports aren't included
+equal parseExportLine("export type {bigstring}"), undef
+
+equal parseExportLine("export const label = 'abc'"),
+	{
+		kind: 'const'
+		name: 'label'
+		}
+equal parseExportLine("export label: string := 'abc'"),
+	{
+		kind: 'const'
+		name: 'label'
+		}
+equal parseExportLine("export let once: string? = undef"),
+	{
+		kind: 'var'
+		name: 'once'
+		}
+equal parseExportLine("export f := (str: string?=undef): void =>"),
+	{
+		kind: 'function'
+		name: 'f'
+		}
+equal parseExportLine("export type FileOp = {"),
+	{
+		kind: 'type'
+		name: 'FileOp'
+		}
+
+# ---------------------------------------------------------------------------
+
+DBG "allExportsIn()"
+
+equal await Array.fromAsync(allExportsIn('test/analyze/exports.civet')), [
+	{kind: 'type',     name: 'symbolDesc'}
+	{kind: 'function', name: 'isSymbolDesc', guardFor: 'symbolDesc'}
+	{kind: 'function', name: 'parseExportLine'}
+	{kind: 'function', name: 'getExportsIn'}
+	{kind: 'const', name: 'hExt1'}
+	{kind: 'var', name: 'hExt2'}
+	{kind: 'var', name: 'hExt3'}
+	{kind: 'function', name: 'indented'}
+	{kind: 'interface', name: 'hashof<T>'}
+	{kind: 'enum', name: 'LogCmd'}
+	{kind: 'class', name: 'FileEventHandler'}
+	{kind: 'function', name: 'assert'}
+	{kind: 'function', name: 'isArrayOfStrings', guardFor: 'string[]'}
+	{kind: 'function', name: 'getV8Stack'}
+	]
+
+DBG "allUnitTestsIn()"
+
+succeeds () => allUnitTestsIn('test/analyze/good.test.civet')
+fails () => allUnitTestsIn('test/analyze/bad.test.civet')
+
+DBG "mergeAnalyses(lExports, lTestlabels)"
+
+(() =>
+	lExports: symbolDesc[] := []
+	lTestLabels: testDesc[] := []
+	equal mergeAnalyses(lExports, lTestLabels), []
+	listLike mergeAnalyses(
+		[
+			{
+				name: 'func'
+				kind: 'function'
+				}
+			{
+				name: 'func2'
+				kind: 'function'
+				}
+			]
+		[
+			{
+				name: 'func2'
+				kind: 'function'
+				numTests: 3
+				}
+			]
+		), [
+			{
+				name: 'func'
+				kind: 'function'
+				numTests: 0
+				status: 'missing'
+				}
+			{
+				name: 'func2'
+				kind: 'function'
+				numTests: 3
+				status: 'ok'
+				}
+		]
+
+	)()
+
+DBG "dumpSymbols()"
+
+equal dumpSymbols('label', [{kind: 'var', name: 'x', numTests: 0}]), 1
