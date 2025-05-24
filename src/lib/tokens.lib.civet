@@ -1,9 +1,15 @@
 # tokens.lib.civet
 
-import {undef, isEmpty, nonEmpty} from './datatypes.lib.ts'
-import {allLinesInBlock, escapeStr} from './llutils.lib.ts'
-import {DBG} from './logger.lib.ts'
-import {indentLevel, splitLine} from './indent.lib.ts'
+import {
+	undef, defined, notdefined, hash, isEmpty, nonEmpty,
+	} from './datatypes.lib.ts'
+import {
+	getOptions, allLinesInBlock, escapeStr,
+	} from './llutils.lib.ts'
+import {DBG, DBGVALUE} from './logger.lib.ts'
+import {
+	oneIndent, indentLevel, splitLine,
+	} from './indent.lib.ts'
 import {TextTable} from './text-table.lib.ts'
 
 # ---------------------------------------------------------------------------
@@ -14,46 +20,63 @@ import {TextTable} from './text-table.lib.ts'
 export type Token = {
 	kind: string
 	str: string
+	name?: string
+	value?: any
 	}
 
 # ---------------------------------------------------------------------------
 
-export type tokenGenerator = (line: string) => Generator<Token, void, void>
+export type TTokenGenerator = (
+		line: string
+		) => Generator<Token, void, void>
 
-identTokenGen: tokenGenerator := (line: string) ->
+identTokenGen: TTokenGenerator := (line: string) ->
 	yield {kind: 'line', str: line}
 	return
 
 export allTokensIn := (
 		iterable: Iterable<string>,
-		gen: tokenGenerator = identTokenGen
+		gen: TTokenGenerator = identTokenGen
+		hOptions: hash={}
 		): Generator<Token, void, void> ->
 
+	{lTypes} := getOptions hOptions, {
+		lTypes: ['indent','undent']
+		}
 	let level = 0
 	for str of iterable
 		DBG "LINE: '#{escapeStr(str)}'"
 		if isEmpty(str)
-			yield {kind: 'empty', str}
+			if lTypes.includes('empty')
+				yield {kind: 'empty', str}
 		else
+			# --- NOTE: If indent > 0, oneIndent will be set
 			[indent, line] := splitLine(str)
-			while (indent > level)
+			if lTypes.includes('indent') && (indent > level)
 				level += 1
 				yield {kind: 'indent', str: ''}
-			while (indent < level)
+				while (indent > level)
+					level += 1
+					yield {kind: 'indent', str: oneIndent || ''}
+			if lTypes.includes('undent') && (indent < level)
 				level -= 1
-				yield {kind: 'undent', str: ''}
+				yield {kind: 'undent', str: oneIndent || ''}
+				while (indent < level)
+					level -= 1
+					yield {kind: 'undent', str: ''}
 			for tok of gen(line)
 				yield tok
-	while (level > 0)
-		yield {kind: 'undent', str: ''}
-		level -= 1
+	if lTypes.includes('undent')
+		while (level > 0)
+			yield {kind: 'undent', str: ''}
+			level -= 1
 	return
 
 # ---------------------------------------------------------------------------
 
 export allTokensInBlock := (
 		block: string
-		gen: tokenGenerator = identTokenGen
+		gen: TTokenGenerator = identTokenGen
 		): Generator<Token, void, void> ->
 
 	for tok of allTokensIn(allLinesInBlock(block), gen)
@@ -63,7 +86,7 @@ export allTokensInBlock := (
 # ---------------------------------------------------------------------------
 
 export tokenTable := (
-		lTokens: Token[]
+		lTokens: Iterable<Token>
 		title='Tokens'
 		): string =>
 

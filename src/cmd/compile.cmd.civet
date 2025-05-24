@@ -4,7 +4,7 @@ import {
 	undef, defined, notdefined, pass, OL, assert, croak,
 	getCmdArgs, watchFiles, allFilesMatching,
 	DBG, LOG, WARN, ERR,
-	getCompilerGlobPattern, compileFile, compileResult,
+	getCompilerGlobPattern, compileFile, TCompileResult,
 	} from '../lib/utils.lib.ts'
 
 {_, w: watch} := getCmdArgs {
@@ -24,17 +24,17 @@ let numCompiled = 0
 
 # ---------------------------------------------------------------------------
 
-logResult := (hResult: compileResult): void =>
+logResult := (hResult: TCompileResult): void =>
 
 	{relPath, status, outPath} := hResult
 	switch status
 		when 'compiled'
-			LOG "==> #{OL(relPath)}"
+			LOG "COMPILED: #{OL(relPath)}"
 			numCompiled += 1
 		when 'exists'
 			pass()
 		else
-			ERR "Not compiled: #{OL(relPath)}"
+			ERR "NOT COMPILED: #{OL(relPath)}"
 	return
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,104 @@
+# typescript.lib.civet
+
+import {
+	CompilerOptions, createProgram, createSourceFile,
+	getPreEmitDiagnostics, createPrinter, EmitHint,
+	getLineAndCharacterOfPosition, flattenDiagnosticMessageText,
+	ScriptTarget, ModuleKind, SourceFile, Diagnostic,
+	Node, SyntaxKind, forEachChild, NewLineKind,
+	} from "typescript"
+
+import {
+	undef, defined, notdefined, assert, hash,
+	isString, isNumber, isBoolean, isPrimitive, isArray,
+	stringify,
+	} from './datatypes.lib.ts'
+import {
+	croak, pass, keys, hasKey, hasKeys, truncStr, OL, spaces,
+	NodeGenerator, getOptions, o,
+	} from './llutils.lib.ts'
+import {
+	DBG, LOG, WARN, ERR, DBGVALUE, LOGVALUE,
+	pushLogLevel, popLogLevel,
+	} from './logger.lib.ts'
+import {
+	isFile, fileExt, withExt, slurp, barf,
+	} from './fs.lib.ts'
+import {
+	execCmdSync,
+	} from './exec.lib.ts'
+import {hDefConfig} from './ts.config.ts'
+
+# ---------------------------------------------------------------------------
+
+/**
+ * ts2ast() - convert TypeScript code to an AST
+ */
+
+export ts2ast := (tsCode: string): SourceFile =>
+
+	return createSourceFile("x.ts", tsCode, ScriptTarget.Latest)
+
+# ---------------------------------------------------------------------------
+
+export ast2ts := (node: SourceFile): string =>
+
+	printer := createPrinter {newLine: NewLineKind.LineFeed}
+	result := printer.printNode EmitHint.Unspecified, node, node
+	return result
+
+# ---------------------------------------------------------------------------
+
+export typeCheckFiles := (
+	lFileNames: string | string[],
+	hOptions: CompilerOptions = hDefConfig
+	): string[] =>
+
+	DBGVALUE 'lFileNames', lFileNames
+	DBGVALUE 'hOptions', hOptions
+
+	if isString(lFileNames)
+		lFileNames = [lFileNames]
+	program := createProgram(lFileNames, hOptions)
+	emitResult := program.emit()
+
+	lMsgs: string[] := []
+	getPreEmitDiagnostics(program).forEach (diag) =>
+		{file, start, messageText} := diag
+		msg := flattenDiagnosticMessageText messageText, "\n"
+		if (file)
+			{fileName} := file
+			{line, character} := getLineAndCharacterOfPosition file, start!
+			lMsgs.push "#{fileName}:(#{line+1}:#{character+1}): #{msg}"
+		else
+			lMsgs.push msg
+	return lMsgs
+
+export typeCheckFile = typeCheckFiles   # --- synonym
+
+# ---------------------------------------------------------------------------
+
+export pprintNode := (
+		source: SourceFile,
+		node: Node,
+		depth: number
+		) =>
+
+	kind := SyntaxKind[node.kind]
+	text := node.getText(source).replaceAll('\n', '\\n')
+	pre := spaces(3 * depth)
+	return "#{pre}#{kind} - '#{truncStr(text, 32)}'"
+
+# ---------------------------------------------------------------------------
+
+export pprintAST := (source: SourceFile, pprint=pprintNode): string =>
+
+	lLines: string[] := []
+
+	traverse := (node: Node, depth=0): void =>
+		lLines.push pprint(source, node, depth)
+		forEachChild node, (childNode) => traverse(childNode, depth + 1)
+		return
+
+	traverse source
+	return lLines.join('\n')

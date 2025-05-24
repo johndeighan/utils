@@ -5,7 +5,7 @@ import {
 	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
 	getLog, getFullLog, setLogLevel, clearLog,
 	curLogLevel, pushLogLevel, popLogLevel,
-	LogCmd, getCmdArgs, spaces,
+	INDENT, UNDENT, getCmdArgs, spaces,
 	} from '../src/lib/utils.lib.ts'
 import {
 	equal, truthy, falsy, succeeds, fails, matches,
@@ -15,13 +15,13 @@ hArgs := getCmdArgs()
 
 # ---------------------------------------------------------------------------
 
-DBG "enum LogCmd"
+DBG "const INDENT", "const UNDENT"
 
 succeeds () =>
 	clearLog()
 	setLogLevel 'info'
-	LOG "info", LogCmd.INDENT
-	LOG "stuff", LogCmd.UNDENT
+	LOG "info", INDENT
+	LOG "stuff", UNDENT
 	LOG "done"
 	equal getLog(), """
 		I info
@@ -34,8 +34,8 @@ DBG "clearLog()", "getLog()"
 succeeds () =>
 	clearLog()
 	setLogLevel 'info'
-	LOG "info", LogCmd.INDENT
-	LOG "stuff", LogCmd.UNDENT
+	LOG "info", INDENT
+	LOG "stuff", UNDENT
 	LOG "finished"
 	equal getLog(), """
 		I info
@@ -46,8 +46,8 @@ succeeds () =>
 succeeds () =>
 	clearLog()
 	setLogLevel 'profile'
-	LOG "info", LogCmd.INDENT
-	LOG "stuff", LogCmd.UNDENT
+	LOG "info", INDENT
+	LOG "stuff", UNDENT
 	LOG "done"
 
 	matches getLog(), ///^

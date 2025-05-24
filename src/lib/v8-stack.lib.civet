@@ -16,7 +16,7 @@ import {
 	assert, croak, hasKey, OL, ML, getOptions,
 	isString, isNonEmptyString, isInteger, rpad, centered,
 	isFile, mkpath, fileExt, withExt, normalizePath, relpath,
-	LogCmd, DBG, LOG, WARN, ERR,
+	DBG, LOG, WARN, ERR, INDENT, UNDENT,
 	} from './utils.lib.ts'
 
 install()     # from source-map-support
@@ -65,7 +65,7 @@ export getV8Stack := (): stackFrame[] =>
 			DBG "getV8Stack(): #{lFrames.length} stack frames"
 			for frame,i of lFrames
 
-				DBG "FRAME #{i}", LogCmd.INDENT
+				DBG "FRAME #{i}", INDENT
 
 				# --- Call functions on the frame
 				fileName      := frame.getFileName()
@@ -98,7 +98,7 @@ export getV8Stack := (): stackFrame[] =>
 
 				source: string := fileName
 				if defined(source) && defined(source.match(/v8-stack\.lib\.[A-Za-z0-9_]+$/))
-					DBG "SKIP: source = '#{source}'", LogCmd.UNDENT
+					DBG "SKIP: source = '#{source}'", UNDENT
 					continue
 
 				h := {
@@ -146,7 +146,7 @@ export getV8Stack := (): stackFrame[] =>
 					break
 
 				lResultFrames.push h
-				DBG LogCmd.UNDENT
+				DBG UNDENT
 
 			DBG '-'.repeat(width)
 			return lResultFrames

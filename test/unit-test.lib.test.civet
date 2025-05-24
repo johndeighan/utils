@@ -1,13 +1,14 @@
 # unit-test.lib.test.civet
 
 import {
-	undef, getCmdArgs, DBG, pathToURL,
+	undef, getCmdArgs, DBG, pathToURL, range,
 	} from '../src/lib/utils.lib.ts'
 import {
-	equal, truthy, falsy, fails, succeeds, like, listLike,
+	equal, truthy, falsy, fails, succeeds, iterEqual, iterLike,
+	like, listLike,
 	matches, includes, includesAll, isType, notType,
-	splitFuncStr, getTsCode, getSymbolsFromType, getImportCode,
-	checkType,
+	splitFuncStr, getTsCode,
+	getSymbolsFromType, getImportCode, checkType,
 	} from '../src/lib/unit-test.lib.ts'
 
 hArgs := getCmdArgs()
@@ -34,13 +35,41 @@ falsy    undefined
 falsy    null
 falsy    ''
 
-DBG "fails()"
+DBG "fails(func)"
 
 fails    () => throw new Error("bad")
 
-DBG "succeeds()"
+DBG "succeeds(func)"
 
 succeeds () => return 'me'
+
+DBG "iterEqual(iterable, array)"
+
+iterEqual [1,2,3], [1,2,3]
+iterEqual range(5), [0,1,2,3,4]
+
+(() =>
+	gen := () ->
+		yield 'a'
+		yield 'x'
+		return
+	iterEqual gen(), ['a', 'x']
+	)()
+
+DBG "iterLike(iterable, array)"
+
+iterLike [{a:1, b:2}], [{a:1}]
+
+(() =>
+	gen := () ->
+		yield {a:1, b:2}
+		yield {c:3, d:4}
+		return
+	iterLike gen(), [
+		{a:1}
+		{d:4}
+		]
+	)()
 
 DBG "matches()"
 

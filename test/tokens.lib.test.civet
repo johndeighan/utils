@@ -1,14 +1,14 @@
 # tokens.lib.test.civet
 
 import {
-	DBG, allLinesInBlock,
+	undef, DBG, allLinesInBlock,
 	} from '../src/lib/utils.lib.ts'
 import {
-	Token, tokenGenerator,
+	Token, TTokenGenerator,
 	allTokensIn, allTokensInBlock, tokenTable,
 	} from '../src/lib/tokens.lib.ts'
 import {
-	equal, listLike, isType,
+	equal, iterEqual, iterLike, listLike, isType,
 	} from '../src/lib/unit-test.lib.ts'
 
 # ---------------------------------------------------------------------------
@@ -16,48 +16,68 @@ import {
 DBG "type Token"
 
 isType 'Token', {kind: 'xxx', str: 'yyy'}
+isType 'Token', {kind: 'xxx', str: 'yyy', value: undef}
+isType 'Token', {kind: 'xxx', str: 'yyy', value: 42}
 
-DBG "type tokenGenerator"
+DBG "type TTokenGenerator"
 
 (() =>
 	identGen := (line: string) ->
 		yield {kind: 'line', str: line}
 		return
-	isType 'tokenGenerator', identGen
+	isType 'TTokenGenerator', identGen
+	)()
+
+(() =>
+	charGen := (line: string) ->
+		for ch of line
+			yield {kind: 'char', str: ch}
+		return
+	isType 'TTokenGenerator', charGen
 	)()
 
 DBG "allTokensIn()"
 
-listLike Array.from(allTokensIn(allLinesInBlock("abc\ndef"))), [
+iterLike allTokensIn(allLinesInBlock("abc\ndef")), [
 	{kind: 'line', str: 'abc'}
 	{kind: 'line', str: 'def'}
 	]
 
-DBG "allTokensInBlock()"
+iterEqual allTokensIn(allLinesInBlock('abc\ndef')), [
+	{kind: 'line', str: 'abc'}
+	{kind: 'line', str: 'def'}
+	]
 
-listLike Array.from(allTokensInBlock("""
+DBG "allTokensInBlock(str)"
+
+iterEqual allTokensInBlock('abc\ndef'), [
+	{kind: 'line', str: 'abc'}
+	{kind: 'line', str: 'def'}
+	]
+
+iterLike allTokensInBlock("""
 	abc
 	def
-	""")), [
+	"""), [
 	{kind: 'line', str: 'abc'}
 	{kind: 'line', str: 'def'}
 	]
 
-listLike Array.from(allTokensInBlock("abc\n\tdef")), [
+iterLike allTokensInBlock("abc\n\tdef"), [
 	{kind: 'line', str: 'abc'}
 	{kind: 'indent'}
 	{kind: 'line', str: 'def'}
 	{kind: 'undent'}
 	]
 
-listLike Array.from(allTokensInBlock("""
+iterLike allTokensInBlock("""
 	abc
 		def
 		ghi
 	jkl
 		mno
 			pqr
-	""")), [
+	"""), [
 	{kind: 'line', str: 'abc'}
 	{kind: 'indent'}
 	{kind: 'line', str: 'def'}
@@ -72,7 +92,7 @@ listLike Array.from(allTokensInBlock("""
 	{kind: 'undent'}
 	]
 
-listLike Array.from(allTokensInBlock("""
+iterLike allTokensInBlock("""
 	abc
 		def
 		ghi
@@ -80,7 +100,7 @@ listLike Array.from(allTokensInBlock("""
 		mno
 			pqr
 
-	""")), [
+	"""), [
 	{kind: 'line', str: 'abc'}
 	{kind: 'indent'}
 	{kind: 'line', str: 'def'}
@@ -95,7 +115,9 @@ listLike Array.from(allTokensInBlock("""
 	{kind: 'undent'}
 	]
 
-listLike Array.from(allTokensInBlock("""
+# --- by default, empty lines return no tokens
+
+iterLike allTokensInBlock("""
 	abc
 		def
 		ghi
@@ -103,12 +125,11 @@ listLike Array.from(allTokensInBlock("""
 	jkl
 		mno
 			pqr
-	""")), [
+	"""), [
 	{kind: 'line',  str: 'abc'}
 	{kind: 'indent'}
 	{kind: 'line',  str: 'def'}
 	{kind: 'line',  str: 'ghi'}
-	{kind: 'empty', str: ''}
 	{kind: 'undent'}
 	{kind: 'line',  str: 'jkl'}
 	{kind: 'indent'}
@@ -119,16 +140,18 @@ listLike Array.from(allTokensInBlock("""
 	{kind: 'undent'}
 	]
 
+# --- Test allTokensInBlock() with a custom token generator
+
 (() =>
-	charGenerator: tokenGenerator := (line: string) ->
+	charGenerator: TTokenGenerator := (line: string) ->
 		for ch of line
 			yield {kind: 'char', str: ch}
 		return
 
-	listLike Array.from(allTokensInBlock("""
+	iterLike allTokensInBlock("""
 		abc
 			def
-		""", charGenerator)), [
+		""", charGenerator), [
 		{ kind: "char", str: "a" }
 		{ kind: "char", str: "b" }
 		{ kind: "char", str: "c" }
@@ -137,6 +160,34 @@ listLike Array.from(allTokensInBlock("""
 		{ kind: "char", str: "e" }
 		{ kind: "char", str: "f" }
 		{ kind: "undent"}
+		]
+	)()
+
+(() =>
+	niceGenerator: TTokenGenerator := (line: string) ->
+		if let lMatches = line.match(///^
+				-
+				\s+
+				(.*)
+				$///)
+			yield {
+				kind: 'list-item'
+				str: line
+				value: lMatches[1]
+				}
+		else
+			yield {
+				kind: 'line'
+				str: line
+				}
+		return
+
+	iterLike allTokensInBlock("""
+		- a
+		- b
+		""", niceGenerator), [
+		{ kind: "list-item", str: "- a", value: "a" }
+		{ kind: "list-item", str: "- b", value: "b" }
 		]
 	)()
 

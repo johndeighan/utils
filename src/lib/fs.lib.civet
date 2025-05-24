@@ -83,10 +83,10 @@ export isDir := (path: string): boolean =>
  *    'unknown'  - exists, but not a file, directory or symlink
  */
 
-export type pathType =
+export type TPathType =
 	'missing' | 'file' | 'dir' | 'symlink' | 'unknown'
 
-export getPathType := (path: string): pathType =>
+export getPathType := (path: string): TPathType =>
 
 	assert isString(path), "not a string: #{OL(path)}"
 	if not existsSync path
@@ -157,7 +157,7 @@ export isStub := (str: string): boolean =>
 
 /**
  * parses a path or file URL, and returns a hash with keys:
- * 	type: pathType - 'file','dir','symlink','missing' or 'unknown'
+ * 	type: TPathType - 'file','dir','symlink','missing' or 'unknown'
  * 	path: string
  * 	root: string
  * 	dir: string
@@ -169,8 +169,8 @@ export isStub := (str: string): boolean =>
  * 	relDir: string
  */
 
-export type pathInfo = {
-	type: pathType  # 'file','dir','symlink','missing' or 'unknown'
+export type TPathInfo = {
+	type: TPathType  # 'file','dir','symlink','missing' or 'unknown'
 	path: string
 	root: string
 	dir: string
@@ -182,7 +182,7 @@ export type pathInfo = {
 	relDir: string
 	}
 
-export parsePath := (path: string): pathInfo =>
+export parsePath := (path: string): TPathInfo =>
 
 	# --- NOTE: path may be a file URL, e.g. import.meta.url
 	#           path may be a relative path
@@ -386,7 +386,7 @@ export mkpath := (lParts...: string[]): string =>
 
 # ---------------------------------------------------------------------------
 
-export type pathDesc = {
+export type TPathDesc = {
 	dir: string
 	root: string
 	lParts: string[]
@@ -398,7 +398,7 @@ export type pathDesc = {
  * relative to the current working directory
  */
 
-export pathSubDirs := (path: string, hOptions: hash={}): pathDesc =>
+export pathSubDirs := (path: string, hOptions: hash={}): TPathDesc =>
 
 	{relative} := getOptions hOptions, {
 		relative: false
@@ -581,7 +581,7 @@ export removeFilesExcept := (
 		return
 
 	# --- truthy return means remove it
-	filter := (hFile: pathInfo): pathInfo? =>
+	filter := (hFile: TPathInfo): TPathInfo? =>
 		{type, relPath} := hFile
 		if (type != 'file')
 			return undef
@@ -597,18 +597,18 @@ export removeFilesExcept := (
 
 # ---------------------------------------------------------------------------
 
-export type fsChangeType = {
+export type TFsChangeType = {
 	kind: string
 	path: string
 	ms?: number
 	}
 
 /**
- * type fsCallbackFunc - a function taking (type, path) and optionally
+ * type TFsCallbackFunc - a function taking (type, path) and optionally
  * returns a function reference to be called on file changes
  */
 
-export type fsCallbackFunc = (change: fsChangeType) => void
+export type TFsCallbackFunc = (change: TFsChangeType) => void
 
 /**
  * class FileEventHandler
@@ -621,15 +621,15 @@ export type fsCallbackFunc = (change: fsChangeType) => void
 
 export class FileEventHandler
 
-	callback: fsCallbackFunc?
-	lChanges: fsChangeType[] := []
+	callback: TFsCallbackFunc?
+	lChanges: TFsChangeType[] := []
 	hHandlers: hash = {}   # --- path => event type => debounced handler
 	onStop: () => void = pass
 	ms: number
 	debug: boolean
 
 	constructor(
-			@callback: fsCallbackFunc?=undef,
+			@callback: TFsCallbackFunc?=undef,
 			hOptions: hash={}
 			)
 
@@ -647,7 +647,7 @@ export class FileEventHandler
 	# --- Calls a function of type () => void
 	#     but is debounced by @ms ms
 
-	handle(change: fsChangeType): void
+	handle(change: TFsChangeType): void
 		{kind, path} := change
 		@DBG "HANDLE: [#{sinceLoadStr()}] #{kind} #{path}"
 		if notdefined(@hHandlers?.[path])
@@ -680,7 +680,7 @@ export class FileEventHandler
 # ---------------------------------------------------------------------------
 # ASYNC
 
-export type watcherCallbackFunc = (change: fsChangeType) => boolean
+export type TWatcherCallbackFunc = (change: TFsChangeType) => boolean
 
 /**
  * a function that watches for changes one or more files or directories
@@ -696,7 +696,7 @@ export type watcherCallbackFunc = (change: fsChangeType) => boolean
 
 export watchFile := (
 	path: string | string[],
-	watcherCB: watcherCallbackFunc,
+	watcherCB: TWatcherCallbackFunc,
 	hOptions: hash={}
 	): void ->
 
@@ -715,7 +715,7 @@ export watchFile := (
 
 	let doStop: boolean = false
 
-	fsCallback: fsCallbackFunc := ({kind, path}) =>
+	fsCallback: TFsCallbackFunc := ({kind, path}) =>
 		result := watcherCB({kind, path})
 		DBG "FCB: result = #{result}"
 		if result
@@ -748,7 +748,7 @@ export allTokensInFile := (
 # ---------------------------------------------------------------------------
 # --- Uses a recursive descent parser
 
-export type FileOp = {
+export type TFileOp = {
 	funcName: 'mkDir' | 'barf'
 	path: string
 	contents?: string
@@ -758,7 +758,7 @@ export setDirTree := (
 		currentDir: string,
 		contents: string,
 		hOptions: hash = {}
-		): FileOp[] =>
+		): TFileOp[] =>
 
 	# --- Extract options
 	{debug, clear, scaffold} := getOptions hOptions, {
@@ -800,7 +800,7 @@ export setDirTree := (
 		return
 
 	# --- In unit tests, we just return calls made
-	lFileOps: FileOp[] := []
+	lFileOps: TFileOp[] := []
 
 	# ..........................................................
 
@@ -932,7 +932,7 @@ export setDirTree := (
 
 # ---------------------------------------------------------------------------
 
-export fileOpsTable := (lFileOps: FileOp[]): string =>
+export fileOpsTable := (lFileOps: TFileOp[]): string =>
 
 	tt := new TextTable("l l")
 	tt.fullsep()

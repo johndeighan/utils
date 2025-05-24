@@ -3,7 +3,7 @@
 import {
 	undef, defined, notdefined,
 	curLogLevel, DBG,
-	wsSplit, words, range, normalizeStr, spaces, tabs,
+	wsSplit, words, normalizeStr, spaces, tabs,
 	blockToArray, toArray, arrayToBlock, toBlock,
 	removeLines, escapeStr, escapeBlock,
 	relpath, getCompilerGlobPattern,
@@ -17,11 +17,6 @@ import {
 hArgs := getCmdArgs()
 
 # ---------------------------------------------------------------------------
-
-DBG "range()"
-
-equal Array.from(range(3)), [0, 1, 2]
-equal Array.from(range(5)), [0, 1, 2, 3, 4]
 
 DBG "normalizeStr()"
 

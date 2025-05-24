@@ -25,15 +25,14 @@ import {
 import {
 	undef, defined, notdefined, isEmpty, nonEmpty,
 	array, arrayof, isArray, isHash, isString, hash,
-	stringify, hashof,
+	stringify, hashof, isIterable,
 	} from './datatypes.lib.ts'
 import {pass, OL, keys} from './llutils.lib.ts'
 import {sourceLib, getNeededImportStmts} from './symbols.lib.ts'
 import {typeCheck} from './exec.lib.ts'
 import {
 	pushLogLevel, popLogLevel,
-	DBG, LOG, LOGVALUE, DBGVALUE,
-	LogCmd,
+	DBG, LOG, LOGVALUE, DBGVALUE, INDENT, UNDENT,
 	} from './logger.lib.ts'
 import {getMyOutsideCaller} from './v8-stack.lib.ts'
 
@@ -180,6 +179,30 @@ export succeeds := (func: () => void): void =>
 			func()
 		catch err
 			throw new Error("Test Failure - func throws!!!")
+	return
+
+# ---------------------------------------------------------------------------
+
+export iterEqual := (iter: Iterable<any>, expected: any[]) =>
+
+	name := getTestName()
+	DBG "iterEqual ?, #{JSON.stringify(expected)} (#{name})"
+	Deno.test name, () => assertEquals Array.from(iter), expected
+	return
+
+# ---------------------------------------------------------------------------
+
+export iterLike := (iter: Iterable<hash>, expected: hash[]) =>
+
+	name := getTestName()
+	DBG "iterEqual ?, #{JSON.stringify(expected)} (#{name})"
+
+	lItems := Array.from(iter)
+	len := lItems.length
+	Deno.test "#{name}/len", () => assertEquals len, expected.length
+	for i of [0..len-1]
+		# @ts-ignore
+		Deno.test "#{name}/#{i}", () => assertObjectMatch lItems[i], expected[i]
 	return
 
 # ---------------------------------------------------------------------------
@@ -451,7 +474,7 @@ export checkType := (
 		expectSuccess: boolean=true
 		): string[] =>
 
-	DBG "CALL checkType():", LogCmd.INDENT
+	DBG "CALL checkType():", INDENT
 
 	# --- stringify() handles functions
 
@@ -475,7 +498,7 @@ export checkType := (
 		LOG "typeCheck SUCCEEDED:"
 		LOG "CODE:"
 		LOG code
-	DBG LogCmd.UNDENT
+	DBG UNDENT
 	return lDiagnostics || []
 
 # ---------------------------------------------------------------------------

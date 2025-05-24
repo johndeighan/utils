@@ -7,7 +7,8 @@ import {
 	undef, defined, notdefined, assert,
 	isHash, isArray, isNonEmptyString, isArrayOfStrings,
 	isEmpty, nonEmpty, isString, isObject,
-	integer, hash, array, voidFunc, FilterFunc, stringify,
+	integer, hash, hashof, array, arrayof, voidFunc,
+	FilterFunc, stringify,
 	isNonPrimitive,
 	} from './datatypes.lib.ts'
 
@@ -85,6 +86,14 @@ export deeplyEquals := (a: any, b: any): boolean =>
 
 # ---------------------------------------------------------------------------
 
+export truncStr := (str: string, len: number) =>
+
+	if (str.length <= len)
+		return str
+	return str.substring(0, len-3) + '...'
+
+# ---------------------------------------------------------------------------
+
 /**
  * JSON stringifies x on one line
  * but displays both undefined and null as 'undef'
@@ -96,6 +105,12 @@ export OL := (x: any): string =>
 		return 'undef'
 	else if (x == null)
 		return 'null'
+	else if (typeof x == 'symbol')
+		if defined(x.description)
+			return "[Symbol #{x.description}]"
+		else
+			return "[Symbol]"
+		return 'symbol'
 	else if (typeof x == 'function')
 		return x.toString().replaceAll('\n', ' ')
 	else
@@ -253,7 +268,6 @@ export hasKey := (h: hash, ...lKeys: string[]): boolean =>
 
 	if notdefined(h)
 		return false
-	assert isHash(h), "h not a hash: #{OL(h)}"
 	for key of lKeys
 		assert isString(key), "key not a string: #{OL(key)}"
 		if not h.hasOwnProperty(key)
@@ -384,9 +398,9 @@ export allLinesInBlock := (
  * A string or string array
  */
 
-export type blockSpec = string | string[]
+export type TBlockSpec = string | string[]
 
-export isBlockSpec := (x: any): x is blockSpec =>
+export isBlockSpec := (x: any): x is TBlockSpec =>
 
 	return isString(x) || isArrayOfStrings(x)
 
@@ -397,7 +411,7 @@ export isBlockSpec := (x: any): x is blockSpec =>
  * to an array of single line strings
  */
 
-export toArray := (strOrArray: blockSpec): string[] =>
+export toArray := (strOrArray: TBlockSpec): string[] =>
 
 	if Array.isArray(strOrArray)
 		return strOrArray
@@ -422,7 +436,7 @@ export arrayToBlock := (lLines: string[]): string =>
  * to a single multi-line string
  */
 
-export toBlock := (strOrArray: blockSpec): string =>
+export toBlock := (strOrArray: TBlockSpec): string =>
 
 	if isString(strOrArray)
 		return strOrArray
@@ -431,8 +445,52 @@ export toBlock := (strOrArray: blockSpec): string =>
 
 # ---------------------------------------------------------------------------
 
+export invertHash := (h: hash): hash =>
+
+	assert isHash(h), "Not a hash: #{OL(h)}"
+	hResult: hash := {}
+	for key of keys(h)
+		value := h[key]
+		if isString(value)
+			hResult[value] = key
+	return hResult
+
+# ---------------------------------------------------------------------------
+
+export withoutKeys := (
+		h: hash,
+		...lKeys: string[]
+		): hash =>
+
+	hNew: hash := {}
+	for key of keys(h)
+		if not lKeys.includes(key)
+			hNew[key] = h[key]
+	return hNew
+
+# ---------------------------------------------------------------------------
+
+type TKeyVal = [key: string, val: any]
+
+export withKeyVals := (
+		h: hash,
+		...lKeyVals: TKeyVal[]
+		): hash =>
+
+	hNew: hash := {}
+	for k of keys(h)
+		hNew[k] = h[k]
+	for pair of lKeyVals
+		[key, val] := pair
+		hNew[key] = val
+	return hNew
+
+export withKeyVal = withKeyVals
+
+# ---------------------------------------------------------------------------
+
 /**
- * replace these characters with single unicode chars:
+ * by default, replace these characters:
  *    carriage return
  *    newline
  *    TAB
@@ -444,59 +502,121 @@ export toBlock := (strOrArray: blockSpec): string =>
  *    poschar - char to use to indicate position
  */
 
+hDebugReplace: hash := {
+	"\r": '←'
+	"\n": '↓'
+	"\t": '→'
+	" ":  '˳'
+	}
+
+hCReplace: hash := {
+	"\r": '\\r'
+	"\n": '\\n'
+	"\t": '\\t'
+	}
+
 export escapeStr := (
-	str: string?,
-	hReplace: hash = {
-		"\r": '←'
-		"\n": '↓'
-		"\t": '→'
-		" ": '˳'
-		},
-	hOptions: hash = {}
-	): string =>
+		str: string
+		hOptions: hash = {}
+		): string =>
 
-	if notdefined(str)
-		return '<undefined>'
-	{offset, poschar} := getOptions hOptions, {
-		offset: undef
-		poschar: '┊'
-		}
+	{
+		style, hReplace, block, offset, poschar
+		} := getOptions hOptions, {
+			style: 'debug'
+			hReplace: undef
+			block: false
+			offset: undef
+			poschar: '┊'
+			}
 
-	lParts := []
-	for ch,i of str.split('')
-		if defined(offset) && (i == offset)
-			lParts.push poschar
-		newch := hReplace[ch]
-		if defined(newch)
-			lParts.push newch
+	let hRealReplace: hash = {}
+	if defined(hReplace)
+		hRealReplace = hReplace
+	else if (style == 'C')
+		if block
+			hRealReplace = withoutKeys(hCReplace, '\n', '\r')
 		else
-			lParts.push ch
+			hRealReplace = hCReplace
+	else
+		if block
+			hRealReplace = withoutKeys(hDebugReplace, '\n', '\r')
+		else
+			hRealReplace = hDebugReplace
+
+	lParts: string[] := []
+	for ch,i of str
+		if (i == offset)
+			lParts.push poschar
+		lParts.push (hRealReplace[ch] || ch)
 	if (offset == str.length)
 		lParts.push poschar
 	return lParts.join('')
 
 # ---------------------------------------------------------------------------
 
+export unescapeStr := (
+		str: string
+		hOptions: hash = {}
+		): string =>
+
+	{style, hReplace} := getOptions hOptions, {
+		style: 'C'
+		hReplace: undef
+		}
+
+	let hRealReplace: hash = {}
+	if defined(hReplace)
+		hRealReplace = hReplace
+	else
+		if (style == 'debug')
+			hRealReplace = {
+				'←': ''
+				'↓': '\n'
+				'→': '\t'
+				'˳': ' '
+				}
+		else
+			hRealReplace = {
+				'n': '\n'
+				'r': ''     # carriage return should just disappear
+				't': '\t'
+				}
+
+	let esc = false
+	lParts: string[] := []
+	for ch,i of str
+		if (ch == '\\')
+			if esc
+				lParts.push '\\'
+				esc = false
+			else
+				esc = true
+		else
+			if esc
+				if defined(hRealReplace[ch])
+					lParts.push hRealReplace[ch]
+				else
+					lParts.push ch
+				esc = false
+			else
+				lParts.push ch
+	return lParts.join('')
+
+# ---------------------------------------------------------------------------
+
 /**
- * replace these characters with single unicode chars:
- *    carriage return
- *    TAB
- *    space
+ * don't escape newline or carriage return
  * Optionally, add a character to indicate a particular
  * position in the string
  */
 
 export escapeBlock := (
 	block: string,
-	hReplace: hash = {
-		"\r": '←'
-		"\t": '→'
-		" ": '˳'
-		},
 	hOptions: hash = {}
 	): string =>
 
-	return escapeStr(block, hReplace, hOptions)
+	return escapeStr(block, withKeyVal(hOptions, ['block', true]))
 
 # ---------------------------------------------------------------------------
 
@@ -613,16 +733,16 @@ export centered := (
  * to the given width
  */
 
-export type alignment = 'l'|'c'|'r'|'left'|'center'|'right'
+export type TAlignment = 'l'|'c'|'r'|'left'|'center'|'right'
 
-export isAlignment := (x: any): x is alignment =>
+export isAlignment := (x: any): x is TAlignment =>
 
 	return ['l','c','r','left','center','right'].includes(x)
 
 export alignString := (
 	str: string,
 	width: number,
-	align: alignment
+	align: TAlignment
 	): string ->
 
 	switch align
@@ -696,3 +816,64 @@ export class NodeGenerator
 					yield {node, level}
 					@setYielded.add node
 		return
+
+# ---------------------------------------------------------------------------
+
+/**
+ * A generator that yields integers starting with 0 and
+ * continuing to n-1
+ */
+
+export range := (
+	n: number
+	): Generator<number, void, void> ->
+
+	let i = 0
+	while (i < n)
+		yield i
+		i = i + 1
+	return
+
+# ---------------------------------------------------------------------------
+
+export class Fetcher<T>
+
+	iter: Iterator<T>
+	buffer: T? = undef
+
+	constructor(iter: Iterator<T>)
+		@iter = iter
+
+	peek(): T?
+		if defined(@buffer)
+			return @buffer
+		else
+			{value, done} := @iter.next()
+			if done
+				return undef
+			else
+				@buffer = value
+				return value
+
+	get(): T?
+		if defined(@buffer)
+			save := @buffer
+			@buffer = undef
+			return save
+		else
+			{value, done} := @iter.next()
+			if done
+				return undef
+			else
+				return value
+
+	atEnd(): boolean
+		if defined(@buffer)
+			return false
+		else
+			{value, done} := @iter.next()
+			if done
+				return true
+			else
+				@buffer = value
+				return false

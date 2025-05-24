@@ -4,7 +4,7 @@ import {
 	isEmpty, nonEmpty,
 	mkstr, getCmdLine, getProcOpt, typeCheck,
 	execCmd, execCmdSync, cmdSucceeds, setDirTree,
-	execCmdResult, getCmdArgs, DBG, o,
+	TExecResult, getCmdArgs, DBG, o,
 	} from '../src/lib/utils.lib.ts'
 import {
 	equal, like, succeeds, fails, truthy, falsy,
@@ -58,7 +58,7 @@ like getProcOpt(['-h'], false), {
 	stderr: 'inherit'
 	}
 
-DBG "execCmd()", "type execCmdResult"
+DBG "execCmd()", "type TExecResult"
 
 (() =>
 	hResult := await execCmd('echo', ["Hello"], o'collect')
@@ -66,7 +66,7 @@ DBG "execCmd()", "type execCmdResult"
 	equal hResult.stdout, "Hello\n"
 	)()
 
-DBG "execCmdSync()", "type execCmdResult"
+DBG "execCmdSync()", "type TExecResult"
 
 equal execCmdSync("echo", ["Hello"]).code, 0
 

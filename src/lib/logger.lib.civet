@@ -144,11 +144,9 @@ hLoggerConfig: hash := {
 
 await setup(hLoggerConfig)
 
-export enum LogCmd {
-	INDENT
-	UNDENT
-	CLEAR
-	}
+export INDENT := Symbol('indent')
+export UNDENT := Symbol('undent')
+export CLEAR  := Symbol('clear')
 
 # ---------------------------------------------------------------------------
 # levels: profile, debug, info, warn, error, file, silent
@@ -210,11 +208,11 @@ class LoggerEx
 		if @isActive(level)
 			for item of lItems
 				switch item
-					when LogCmd.INDENT
+					when INDENT
 						indent += 1
-					when LogCmd.UNDENT
+					when UNDENT
 						indent = (indent==0) ? 0 : indent-1
-					when LogCmd.CLEAR
+					when CLEAR
 						@clearLog()
 					else
 						str := (

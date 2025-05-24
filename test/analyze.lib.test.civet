@@ -144,10 +144,10 @@ equal parseExportLine("export f := (str: string?=undef): void =>"),
 		kind: 'function'
 		name: 'f'
 		}
-equal parseExportLine("export type FileOp = {"),
+equal parseExportLine("export type TFileOp = {"),
 	{
 		kind: 'type'
-		name: 'FileOp'
+		name: 'TFileOp'
 		}
 
 # ---------------------------------------------------------------------------

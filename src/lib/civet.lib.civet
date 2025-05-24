@@ -1,57 +1,68 @@
 # civet.lib.civet
 
-import {findInDir, findConfig, loadConfig} from "@danielx/civet/config"
-import {compile, parseProgram} from "@danielx/civet"
-
+import {SourceFile} from 'typescript'
 import {
-	undef, defined, notdefined, assert, hash,
-	isString, isNumber, isBoolean, isPrimitive, isArray,
-	stringify,
+	undef, defined, notdefined, hash, assert,
 	} from './datatypes.lib.ts'
 import {
-	croak, pass, keys, hasKey, hasKeys, OL, NodeGenerator,
+	OL, getOptions, o,
 	} from './llutils.lib.ts'
-import {
-	LogCmd, DBG, LOG, WARN, ERR,
-	pushLogLevel, popLogLevel,
-	} from './logger.lib.ts'
 import {
 	isFile, fileExt, withExt, slurp, barf,
 	} from './fs.lib.ts'
 import {
 	execCmdSync,
 	} from './exec.lib.ts'
-
-# ---------------------------------------------------------------------------
-# --- ASYNC
-
-/**
- * civet2ast() - convert civet code to civet AST
- */
-
-export civet2ast := (civetCode: string): hash =>
-
-	dir: string := process.cwd()
-	path: string | null := await findConfig(dir)
-	hConfig: hash := defined(path) ? await loadConfig(path) : {}
-	hAST := await parseProgram(civetCode, hConfig)
-	return hAST as hash
+import {
+	ts2ast,
+	} from './typescript.lib.ts'
 
 # ---------------------------------------------------------------------------
 
-export pprintAST := (hAST: hash): string =>
+export civet2tsFile := (
+		path: string
+		hOptions: hash = {}
+		): void =>
 
-	lLines := for key of keys(hAST)
-		value := hAST[key]
-		if (key == 'type')
-			"[#{value}]"
-		else if (key == 'parent')
-			"parent: ??"
-		else if isPrimitive(value)
-			"#{key}: #{value}"
-		else if isArray(value)
-			stringify(value)
-		else
-			"#{key}: ?"
-	return lLines.join('\n')
+	assert isFile(path), "No such file: #{OL(path)} (civet2tsFile)"
+	assert (fileExt(path) == '.civet'), "Not a civet file: #{OL(path)}"
 
+	tsPath := withExt(path, '.ts')
+	{inlineMap} := getOptions hOptions, {
+		inlineMap: true
+		}
+	if inlineMap
+		execCmdSync 'civet', [
+			'--inline-map',
+			'-o',
+			tsPath,
+			'-c',
+			path
+			]
+	else
+		execCmdSync 'civet', [
+			'-o',
+			tsPath,
+			'-c',
+			path
+			]
+	assert isFile(tsPath), "File not created: #{OL(tsPath)}"
+	return
+
+# ---------------------------------------------------------------------------
+
+export civet2ts := (civetCode: string): string =>
+
+	tempFilePath := Deno.makeTempFileSync {suffix: '.civet'}
+	barf tempFilePath, civetCode
+	civet2tsFile tempFilePath, o'!inlineMap'
+	return slurp withExt(tempFilePath, '.ts')
+
+# ---------------------------------------------------------------------------
+
+export civet2ast := (civetCode: string): SourceFile =>
+
+	tsCode := civet2ts civetCode
+	return ts2ast(tsCode)
+
+# ---------------------------------------------------------------------------

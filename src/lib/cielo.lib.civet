@@ -7,7 +7,7 @@ import {
 	croak, pass, keys, hasKey, hasKeys, OL,
 	} from './llutils.lib.ts'
 import {
-	LogCmd, DBG, LOG, WARN, ERR,
+	DBG, LOG, WARN, ERR,
 	pushLogLevel, popLogLevel,
 	} from './logger.lib.ts'
 import {

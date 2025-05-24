@@ -13,27 +13,31 @@ import {
 	isArray, isArrayOfIntegers, isArrayOfStrings,
 	isHash, isFunction, isObject, isRegExp,
 	isEmpty, nonEmpty, assert,
+	jsType, isSymbol, symbolName, functionName, functionDef,
 	hash, hashof, array, arrayof,
 	regexp, voidFunc, nonEmptyString, stringify,
+	isClass, className, isPromise, isClassInstance, isIterable,
 	} from './datatypes.lib.ts'
 import {
-	pass, deeplyEquals, OL, ML, getOptions, croak, throwsError,
+	pass, deeplyEquals, truncStr, OL, ML,
+	getOptions, croak, throwsError,
 	strToHash, o, removeEmptyKeys, keys,
 	hasKey, hasKeys, missingKeys, merge, hit,
 	spaces, tabs, rtrim, countChars,
 	blockToArray, allLinesInBlock,
-	blockSpec, isBlockSpec, toArray,
+	TBlockSpec, isBlockSpec, toArray,
 	arrayToBlock, toBlock,
-	escapeStr, escapeBlock, relpath, wsSplit, words, addDefaults,
+	escapeStr, unescapeStr, escapeBlock,
+	relpath, wsSplit, words, addDefaults,
 	sinceLoad, sinceLoadStr, sleep,
 	getNExtra, rpad, lpad, centered,
-	alignment, isAlignment, alignString, zpad,
-	allMatches, NodeGenerator, TNodeInfo,
+	TAlignment, isAlignment, alignString, zpad,
+	allMatches, NodeGenerator, TNodeInfo, range, Fetcher,
 	} from './llutils.lib.ts'
 import {
 	setLogLevel, pushLogLevel, popLogLevel,
 	curLogLevel, clearLog, getLog, getFullLog,
-	LogCmd,
+	INDENT, UNDENT,
 	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
 	} from './logger.lib.ts'
 import {TextTable} from './text-table.lib.ts'
@@ -42,18 +46,21 @@ import {
 	indented, undented,
 	} from './indent.lib.ts'
 import {
-	Token, allTokensIn, allTokensInBlock, tokenTable, tokenGenerator,
+	Token, allTokensIn, allTokensInBlock, tokenTable, TTokenGenerator,
 	} from './tokens.lib.ts'
 import {
+	toNice, fromNice, getPrimitive,
+	} from './nice.lib.ts'
+import {
 	isFile, isDir, fileExt, withExt,
-	rmFile, rmDir, pathType, getPathType, getStats,
-	isStub, pathInfo, parsePath, slurp, barf,
+	rmFile, rmDir, TPathType, getPathType, getStats,
+	isStub, TPathInfo, parsePath, slurp, barf,
 	allFilesMatching, allLinesIn, watchFile, watchFiles, FileEventHandler,
 	normalizePath, mkpath, pathToURL, newerDestFileExists,
 	pathSubDirs, clearDir, mkDir, mkDirsForFile, lStatFields,
 	myself, removeFilesMatching, removeFilesExcept,
-	watcherCallbackFunc, fsChangeType, fsCallbackFunc, setDirTree,
-	FileOp, fileOpsTable, allTokensInFile,
+	TWatcherCallbackFunc, TFsChangeType, TFsCallbackFunc, setDirTree,
+	TFileOp, fileOpsTable, allTokensInFile,
 	} from './fs.lib.ts'
 import {
 	loadSymbols, sourceLib, libsAndSymbols, getNeededImportStmts,
@@ -61,22 +68,25 @@ import {
 import {
 	execCmd, execCmdSync, cmdSucceeds,
 	mkstr, getCmdLine, getProcOpt,
-	execCmdResult, typeCheck,
+	TExecResult, typeCheck,
 	} from './exec.lib.ts'
 import {
 	testerFunc, compilerFunc, postProcessor,
 	isCompilerFunc, isPostProcessor,
-	compilerInfo, isCompilerInfo,
-	compilerConfigHash, isConfigHash,
+	TCompilerInfo, isCompilerInfo,
+	TCompilerConfig, isConfigHash,
 	hDefaultConfig,
 	userConfigPath, hCompilerConfig, loadCompilerConfig,
 	installCmd, uninstallCmd, getCompilerInfo, getPostProcessor,
-	compileStatus, compileResult, compileFile,
+	TCompileStatus, TCompileResult, compileFile,
 	getCompilerGlobPattern, allCompilableFiles,
 	runUnitTestsFor, runAllUnitTests,
 	} from './compile.lib.ts'
 import {
-	civet2ast,
+	ts2ast, pprintAST,
+	} from './typescript.lib.ts'
+import {
+	civet2ts, civet2tsFile, civet2ast,
 	} from './civet.lib.ts'
 
 export {
@@ -87,18 +97,22 @@ export {
 	isArray, isArrayOfIntegers, isArrayOfStrings,
 	isHash, isFunction, isObject, isRegExp,
 	isEmpty, nonEmpty, assert, stringify,
+	jsType, isSymbol, symbolName, functionName, functionDef,
+	isClass, className, isPromise, isClassInstance, isIterable,
 
-	pass, deeplyEquals, OL, ML, getOptions, croak, throwsError,
+	pass, deeplyEquals, truncStr, OL, ML,
+	getOptions, croak, throwsError,
 	strToHash, o, removeEmptyKeys, keys,
 	hasKey, hasKeys, missingKeys, merge, hit,
 	spaces, tabs, rtrim, countChars,
 	blockToArray, allLinesInBlock, toArray,
 	arrayToBlock, toBlock,
-	escapeStr, escapeBlock, relpath, wsSplit, words, addDefaults,
+	escapeStr, unescapeStr, escapeBlock,
+	relpath, wsSplit, words, addDefaults,
 	sinceLoad, sinceLoadStr, sleep,
 	getNExtra, rpad, lpad, centered,
 	isAlignment, alignString, zpad,
-	allMatches, NodeGenerator,
+	allMatches, NodeGenerator, range, Fetcher,
 
 	TextTable,
 
@@ -115,13 +129,15 @@ export {
 
 	setLogLevel, pushLogLevel, popLogLevel,
 	curLogLevel, clearLog, getLog, getFullLog,
-	LogCmd,
+	INDENT, UNDENT,
 	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
 
 	oneIndent, resetOneIndent, indentLevel, splitLine,
 	indented, undented,
 
 	allTokensIn, allTokensInBlock, tokenTable,
+
+	toNice, fromNice, getPrimitive,
 
 	execCmd, execCmdSync, cmdSucceeds,
 	mkstr, getCmdLine, getProcOpt, typeCheck,
@@ -134,36 +150,21 @@ export {
 	compileFile,
 	getCompilerGlobPattern, allCompilableFiles,
 	runUnitTestsFor, runAllUnitTests, isBlockSpec,
-	civet2ast,
+	civet2ts, civet2tsFile, ts2ast, civet2ast, pprintAST,
 	}
 
 export type {
 	hash, hashof, array, arrayof, regexp, char, integer,
 	voidFunc, nonEmptyString,
-	execCmdResult, blockSpec, pathType, pathInfo,
-	watcherCallbackFunc, fsChangeType, fsCallbackFunc, FileOp,
-	Token, tokenGenerator, alignment, TNodeInfo,
+	TExecResult, TBlockSpec, TPathType, TPathInfo,
+	TWatcherCallbackFunc, TFsChangeType, TFsCallbackFunc, TFileOp,
+	Token, TTokenGenerator, TAlignment, TNodeInfo,
 
 	testerFunc, compilerFunc, postProcessor,
-	compilerInfo, compilerConfigHash,
+	TCompilerInfo, TCompilerConfig,
 
-	compileStatus, compileResult,
+	TCompileStatus, TCompileResult,
 	}
-
-# ---------------------------------------------------------------------------
-
-/**
- * A generator that yields integers starting with 0 and
- * continuing to n-1
- */
-
-export range := (n: number): Generator<number, void, void> ->
-
-	let i = 0
-	while (i < n)
-		yield i
-		i = i + 1
-	return
 
 # ---------------------------------------------------------------------------
 

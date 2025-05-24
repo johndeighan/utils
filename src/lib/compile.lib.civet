@@ -3,8 +3,7 @@
 import {compile as compileSvelte} from 'npm:svelte/compiler'
 
 import {
-	undef, defined, notdefined, assert, hash, hashof,
-	isString, isHash, isArray, nonEmpty,
+	undef, defined, notdefined, assert, hash, hashof, isHash,
 	nonEmptyString, isNonEmptyString,
 	} from './datatypes.lib.ts'
 import {
@@ -12,19 +11,21 @@ import {
 	OL, o, getOptions,
 	} from './llutils.lib.ts'
 import {
-	LogCmd, DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
+	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
+	INDENT, UNDENT, CLEAR,
 	pushLogLevel, popLogLevel,
 	} from './logger.lib.ts'
 import {
 	isFile, isDir, fileExt, withExt, rmFile, mkpath, parsePath,
 	relpath, newerDestFileExists, slurp, barf, isStub,
 	allFilesMatching,
-	pathInfo,
+	TPathInfo,
 	} from './fs.lib.ts'
 import {
 	execCmd, execCmdSync, cmdSucceeds,
 	} from './exec.lib.ts'
 import {cielo2civetFile} from './cielo.lib.ts'
+import {civet2tsFile} from './civet.lib.ts'
 
 /**
  * @module compile.lib - configuring the compiler
@@ -45,7 +46,7 @@ export isCompilerFunc := (f: any): boolean =>
 		ERR err.message
 		return false
 
-export type postProcessor = (hInfo: pathInfo) => void
+export type postProcessor = (hInfo: TPathInfo) => void
 export isPostProcessor := (f: any): boolean =>
 	try
 		assert (typeof f == 'function'), "GOT #{OL(f)}"
@@ -54,7 +55,7 @@ export isPostProcessor := (f: any): boolean =>
 		ERR err.message
 		return false
 
-export type compilerInfo = {
+export type TCompilerInfo = {
 	tester: testerFunc
 	compiler: compilerFunc
 	getOutPath: (path: string) => string
@@ -62,12 +63,12 @@ export type compilerInfo = {
 export isCompilerInfo := (h: any): boolean =>
 	return hasKeys(h, 'tester', 'compiler', 'getOutPath')
 
-export type compilerConfigHash = {
-	hCompilers: hashof<compilerInfo>         # <string>: <compilerInfo>
+export type TCompilerConfig = {
+	hCompilers: hashof<TCompilerInfo>         # <string>: <TCompilerInfo>
 	hPostProcessors: hashof<postProcessor>   # <string>: <postProcessor>
 	}
 
-export isConfigHash := (h: any): h is compilerConfigHash =>
+export isConfigHash := (h: any): h is TCompilerConfig =>
 
 	try
 		assert isHash(h), "GOT not a hash: #{OL(h)}"
@@ -82,7 +83,7 @@ export isConfigHash := (h: any): h is compilerConfigHash =>
 			lNeeded2 := ['getOutPath', 'tester', 'compiler']
 			h := hCompilers[ext]
 			assert hasKeys(h, lNeeded2...), """
-					Bad compilerInfo for #{ext},
+					Bad TCompilerInfo for #{ext},
 					missing #{missingKeys(h, lNeeded2...)}
 					"""
 		hPostProcessors: hashof<hash> := h.hPostProcessors
@@ -102,7 +103,7 @@ export isConfigHash := (h: any): h is compilerConfigHash =>
 #        1. compiler doesn't need to check if the file exists
 #        2. compiler doesn't need to check the file extension
 
-export hDefaultConfig: compilerConfigHash := {
+export hDefaultConfig: TCompilerConfig := {
 
 	hCompilers: {
 		# --- keys are file extensions
@@ -155,13 +156,13 @@ export hDefaultConfig: compilerConfigHash := {
 	hPostProcessors: {
 		# --- Keys are a purpose
 
-		'test': (hInfo: pathInfo): void =>
+		'test': (hInfo: TPathInfo): void =>
 			{path, stub} := hInfo
 			if (stub == undef)
 				return
 			pass()
 
-		'lib': (hInfo: pathInfo): void =>
+		'lib': (hInfo: TPathInfo): void =>
 			{path, stub} := hInfo
 			if (stub == undef)
 				return
@@ -169,7 +170,7 @@ export hDefaultConfig: compilerConfigHash := {
 				if not success
 					WARN "Unit test #{path} failed"
 
-		'cmd': (hInfo: pathInfo): void =>
+		'cmd': (hInfo: TPathInfo): void =>
 			{path} := hInfo
 			LOG "- installing command #{path}"
 			installCmd path
@@ -186,12 +187,12 @@ export hDefaultConfig: compilerConfigHash := {
 
 export loadCompilerConfig := (
 	path: string
-	): compilerConfigHash =>
+	): TCompilerConfig =>
 
 	assert isFile(path), "No such compile config file: #{OL(path)}"
 	DBG "load compiler config from #{path}"
 	module := await import("file:///#{mkpath(path)}")
-	h := module.default as compilerConfigHash
+	h := module.default as TCompilerConfig
 	assert isConfigHash(h), "Bad user config hash"
 
 	# --- Remove any compilers for which the actual compiler
@@ -208,25 +209,6 @@ export loadCompilerConfig := (
 			DBG "Deleting compiler for ext #{OL(ext)}"
 			delete hCompilers[ext]
 	return h
-
-# ---------------------------------------------------------------------------
-
-civet2tsFile := (path: string): void =>
-
-	assert isFile(path), "No such file: #{OL(path)} (civet2tsFile)"
-	assert (fileExt(path) == '.civet'), "Not a civet file: #{OL(path)}"
-
-	tsPath := withExt(path, '.ts')
-	execCmdSync 'civet', [
-		'--inline-map',
-		'-o',
-		tsPath,
-		'-c',
-		path
-		]
-
-	assert isFile(tsPath), "File not created: #{OL(tsPath)}"
-	return
 
 # ---------------------------------------------------------------------------
 # ASYNC
@@ -277,7 +259,7 @@ export uninstallCmd := (path: string, name: string?=undef): void =>
 # ---------------------------------------------------------------------------
 # --- returns a compilerFunc or undef
 
-export getCompilerInfo := (ext: string): compilerInfo? =>
+export getCompilerInfo := (ext: string): TCompilerInfo? =>
 
 	hInfo := hCompilerConfig.hCompilers[ext]
 	if notdefined(hInfo)
@@ -307,23 +289,23 @@ export getPostProcessor := (purpose: string): postProcessor? =>
 #        'failed'     - compiling failed
 #        'compiled'   - successfully compiled
 
-export type compileStatus = 'nofile' |
+export type TCompileStatus = 'nofile' |
 	'temp' | 'nocompiler' |
 	'exists' | 'failed' | 'compiled'
 
-export type compileResult = {
-	status: compileStatus
+export type TCompileResult = {
+	status: TCompileStatus
 	path: string
-	relPath?: string?
-	outPath?: string?
+	relPath?: string
+	outPath?: string
 	}
 
 export compileFile := (
 	path: string,
 	hOptions: hash={}
-	): compileResult =>
+	): TCompileResult =>
 
-	DBG "COMPILE: #{OL(path)}", LogCmd.INDENT
+	DBG "COMPILE: #{OL(path)}", INDENT
 
 	{nopp} := getOptions hOptions, {
 		nopp: false
@@ -331,29 +313,32 @@ export compileFile := (
 
 	# --- hPathInfo is needed for post processing
 	hPathInfo := parsePath path
+	if (hPathInfo.type == 'missing')
+		return {
+			status: 'nofile'
+			path
+			}
 	{relPath, stub, purpose, ext} := hPathInfo
 
 	if (purpose == 'temp') || (purpose == 'debug')
-		DBG "Not compiling #{purpose} file #{OL(path)}", LogCmd.UNDENT
+		DBG "Not compiling #{purpose} file #{OL(path)}", UNDENT
 		return {
 			status: 'temp'
 			path
 			relPath
-			outPath: undef
 			}
 
 	if notdefined(ext)
-		DBG "Not compiling - no file extension in #{OL(path)}", LogCmd.UNDENT
+		DBG "Not compiling - no file extension in #{OL(path)}", UNDENT
 		return {
 			status: 'nocompiler'
 			path
 			relPath
-			outPath: undef
 			}
 
 	hInfo := getCompilerInfo(ext)
 	if notdefined(hInfo)
-		DBG "Not compiling - no compiler for #{OL(ext)}", LogCmd.UNDENT
+		DBG "Not compiling - no compiler for #{OL(ext)}", UNDENT
 		return {
 			status: 'nocompiler'
 			path
@@ -364,7 +349,7 @@ export compileFile := (
 	{compiler, getOutPath} := hInfo
 	outPath := getOutPath(relPath)
 	if newerDestFileExists(relPath, outPath)
-		DBG "Not compiling, newer #{OL(outPath)} exists", LogCmd.UNDENT
+		DBG "Not compiling, newer #{OL(outPath)} exists", UNDENT
 		return {
 			status: 'exists'
 			path
@@ -388,7 +373,7 @@ export compileFile := (
 		lLines[0].replace path, outPath
 		Deno.writeTextFileSync outPath, lLines.join("\n")
 	else
-		ERR "Output file #{relpath(outPath)} not produced", LogCmd.UNDENT
+		ERR "Output file #{relpath(outPath)} not produced", UNDENT
 		return {
 			status: 'failed'
 			path
@@ -405,7 +390,7 @@ export compileFile := (
 			DBG "post-processing file"
 			postProc hPathInfo
 
-	DBG LogCmd.UNDENT
+	DBG UNDENT
 	return {
 		status: 'compiled'
 		path
@@ -430,7 +415,7 @@ export getCompilerGlobPattern := (root: string='**'): string =>
 
 export allCompilableFiles := (
 		hOptions: hash={}
-		): Generator<pathInfo, void, void> ->
+		): Generator<TPathInfo, void, void> ->
 
 	{root, filter} := getOptions hOptions, {
 		root: '**'

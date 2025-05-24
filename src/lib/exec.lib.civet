@@ -20,7 +20,8 @@ import {
 	} from './fs.lib.ts'
 import {
 	curLogLevel, pushLogLevel, popLogLevel,
-	LogCmd, DBG, LOG, WARN, ERR, LOGVALUE,
+	DBG, LOG, WARN, ERR, LOGVALUE,
+	INDENT, UNDENT,
 	} from './logger.lib.ts'
 
 /**
@@ -67,7 +68,7 @@ export getCmdLine := (cmdName: string, lArgs: string[]): string =>
  * build result hash to be returned by execCmd() or execCmdSync()
  */
 
-export type execCmdResult = {
+export type TExecResult = {
 	success: boolean
 	code: number
 	signal: string?
@@ -78,7 +79,7 @@ export type execCmdResult = {
 getFinalResult := (
 	hResult: hash,
 	collect: boolean
-	): execCmdResult =>
+	): TExecResult =>
 
 	hRes := if collect
 		{
@@ -139,7 +140,7 @@ export execCmd := (
 	cmdName: string,
 	lArgs: string[] = [],
 	hOptions: hash = {}
-	): execCmdResult =>
+	): TExecResult =>
 
 	{collect, nolog} := getOptions hOptions, {
 		collect: false
@@ -148,10 +149,10 @@ export execCmd := (
 	if nolog
 		pushLogLevel 'silent'
 	DBG "EXEC: #{OL(getCmdLine(cmdName, lArgs))}"
-	DBG LogCmd.INDENT
+	DBG INDENT
 	hProcOpt := getProcOpt(lArgs, collect)
 	child := new Deno.Command(cmdName, hProcOpt)
-	DBG LogCmd.UNDENT
+	DBG UNDENT
 	hResult := await child.output()
 	hFinalResult := getFinalResult(hResult, collect)
 	if nolog
@@ -164,7 +165,7 @@ export execCmdSync := (
 	cmdName: string,
 	lArgs: string[] = [],
 	hOptions: hash = {}
-	): execCmdResult =>
+	): TExecResult =>
 
 	{collect, nolog} := getOptions hOptions, {
 		collect: false
@@ -173,10 +174,10 @@ export execCmdSync := (
 	if nolog
 		pushLogLevel 'silent'
 	DBG "EXEC SYNC: #{OL(getCmdLine(cmdName, lArgs))}"
-	DBG LogCmd.INDENT
+	DBG INDENT
 	hProcOpt := getProcOpt(lArgs, collect)
 	child := new Deno.Command(cmdName, hProcOpt)
-	DBG LogCmd.UNDENT
+	DBG UNDENT
 	hResult := child.outputSync()
 	hFinalResult := getFinalResult(hResult, collect)
 	if nolog

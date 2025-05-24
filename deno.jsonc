@@ -168,6 +168,31 @@
 
 		// --------------------------------------------------------------------
 
+		"build:nice": "
+			   echo compile: nice
+			&& civet --inline-map -o .ts -c src/lib/nice.lib.civet
+			&& echo check: nice
+			&& deno check -q src/lib/nice.lib.ts
+			",
+
+		"buildandtest:nice": "
+			   echo compile: nice
+			&& civet --inline-map -o .ts -c src/lib/nice.lib.civet
+			&& echo check: nice
+			&& deno check -q src/lib/nice.lib.ts
+			&& civet --inline-map -o .ts -c test/nice.lib.test.civet
+			&& echo test: nice
+			&& deno test -qA --reporter dot test/nice.lib.test.ts -- -D
+			",
+
+		"test:nice": "
+			   civet --inline-map -o .ts -c test/nice.lib.test.civet
+			&& echo test: nice
+			&& deno test -A test/nice.lib.test.ts -- -D
+			",
+
+		// --------------------------------------------------------------------
+
 		"build:fs": "
 			   echo compile: fs
 			&& civet --inline-map -o .ts -c src/lib/fs.lib.civet
@@ -239,6 +264,33 @@
 			   civet --inline-map -o .ts -c test/exec.lib.test.civet
 			&& echo test: exec
 			&& deno test -A test/exec.lib.test.ts -- -D
+			",
+
+		// --------------------------------------------------------------------
+
+		"build:typescript": "
+			   echo compile: typescript
+			&& civet --inline-map -o .ts -c src/lib/ts.config.civet
+			&& civet --inline-map -o .ts -c src/lib/typescript.lib.civet
+			&& echo check: typescript
+			&& deno check -q src/lib/typescript.lib.ts
+			",
+
+		"buildandtest:typescript": "
+			   echo compile: typescript
+			&& civet --inline-map -o .ts -c src/lib/ts.config.civet
+			&& civet --inline-map -o .ts -c src/lib/typescript.lib.civet
+			&& echo check: typescript
+			&& deno check -q src/lib/typescript.lib.ts
+			&& civet --inline-map -o .ts -c test/typescript.lib.test.civet
+			&& echo test: typescript
+			&& deno test -qA --reporter dot test/typescript.lib.test.ts -- -D
+			",
+
+		"test:typescript": "
+			   civet --inline-map -o .ts -c test/typescript.lib.test.civet
+			&& echo test: typescript
+			&& deno test -A test/typescript.lib.test.ts -- -D
 			",
 
 		// --------------------------------------------------------------------
@@ -426,9 +478,11 @@
 			&& deno task build:text-table
 			&& deno task build:indent
 			&& deno task build:tokens
+			&& deno task build:nice
 			&& deno task build:fs
 			&& deno task build:symbols
 			&& deno task build:exec
+			&& deno task build:typescript
 			&& deno task build:civet
 			&& deno task build:cielo
 			&& deno task build:compile
@@ -464,6 +518,10 @@
 			&& echo test: tokens
 			&& deno test -qA --reporter dot test/tokens.lib.test.ts -- -D
 
+			&& civet --inline-map -o .ts -c test/nice.lib.test.civet
+			&& echo test: nice
+			&& deno test -qA --reporter dot test/nice.lib.test.ts -- -D
+
 			&& civet --inline-map -o .ts -c test/fs.lib.test.civet
 			&& echo test: fs
 			&& deno test -qA --reporter dot test/fs.lib.test.ts
@@ -476,9 +534,9 @@
 			&& echo test: exec
 			&& deno test -qA --reporter dot test/exec.lib.test.ts -- -D
 
-			&& civet --inline-map -o .ts -c test/civet.lib.test.civet
-			&& echo test: civet
-			&& deno test -qA --reporter dot test/civet.lib.test.ts -- -D
+			&& civet --inline-map -o .ts -c test/typescript.lib.test.civet
+			&& echo test: typescript
+			&& deno test -qA --reporter dot test/typescript.lib.test.ts -- -D
 
 			&& civet --inline-map -o .ts -c test/cielo.lib.test.civet
 			&& echo test: cielo
@@ -556,7 +614,7 @@
 			",
 
 		"docs:all": "
-			deno doc --html --name=@jdeighan/utils src/lib/datatypes.lib.ts src/lib/llutils.lib.ts src/lib/logger.lib.ts src/lib/text-table.lib.ts src/lib/indent.lib.ts src/lib/tokens.lib.ts src/lib/fs.lib.ts src/lib/symbols.lib.ts src/lib/exec.lib.ts src/lib/civet.lib.ts src/lib/cielo.lib.ts src/lib/compile.lib.ts src/lib/utils.lib.ts src/lib/analyze.lib.ts src/lib/v8-stack.lib.ts src/lib/unit-test.lib.ts
+			deno doc --html --name=@jdeighan/utils src/lib/datatypes.lib.ts src/lib/llutils.lib.ts src/lib/logger.lib.ts src/lib/text-table.lib.ts src/lib/indent.lib.ts src/lib/tokens.lib.ts src/lib/nice.lib.ts src/lib/fs.lib.ts src/lib/symbols.lib.ts src/lib/exec.lib.ts src/lib/typescript.lib.ts src/lib/cielo.lib.ts src/lib/compile.lib.ts src/lib/utils.lib.ts src/lib/analyze.lib.ts src/lib/v8-stack.lib.ts src/lib/unit-test.lib.ts
 			",
 
 		"build:compilecmd": "

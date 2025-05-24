@@ -1,0 +1,77 @@
+# typescript.lib.test.civet
+
+import {SourceFile} from 'typescript'
+import {
+	getCmdArgs, DBG, isHash, setDirTree, slurp, withExt, o,
+	ts2ast, civet2tsFile, civet2ts, civet2ast, pprintAST,
+	} from '../src/lib/utils.lib.ts'
+import {
+	equal, like, succeeds, fails, truthy, falsy, isType,
+	} from '../src/lib/unit-test.lib.ts'
+
+hArgs := getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+setup := (): void =>
+
+	DBG "setDirTree()"
+
+	setDirTree 'test/typescript', """
+		test.civet
+			x := 42
+
+		"""
+
+setup()
+
+# ---------------------------------------------------------------------------
+
+testPath := './test/typescript/test.civet'
+civetCode := slurp testPath
+
+tsCode := civet2ts civetCode
+ast1 := ts2ast tsCode
+ast2 := civet2ast civetCode
+equal ast1, ast2
+
+DBG "ts2ast(code)"
+
+succeeds () => ts2ast('x := 42')
+
+DBG "civet2ts(code)"
+
+equal civet2ts('x := 42'), """
+	"use strict";
+	const x = 42
+	"""
+
+DBG "civet2tsFile(path)"
+
+(() =>
+	civet2tsFile testPath, o'!inlineMap'
+	code := slurp withExt(testPath, '.ts')
+	equal code, """
+		"use strict";
+		const x = 42
+		"""
+	)()
+
+DBG "civet2ast(code)"
+
+# isType 'SourceFile', ast1
+# isType 'SourceFile', ast2
+
+DBG "pprintAST(hAST)"
+
+equal pprintAST(ts2ast('x := 42')), """
+	SourceFile - 'x := 42'
+		LabeledStatement - 'x := 42'
+			Identifier - 'x'
+			ExpressionStatement - '= 42'
+				BinaryExpression - '= 42'
+					Identifier - ''
+					FirstAssignment - '='
+					FirstLiteralToken - '42'
+		EndOfFileToken - ''
+	""".replaceAll('\t', '   ')

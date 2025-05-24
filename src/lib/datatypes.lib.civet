@@ -60,6 +60,109 @@ export assert: AssertFunc := (
 	return
 
 # ---------------------------------------------------------------------------
+# --- general JavaScript function to get the type of a value
+
+export jsType := (x: any): string =>
+
+	if (x == null)
+		return "undef"
+
+	typ := typeof x
+	switch typ
+		when 'undefined'
+			return 'undef'
+		when 'bigint'
+			return 'integer'
+		when 'symbol'
+			return 'symbol'  # --- get name with symbolName(x)
+		when 'boolean','string'
+			return typ
+		when 'number'
+			return (
+				  Number.isNaN(x)        ? 'NaN'
+				: not Number.isFinite(x) ? 'infinity'
+				: Number.isInteger(x)    ? 'integer'
+				:                          'number'
+				)
+		when 'function'
+			# --- If it's a function whose source code starts with
+			#     the "class" keyword, it's a class
+			str := x.toString()
+#			str := Function.prototype.toString.call(x)
+			if str.startsWith('class')
+				# --- get name with className(x)
+				#     get definition with classDef(x)
+				return 'class'
+			else
+				return 'function' # get name with functionName(x)
+		when 'object'
+			if Array.isArray(x)
+				return 'array'
+			if (x instanceof String)
+				return 'string'
+			if (x instanceof Boolean)
+				return 'boolean'
+			if (x instanceof Number)
+				return Number.isInteger(x) ? 'integer' : 'number'
+			if (x instanceof RegExp)
+				# --- get definition with regexpDef(x)
+				return 'regexp'
+			className := x.constructor.name
+			if (className == 'Object')
+				return 'hash'
+			else
+				return 'instance'  # get class name with x.constructor.name
+	return 'unknown'
+
+# ---------------------------------------------------------------------------
+
+export isSymbol := (x: any): boolean =>
+
+	return (typeof x == 'symbol')
+
+# ---------------------------------------------------------------------------
+
+export symbolName := (x: any): string =>
+
+	return x.description || '<unknown>'
+
+# ---------------------------------------------------------------------------
+
+export functionName := (x: any): string =>
+
+	return x.name
+
+# ---------------------------------------------------------------------------
+
+export functionDef := (x: any): string =>
+
+	return x.toString()
+
+# ---------------------------------------------------------------------------
+
+export classDef := (x: any): string =>
+
+	return x.toString()
+
+# ---------------------------------------------------------------------------
+
+export regexpDef := (x: any): string =>
+
+	return x.source
+
+# ---------------------------------------------------------------------------
+
+export className = (x: any): string? =>
+	# --- item can be a class or an object
+
+	switch jsType(x)
+		when 'class'
+			return x.name || '<unknown>'
+		when 'instance'
+			return x.constructor.name || '<unknown>'
+	return undef
+
+# ---------------------------------------------------------------------------
 
 /**
  * An array containing anything
@@ -100,7 +203,7 @@ export interface hashof<T>
 
 export isHash := (x: any): x is hash =>
 
-	return isObject(x) && not (isArray(x) || isRegExp(x))
+	return (jsType(x) == 'hash')
 
 # ---------------------------------------------------------------------------
 
@@ -166,7 +269,7 @@ export isBoolean := (x: any): x is boolean =>
 export isNumber := (x: any): x is number =>
 
 	return (
-		  (typeof x == 'bigint')
+		   (typeof x == 'bigint')
 		|| (typeof x == 'number')
 		|| (x instanceof Number)
 		)
@@ -380,3 +483,56 @@ export stringify := (x: any, hOptions: hash={}): string =>
 			)
 	str := JSON.stringify(x, replacer, space)
 	return unhide(str)
+
+# ---------------------------------------------------------------------------
+
+export isClass := (x: any): boolean =>
+
+	if (typeof x != 'function')
+		return false
+	return x.toString().startsWith('class')
+
+# ---------------------------------------------------------------------------
+
+export isPromise := (x: any): boolean =>
+
+	if (typeof x != 'object') || (x == null)
+		return false
+	return (typeof x.then == 'function')
+
+# ---------------------------------------------------------------------------
+# --- NOTE: An '&' preceding a key name indicates
+#           that it should be a function
+
+export isClassInstance := (
+		x: any,
+		lReqKeys: string[]=[]
+		): boolean =>
+
+	constructorName := x?.constructor?.name
+	if (
+			   (x == null)
+			|| (typeof x != 'object')
+			|| Array.isArray(x)
+			|| isPromise(x)
+			|| notdefined(constructorName)
+			)
+		return false
+	for key in lReqKeys
+		let type = undef
+		if lMatches := key.match(///^ (\&) (.*) $///)
+			[_, type, key] := lMatches
+		if notdefined(x[key])
+			return false
+		if (type == '&') && (typeof x[key] != 'function')
+			return false
+	return true
+
+# ---------------------------------------------------------------------------
+
+export isIterable := (x: any): boolean =>
+
+	if notdefined(x)
+		return false
+	else
+		return (typeof x[Symbol.iterator] == 'function')

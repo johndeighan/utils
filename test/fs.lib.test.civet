@@ -10,10 +10,10 @@ import {
 	rmFile, rmDir, newerDestFileExists,
 	clearDir, mkDir, mkDirsForFile, slurp, barf,
 	removeFilesMatching, removeFilesExcept,
-	watchFile, FileEventHandler, watcherCallbackFunc,
-	fsChangeType, fsCallbackFunc, setDirTree,
-	DBG, getCmdArgs, allTokensInFile, Token, pathType,
-	FileOp, fileOpsTable,
+	watchFile, FileEventHandler, TWatcherCallbackFunc,
+	TFsChangeType, TFsCallbackFunc, setDirTree,
+	DBG, getCmdArgs, allTokensInFile, Token, TPathType,
+	TFileOp, fileOpsTable,
 	} from '../src/lib/utils.lib.ts'
 import {
 	equal, truthy, falsy, like, listLike,
@@ -33,27 +33,22 @@ setup := (): void =>
 				if x==1
 					print "OK"
 				exit
-
 			dummy.txt
 				dummy
-
 			file1.txt
 				line1
 				line2
 				line3
-
 			file2.txt
 				# test1.cielo
 
 				LOG := (str) => console.log str
 				LOG "Hello, World!"
-
 			file3.flags.txt
 				# test1.cielo
 
 				LOG := (str) => console.log str
 				LOG "Hello, World!"
-
 			/aaa
 				/bbb
 					newfile.txt
@@ -66,7 +61,6 @@ setup := (): void =>
 				new.txt
 					abc
 					def
-
 		""", o'clear')
 	return
 
@@ -89,11 +83,11 @@ falsy isDir('nosuchdir')
 truthy isDir("./test/fs")
 falsy  isDir("./test/fs/dummy.txt")
 
-DBG "type pathType"
+DBG "type TPathType"
 
-isType  'pathType', 'missing'
-isType  'pathType', 'file'
-notType 'pathType', 'xxx'
+isType  'TPathType', 'missing'
+isType  'TPathType', 'file'
+notType 'TPathType', 'xxx'
 
 DBG "getPathType()"
 
@@ -125,7 +119,7 @@ includesAll lStatFields, ['size', 'mtime']
 DBG "getStats(path)"
 
 truthy hasKey(getStats('deno.jsonc'), 'mtimeMs')
-equal getStats('test/fs/file1.txt').size, 18
+equal getStats('test/fs/file1.txt').size, 17
 
 DBG "isStub()"
 
@@ -134,7 +128,7 @@ falsy  isStub('.js')
 falsy  isStub('abc/deno')
 falsy  isStub('abc\\deno')
 
-DBG "type pathInfo", "parsePath()"
+DBG "type TPathInfo", "parsePath()"
 
 like  parsePath("C:/temp/file.txt"), {
 	type: 'missing'
@@ -365,7 +359,7 @@ DBG "relpath()"
 
 equal relpath('C:/Users/johnd/utils/deno.jsonc'), 'deno.jsonc'
 
-DBG "type pathDesc", "pathSubDirs()"
+DBG "type TPathDesc", "pathSubDirs()"
 
 (() =>
 	fullPath := "C:/Users/johnd/utils/test/fs/deno.jsonc"
@@ -420,7 +414,7 @@ DBG "slurp(path)"
 equal slurp('./test/fs/file1.txt'), """
 	line1
 	line2
-	line3\n
+	line3
 	"""
 
 barfPath := 'test/fs/barfed.txt'
@@ -522,11 +516,11 @@ DBG "removeFilesExcept()"
 	truthy isFile('test/fs/aaa/bbb/temp.txt')
 	)()
 
-DBG "type fsChangeType", "type fsCallbackFunc", "class FileEventHandler"
+DBG "type TFsChangeType", "type TFsCallbackFunc", "class FileEventHandler"
 
 (() =>
-	lChanges: fsChangeType[] := []
-	fileChangeFunc: fsCallbackFunc := (change: fsChangeType) =>
+	lChanges: TFsChangeType[] := []
+	fileChangeFunc: TFsCallbackFunc := (change: TFsChangeType) =>
 		lChanges.push change
 		return
 
@@ -612,7 +606,7 @@ DBG "type fsChangeType", "type fsCallbackFunc", "class FileEventHandler"
 	equal lChanges, expected
 	)()
 
-DBG "type watcherCallbackFunc", "watchFile()", "watchFiles()"
+DBG "type TWatcherCallbackFunc", "watchFile()", "watchFiles()"
 
 await (() =>
 	# --- Set contents of dummy.txt to standard contents
@@ -620,14 +614,14 @@ await (() =>
 	barf path, 'dummy\n'
 
 	let doStop: boolean = false
-	lEvents: fsChangeType[] := []
+	lEvents: TFsChangeType[] := []
 	add := (str: string, stop: boolean=false): void =>
 		if stop
 			doStop = true
 		barf path, str, o'append'
 		return
 
-	callback: watcherCallbackFunc := ({kind, path}) =>
+	callback: TWatcherCallbackFunc := ({kind, path}) =>
 		lEvents.push {kind, path: mkpath(path), ms: sinceLoad()}
 		return doStop
 
@@ -711,17 +705,17 @@ DBG "setDirTree()"
 			]
 	)()
 
-DBG "type FileOp"
+DBG "type TFileOp"
 
-isType 'FileOp', {
+isType 'TFileOp', {
 	funcName: 'mkDir',
 	path: '/usr/bin'
 	}
-isType 'FileOp', {
+isType 'TFileOp', {
 	funcName: 'barf',
 	path: '/usr/bin/deighan.txt'
 	}
-isType 'FileOp', {
+isType 'TFileOp', {
 	funcName: 'barf',
 	path: '/usr/bin/temp.txt',
 	contents: 'abc\ndef'
@@ -730,7 +724,7 @@ isType 'FileOp', {
 DBG "fileOpsTable()"
 
 (() =>
-	lFileOps: FileOp[] := [
+	lFileOps: TFileOp[] := [
 		{funcName: 'mkDir', path: '/usr/bin'}
 		{funcName: 'barf',  path: '/usr/bin/deighan.txt'}
 		{funcName: 'barf',  path: '/usr/bin/temp.txt', contents: 'abc\ndef'}

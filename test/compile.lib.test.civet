@@ -4,14 +4,14 @@ import {
 	undef, defined, notdefined, o, LOG, DBG,
 	isArray, isFunction, relpath, getCmdArgs,
 	removeFilesExcept, execCmd,
-	setDirTree, isFile, pathInfo, withExt,
-	postProcessor, compilerInfo, compilerConfigHash,
+	setDirTree, isFile, TPathInfo, withExt,
+	postProcessor, TCompilerInfo, TCompilerConfig,
 	isPostProcessor, isCompilerInfo, isCompilerFunc,
 	testerFunc, compilerFunc,
 	isConfigHash, hDefaultConfig,
 	userConfigPath, hCompilerConfig, loadCompilerConfig,
 	installCmd, uninstallCmd, getPostProcessor,
-	compileStatus, compileResult, compileFile,
+	TCompileStatus, TCompileResult, compileFile,
 	getCompilerGlobPattern, allCompilableFiles,
 	runUnitTestsFor, runAllUnitTests, getCompilerInfo,
 	execCmdSync, cmdSucceeds, rmFile,
@@ -91,7 +91,7 @@ truthy isCompilerFunc((path: string) => undef)
 DBG "type postProcessor"
 
 (() =>
-	logit := (hInfo: pathInfo) =>
+	logit := (hInfo: TPathInfo) =>
 		console.log "done"
 		return
 	isType 'postProcessor', logit
@@ -99,11 +99,11 @@ DBG "type postProcessor"
 
 DBG "isPostProcessor(func)"
 
-truthy isPostProcessor((hInfo: pathInfo) => undef)
+truthy isPostProcessor((hInfo: TPathInfo) => undef)
 
-DBG "type compilerInfo"
+DBG "type TCompilerInfo"
 
-isType 'compilerInfo', {
+isType 'TCompilerInfo', {
 	tester: () => true,
 	compiler: (path: string) => return,
 	getOutPath: (path: string) => return 'temp.ts'
@@ -117,9 +117,9 @@ truthy isCompilerInfo({
 	getOutPath: (path: string) => return 'temp.ts'
 	})
 
-DBG "type compilerConfigHash"
+DBG "type TCompilerConfig"
 
-isType 'compilerConfigHash', {
+isType 'TCompilerConfig', {
 	hCompilers: {}
 	hPostProcessors: {}
 	}
@@ -196,16 +196,16 @@ DBG "getPostProcessor()"
 	truthy isFunction(pp)
 	)()
 
-DBG "type compileStatus"
+DBG "type TCompileStatus"
 
-isType 'compileStatus', 'temp'
-isType 'compileStatus', 'exists'
-isType 'compileStatus', 'compiled'
-notType 'compileStatus', 'dummy'
+isType 'TCompileStatus', 'temp'
+isType 'TCompileStatus', 'exists'
+isType 'TCompileStatus', 'compiled'
+notType 'TCompileStatus', 'dummy'
 
-DBG "type compileResult"
+DBG "type TCompileResult"
 
-isType 'compileResult', {
+isType 'TCompileResult', {
 	status: 'compiled'
 	path: 'test/temp.ts'
 

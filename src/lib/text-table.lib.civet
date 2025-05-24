@@ -10,7 +10,7 @@ import {
 	} from './datatypes.lib.ts'
 import {
 	getOptions, OL, croak, words, rtrim, alignString,
-	toBlock, alignment,
+	toBlock, TAlignment,
 	} from './llutils.lib.ts'
 import {
 	LOGVALUE, DBG,
@@ -21,12 +21,12 @@ import {
 type colDesc = {
 	width: integer
 	format: string
-	align: alignment
+	align: TAlignment
 	total: number?     # running total
 	subtotal: number?  # running subtotal, undef on subtotal()
 	}
 
-type titleRec     = {opcode: 'title', title: string, align: alignment}
+type titleRec     = {opcode: 'title', title: string, align: TAlignment}
 type labelsRec    = {opcode: 'labels', lRow: string[]}
 type dataRec      = {opcode: 'data', lRow: string[]}
 type sepRec       = {opcode: 'sep', ch: char}
@@ -88,7 +88,7 @@ export class TextTable
 				@lCols.push {
 					width: 0     # adjusted as data is added
 					format: fmt
-					align: (align || 'left') as alignment
+					align: (align || 'left') as TAlignment
 					total: undef     # incremented as data is added
 					subtotal: undef  # incremented as data is added,
 					                 # undef when subtotal is output
@@ -99,7 +99,7 @@ export class TextTable
 
 	# ..........................................................
 
-	title(title: string, align: alignment='center')
+	title(title: string, align: TAlignment='center')
 
 		assert nonEmpty(title), "Bad title: '@{title}'"
 		@lRows.push {

@@ -1,5 +1,14 @@
 to do
 
+Work on library nice.lib.civet
+	in fromNice(), create a Fetcher object, then use
+	recursive descent parsing
+
+When using isType(), if the value passed has circular references,
+the fields are set to undefined, and therefore fail type checking.
+
+test function ast2ts in ts.lib.civet
+
 In coverage command, use a function to get valid stubs
 
 coverage command, without options, should list missing symbols at end

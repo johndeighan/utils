@@ -14,6 +14,8 @@ import {
 	isFunction, isObject, isRegExp,
 	isEmpty, nonEmpty,
 	DBG, getCmdArgs, stringify,
+	isClass, className, isPromise, isClassInstance, isIterable,
+	jsType,
 	} from '../src/lib/utils.lib.ts'
 import {
 	equal, truthy, falsy, fails, succeeds, isType, notType,
@@ -84,6 +86,32 @@ DBG "type AssertFunc", "assert()"
 succeeds () => assert 2+2 == 4
 fails    () => assert 2+2 == 5
 
+DBG "jsType(x)"
+
+equal jsType(42), 'integer'
+equal jsType(3.14), 'number'
+equal jsType('abc'), 'string'
+equal jsType(''), 'string'
+equal jsType(undef), 'undef'
+equal jsType(null), 'undef'
+equal jsType(true), 'boolean'
+equal jsType([]), 'array'
+equal jsType([1,2]), 'array'
+equal jsType({}), 'hash'
+equal jsType({a: 1}), 'hash'
+equal jsType(Symbol()), 'symbol'
+equal jsType(Symbol('abc')), 'symbol'
+
+(() =>
+	class TempClass
+		var: string = ''
+
+		constructor(str: string)
+			@var = str
+	equal jsType(TempClass), 'class'
+	equal jsType(new TempClass('x')), 'instance'
+	)()
+
 DBG "type array"
 
 isType 'array', [1,2]
@@ -114,12 +142,23 @@ isType 'hash', {a:1, b:'def'}
 
 DBG "isHash()"
 
-truthy isHash({a:1, b:2})
-falsy  isHash(42)
-falsy  isHash([1, 2])
-falsy  isHash(/abc/)
-falsy  isHash(undef)
-falsy  isHash(null)
+(() =>
+	class TempClass
+		var: string = ''
+
+		constructor(str: string)
+			@var = str
+
+	truthy isHash({a:1, b:2})
+	truthy isHash({a:1, b: [1,2]})
+	falsy  isHash(42)
+	falsy  isHash([1, 2])
+	falsy  isHash(/abc/)
+	falsy  isHash(undef)
+	falsy  isHash(null)
+	falsy  isHash(Symbol())
+	falsy  isHash(new TempClass('x'))
+	)()
 
 DBG "type hashof<T>"
 
@@ -294,3 +333,38 @@ equal stringify({
 	e: false
 	f:(a: string) => return
 	}), '{"a":undef,"b":null,"c":"abc","d":42,"e":false,"f":(a)=>{ return; }}'
+
+DBG "isClass(x)"
+
+falsy isClass(undef)
+falsy isClass(null)
+falsy isClass(true)
+falsy isClass(42)
+falsy isClass('abc')
+falsy isClass({})
+falsy isClass([])
+
+(() =>
+	class TempClass
+		var: string = ''
+
+		constructor(str: string)
+			@var = str
+	instance := new TempClass('xyz')
+	truthy isClassInstance(instance)
+
+	truthy isClass(TempClass)
+	equal className(TempClass), 'TempClass'
+	equal className(instance), 'TempClass'
+	)()
+
+DBG "isIterable(x)"
+
+truthy isIterable([1,2])
+(() =>
+	gen := () ->
+		yield 1
+		yield 2
+		return
+	truthy isIterable(gen())
+	)()

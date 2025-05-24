@@ -1,0 +1,275 @@
+# nice.civet
+
+import {
+	undef, defined, notdefined, assert, hash,
+	isArray, isFunction, isBoolean, isString,
+	jsType, className, functionName, symbolName,
+	nonEmpty, functionDef, regexpDef,
+	} from './datatypes.lib.ts'
+import {
+	getOptions, escapeStr, unescapeStr,
+	keys, toBlock, o, OL, croak, rtrim, Fetcher,
+	} from './llutils.lib.ts'
+import {
+	indented,
+	} from './indent.lib.ts'
+import {
+	Token, TTokenGenerator, allTokensInBlock,
+	} from './tokens.lib.ts'
+
+type TCompareFunc = (a: string, b: string) => number
+
+# ---------------------------------------------------------------------------
+
+export niceSplitter: TTokenGenerator := (
+		str: string
+		) ->
+	if let lMatches = str.match(///^
+			-
+			(.*)
+			$///)
+		tail := lMatches[1].trim()
+		if tail
+			yield {
+				kind: 'list-item'
+				str
+				value: getPrimitive(tail)
+				}
+		else
+			yield {
+				kind: 'list-head'
+				str
+				}
+	else if let lMatches = str.match(///^
+			([A-Za-z][A-Za-z0-9_]*)
+			:
+			(.*)
+			$///)
+		name := lMatches[1]
+		tail := lMatches[2].trim()
+		if tail
+			yield {
+				kind: 'hash-item'
+				str
+				name
+				value: getPrimitive(tail)
+				}
+		else
+			yield {
+				kind: 'hash-head'
+				name
+				str
+				}
+	else
+		yield {
+			kind: 'primitive'
+			str
+			value: getPrimitive(str)
+			}
+
+# ---------------------------------------------------------------------------
+
+getCompareFunc := (lSortKeys: string[]): TCompareFunc =>
+
+	# --- Convert to a function
+	h: hash := {}
+	for key,i of lSortKeys
+		h[key] = i+1
+
+	return (a: string, b: string): number ->
+		aVal := h[a]
+		bVal := h[b]
+
+		if defined(aVal)
+			if defined(bVal)
+				# --- compare numerically
+				return (aVal < bVal) ? -1 : (aVal > bVal) ? 1 : 0
+			else
+				return -1
+		else
+			if defined(bVal)
+				return 1
+			else
+				return (a < b) ? -1 : (a > b) ? 1 : 0
+
+# ---------------------------------------------------------------------------
+
+export toNice := (x: any, hOptions: hash={}): string =>
+
+	switch jsType(x)
+		when 'undef'
+			return '.undef.'
+		when 'boolean'
+			return x ? '.true.' : '.false.'
+		when 'string'
+			if needsEsc(x)
+				return '\\' + escapeStr(x, o'style=C')
+			else
+				return escapeStr(x, o'style=C')
+		when 'NaN'
+			return '.NaN.'
+		when 'infinity'
+			return (x > 0) ? '.infinity.' : '.neginfinity.'
+		when 'number','integer'
+			return x.toString()
+		when 'class'
+			name := className(x)
+			return name ? ".class #{name}." : '.class'
+		when 'function'
+			name := functionName(x)
+			return name ? ".function #{name}." : ".function."
+		when 'symbol'
+			name := symbolName(x)
+			return name ? ".symbol #{name}." : ".symbol."
+		when 'regexp'
+			def := regexpDef(x)
+			return def ? ".regexp #{def}." : '.regexp.'
+
+		when 'array'
+			if (x.length == 0)
+				return '.[].'
+			lLines := []
+			for item of x
+				block := toNice(item, hOptions)
+				if shouldSplit(item)
+					lLines.push '-'
+					lLines.push indented(block)
+				else
+					lLines.push "- #{block}"
+			return toBlock(lLines)
+
+		when 'hash','instance'
+			{sortKeys} := getOptions hOptions, {
+				sortKeys: false    # --- can be boolean/array/function
+				}
+
+			sortKeysFunc: TCompareFunc := (
+				  isArray(sortKeys)    ? getCompareFunc(sortKeys)
+				: isFunction(sortKeys) ? sortKeys
+				:                        (a: string, b: string) => return (a < b) ? -1 : (a > b) ? 1 : 0
+				)
+
+			lKeys := Object.keys(x)
+			if (lKeys.length == 0)
+				return '.{}.'
+			lLines := []
+			if (sortKeys == true)
+				lKeys.sort()
+			else if (sortKeys != false)
+				lKeys.sort(sortKeysFunc)
+			for key of lKeys
+				assert isString(key), "key not a string: #{OL(key)}"
+				val := x[key]
+				block := toNice(val, hOptions)
+				if shouldSplit(val)
+					lLines.push "#{key}:"
+					lLines.push indented(block)
+				else
+					lLines.push "#{key}: #{block}"
+			return toBlock(lLines)
+		else
+			return "<Unknown object #{x}"
+
+# ---------------------------------------------------------------------------
+
+export needsEsc := (str: string) =>
+
+	# --- if it looks like an array item, it needs quotes
+	if str.match(/^-/)
+		return true
+
+	# --- if it looks like a hash key, it needs quotes
+	if str.match(/^[A-Za-z][A-Za-z0-9_]*:/)
+		return true
+
+	# --- if it looks like a number, it needs quotes
+	if str.match(/^\d+(?:\.\d*)?/)
+		return true
+
+	return false
+
+# ---------------------------------------------------------------------------
+
+shouldSplit := (x: any): boolean =>
+
+	return ['hash','array','class','instance'].includes(jsType(x))
+
+# ---------------------------------------------------------------------------
+
+export allNiceTokens := (
+		block: string,
+		): Generator<Token, void, void> ->
+
+	for h of allTokensInBlock(block, niceSplitter)
+		yield h
+	return
+
+# ---------------------------------------------------------------------------
+
+export fromNice := (
+		str: string,
+		): any =>
+
+	# --- Create a Fetcher, then use
+	#     recursive descent parsing
+
+	if lMatches := str.match(///^
+			-
+			(?:
+				\s+
+				(.*)
+				)?
+			$///)
+		# --- an array
+		croak "Not Implemented"
+	else if lMatches := str.match(///^
+			([A-Za-z][A-Za-z0-9_]*)
+			\:
+			\s+(.*)
+			$///)
+		# --- a hash
+		croak "Not Implemented"
+	else
+		return getPrimitive(str)
+
+# ---------------------------------------------------------------------------
+
+export getPrimitive := (
+		str: string,
+		): any =>
+
+	str = rtrim(str)
+	if lMatches := str.match(/^\.(.*)\.$/)
+		s := lMatches[1].trim()
+		switch s
+			'undef' then return undef
+			'true'  then return true
+			'false' then return false
+			'NaN'   then return NaN
+			'infinity'   then return Infinity
+			'neginfinity'   then return -Infinity
+			'symbol' then return Symbol()
+			'[]'     then return []
+			'{}'     then return {}
+			/^symbol\s+(.+)$/
+				lMatches := s.match(/^symbol\s+(.+)$/)
+				if defined(lMatches)
+					name := lMatches[1]
+					return Symbol(name)
+				else
+					return Symbol()
+			/^regexp\s+(.+)$/
+				lMatches := s.match(/^regexp\s+(.+)$/)
+				if defined(lMatches)
+					name := lMatches[1]
+					return new RegExp(name)
+				else
+					return new RegExp('^$')
+			else
+				croak "Not Implemented"
+	else if str.match(/^\d+$/)
+		return parseInt(str, 10)
+	else if str.match(/^\d+\.\d*$/)
+		return parseFloat(str)
+	else
+		return unescapeStr(str, o'purpose=C')

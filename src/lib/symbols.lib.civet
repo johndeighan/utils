@@ -10,7 +10,7 @@ import {
 import {LOG, DBG, DBGVALUE} from './logger.lib.ts'
 import {resetOneIndent} from './indent.lib.ts'
 import {
-	Token, tokenGenerator, allTokensInBlock,
+	Token, TTokenGenerator, allTokensInBlock,
 	} from './tokens.lib.ts'
 import {isFile, slurp} from './fs.lib.ts'
 
@@ -45,7 +45,7 @@ export loadSymbols := (
 
 	let level = 0   # --- symGen must know the current level
 
-	symGen: tokenGenerator := (line: string) ->
+	symGen: TTokenGenerator := (line: string) ->
 
 		if (level == 0)
 			yield {kind: 'lib', str: line}
@@ -119,7 +119,9 @@ export getNeededImportStmts := (
 	lStmts := for lib of keys(hLibs)
 		lSyms := hLibs[lib]
 		strSyms := lSyms.join(', ')
-		if lib.match(/^[\@\.\/]/)
+		if lib.match(/^[A-Za-z][A-Za-z0-9_]*$/)
+			"import {#{strSyms}} from '#{lib}';"
+		else if lib.match(/^[\@\.\/]/)
 			"import {#{strSyms}} from '#{lib}';"
 		else
 			"import {#{strSyms}} from './#{lib}';"

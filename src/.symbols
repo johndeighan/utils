@@ -1,3 +1,5 @@
+typescript
+	createSourceFile ScriptTarget SourceFile Node SyntaxKind forEachChild
 src/lib/analyze.lib.ts
 	symbolKind isSymbolKind symbolDesc isSymbolDesc testDesc parseExportLine
 	allUnitTestsIn mergeAnalyses dumpSymbols
@@ -7,11 +9,11 @@ src/lib/civet.lib.ts
 	civet2ast pprintAST
 src/lib/compile.lib.ts
 	testerFunc compilerFunc isCompilerFunc postProcessor isPostProcessor
-	isCompilerInfo compilerConfigHash isConfigHash hDefaultConfig
-	installCmd uninstallCmd getCompilerInfo getPostProcessor compileStatus
+	isCompilerInfo TCompilerConfig isConfigHash hDefaultConfig
+	installCmd uninstallCmd getCompilerInfo getPostProcessor TCompileStatus
 	compileFile getCompilerGlobPattern allCompilableFiles runUnitTestsFor
 	userConfigPath hCompilerConfig
-	compilerInfo compileResult
+	TCompilerInfo TCompileResult
 src/lib/datatypes.lib.ts
 	undef defined notdefined FilterFunc AssertFunc assert array arrayof isArray
 	hash hashof isHash voidFunc isString char isChar nonEmptyString
@@ -19,14 +21,14 @@ src/lib/datatypes.lib.ts
 	isArrayOfStrings regexp isRegExp isObject isFunction isEmpty nonEmpty
 	rMark hide unhide stringify
 src/lib/exec.lib.ts
-	mkstr getCmdLine execCmdResult getProcOpt execCmd execCmdSync cmdSucceeds
+	mkstr getCmdLine TExecCmdResult getProcOpt execCmd execCmdSync cmdSucceeds
 src/lib/fs.lib.ts
-	isFile isDir pathType getPathType fileExt withExt lStatFields getStats
-	pathInfo parsePath allFilesMatching allLinesIn normalizePath pathToURL
-	pathDesc pathSubDirs myself slurp barf newerDestFileExists mkDir rmFile
-	mkDirsForFile clearDir removeFilesMatching removeFilesExcept fsChangeType
-	FileEventHandler watcherCallbackFunc watchFile watchFiles allTokensInFile
-	setDirTree fileOpsTable FileOp
+	isFile isDir TPathType getPathType fileExt withExt lStatFields getStats
+	TPathInfo parsePath allFilesMatching allLinesIn normalizePath pathToURL
+	TPathDesc pathSubDirs myself slurp barf newerDestFileExists mkDir rmFile
+	mkDirsForFile clearDir removeFilesMatching removeFilesExcept TFsChangeType
+	FileEventHandler TWatcherCallbackFunc watchFile watchFiles allTokensInFile
+	setDirTree fileOpsTable TFileOp TFsCallbackFunc
 src/lib/indent.lib.ts
 	oneIndent resetOneIndent indentLevel lineDesc splitLine indented undented
 src/lib/llutils.lib.ts
@@ -49,7 +51,7 @@ src/lib/temp.lib.ts
 src/lib/text-table.lib.ts
 	TextTable
 src/lib/tokens.lib.ts
-	Token tokenGenerator allTokensIn allTokensInBlock tokenTable
+	Token TTokenGenerator allTokensIn allTokensInBlock tokenTable
 src/lib/unit-test.lib.ts
 	equal truthy falsy fails succeeds matches like listLike includes
 	getSymbolsFromType getImportCode splitFuncStr getTsCode checkType isType
