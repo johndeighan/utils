@@ -1,5 +1,20 @@
 to do
 
+task buildandtest:nice FAILS!
+
+Work on fromNice() - parse lists and hashes
+Work on toNice() - implement strict option
+
+use normalizeCode() in functionDef(), classDef(), etc.
+
+compilete unit testing of datatypes.lib.civet
+
+Make listLike() in unit-test.lib.civet a true function
+
+Unit test configFromFile() in fs lib
+
+try task bootstrap
+
 Work on library nice.lib.civet
 	in fromNice(), create a Fetcher object, then use
 	recursive descent parsing

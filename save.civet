@@ -1,0 +1,71 @@
+# ---------------------------------------------------------------------------
+
+/**
+ * In a unit test, tests a value, which must be an array or object,
+ * matches another array or object. For objects, the value must
+ * have all the properties in the expected value, but extra
+ * properties are allowed. For arrays, the value must have
+ * at least the length of the expected array, and each item in
+ * the value array must be an object that has at least all of the
+ * properties that the object in the expected array at the
+ * same position has.
+ * Reports line number of the test.
+ *
+ * @param {array | object} value - any JavaScript value
+ * @param {array | object} expected - any JavaScript value
+ * @returns {void} - nothing
+ *
+ * @example
+ * ```js
+ * like {a:1, b:2, c:3}, {a:1, c:3}
+ * ```
+ * This test will pass.
+ *
+ * @example
+ * ```js
+ * like [{a:1, b:2, c:3}, {a:3, b:5, c:23}], [{a:1, b:2}]
+ * ```
+ * This test will pass.
+ */
+
+export type THashCompareFunc = (a: hash, b: hash) => number
+export type TToStringFunc = (a: any) => string
+
+export function listLike(
+		value: string[]
+		expected: string[]
+		): void
+export function listLike(
+		value: hash[]
+		expected: hash[]
+		strFunc: TToStringFunc
+		): void
+export function listLike(
+		value: string[] | hash[]
+		expected: string[] | hash[]
+		strFunc: TToStringFunc? = undef
+		): void
+
+	name := getTestName()
+	DBG "listLike ?, #{JSON.stringify(expected)} (#{name})"
+
+	len := value.length
+	Deno.test "#{name}/len", () => assertEquals len, expected.length
+
+	if (len > 0)
+		if (typeof value[0] == 'string')
+			Deno.test name, assertEquals(value.toSorted(), expected.toSorted())
+		else
+			if defined(strFunc)
+				compareFunc: THashCompareFunc := (a: hash, b: hash) =>
+					str1 := strFunc(a)
+					str2 := strFunc(b)
+					return (str1 < str2) ? -1 : (str1 > str2) ? 1 : 0
+				Deno.test name, assertEquals(value.toSorted(compareFunc), expected.toSorted(compareFunc))
+			else
+				for i of [0..len-1]
+					Deno.test "#{name}/#{i}", () =>
+						assertObjectMatch value[i], expected[i]
+	return
+
+# ---------------------------------------------------------------------------

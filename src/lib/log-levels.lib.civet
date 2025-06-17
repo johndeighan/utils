@@ -1,0 +1,88 @@
+# log-levels.lib.civet
+
+import {
+	undef, defined, notdefined, assert, hashof,
+	} from './datatypes.lib.ts'
+import {
+	croak,
+	} from './llutils.lib.ts'
+
+# ---------------------------------------------------------------------------
+
+export type TLogLevel =
+	'profile' |     # log everything, with timestamp
+	'debug'   |     # log everything, no timestamp
+	'info'    |
+	'warn'    |
+	'error'   |
+	'silent'  |     # log only to file
+	'none'          # log nothing
+
+hNum: hashof<number> := {
+	profile: 1
+	debug:   2
+	info:    3
+	warn:    4
+	error:   5
+	silent:  6
+	none:    7
+	}
+
+# --- stack should never be empty
+lStack: TLogLevel[] := ['info']
+
+# ---------------------------------------------------------------------------
+
+export getLogLevel := (): TLogLevel =>
+
+	if (lStack.length == 0)
+		croak "empty stack"
+		return 'none'
+	else
+		return lStack[lStack.length - 1]
+
+# ---------------------------------------------------------------------------
+
+export isLogLevel := (x: string): x is TLogLevel =>
+
+	return defined(hNum[x])
+
+# ---------------------------------------------------------------------------
+
+export isInactiveLevel := (level: TLogLevel): boolean =>
+
+	return hNum[level] < hNum[getLogLevel()]
+
+# ---------------------------------------------------------------------------
+
+export setLogLevel := (level: TLogLevel): void =>
+
+	assert (lStack.length > 0), "empty stack"
+	lStack[lStack.length-1] = level
+	return
+
+# ---------------------------------------------------------------------------
+
+export pushLogLevel := (level: TLogLevel): void =>
+
+	lStack.push level
+	return
+
+# ---------------------------------------------------------------------------
+
+export popLogLevel := (): TLogLevel =>
+
+	result := lStack.pop()
+	if defined(result)
+		return result
+	else
+		croak "empty stack"
+		return 'none'
+
+# ---------------------------------------------------------------------------
+
+export resetLogLevel := (): void =>
+
+	lStack.length = 0
+	lStack.push 'info'
+	return

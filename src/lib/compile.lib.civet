@@ -1,214 +1,327 @@
 # compile.lib.civet
 
-import {compile as compileSvelte} from 'npm:svelte/compiler'
-
 import {
 	undef, defined, notdefined, assert, hash, hashof, isHash,
-	nonEmptyString, isNonEmptyString,
+	nonEmptyString, isNonEmptyString, nonEmpty,
 	} from './datatypes.lib.ts'
 import {
 	croak, pass, keys, hasKey, hasKeys, missingKeys,
-	OL, o, getOptions,
+	OL, o, getOptions, getOneOption,
 	} from './llutils.lib.ts'
 import {
 	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
-	INDENT, UNDENT, CLEAR,
+	INDENT, UNDENT,
 	pushLogLevel, popLogLevel,
 	} from './logger.lib.ts'
 import {
 	isFile, isDir, fileExt, withExt, rmFile, mkpath, parsePath,
 	relpath, newerDestFileExists, slurp, barf, isStub,
-	allFilesMatching,
-	TPathInfo,
+	allFilesMatching, TPathInfo,
+	patchFirstLine, configFromFile,
 	} from './fs.lib.ts'
 import {
 	execCmd, execCmdSync, cmdSucceeds,
 	} from './exec.lib.ts'
-import {cielo2civetFile} from './cielo.lib.ts'
-import {civet2tsFile} from './civet.lib.ts'
 
 /**
- * @module compile.lib - configuring the compiler
+ * @module compile.lib - compile files
  */
 
 # ---------------------------------------------------------------------------
-#    TYPES
+#   TYPES
 # ---------------------------------------------------------------------------
 
-export type testerFunc = () => boolean
+# --- A function to test if compiling a file is even possible
+export type TTesterFunc = () => boolean
 
-export type compilerFunc = (path: string) => void
-export isCompilerFunc := (f: any): boolean =>
-	try
-		assert (typeof f == 'function'), "GOT #{OL(f)}"
-		return true
-	catch err: any
-		ERR err.message
-		return false
+export type TCompileStatus =
+	'temp'       |    # --- it's an intermediate file, not compiled
+	'nocompiler' |    #     no compiler configured for this file
+	'exists'     |    #     newer output files exist, not compiled
+	'failed'     |    #     compiling failed
+	'compiled'        #     compiling succeeded, output file exists
 
-export type postProcessor = (hInfo: TPathInfo) => void
-export isPostProcessor := (f: any): boolean =>
-	try
-		assert (typeof f == 'function'), "GOT #{OL(f)}"
-		return true
-	catch err: any
-		ERR err.message
-		return false
+export type TCompilerFunc = (path: string) => TCompileStatus
+export type TPostProcessor = (path: string) => void
 
 export type TCompilerInfo = {
-	tester: testerFunc
-	compiler: compilerFunc
-	getOutPath: (path: string) => string
+	tester: TTesterFunc
+	compiler: TCompilerFunc
+	getOutPaths: (path: string) => string[]
 	}
-export isCompilerInfo := (h: any): boolean =>
-	return hasKeys(h, 'tester', 'compiler', 'getOutPath')
 
 export type TCompilerConfig = {
 	hCompilers: hashof<TCompilerInfo>         # <string>: <TCompilerInfo>
-	hPostProcessors: hashof<postProcessor>   # <string>: <postProcessor>
+	hPostProcessors: hashof<TPostProcessor>   # <string>: <TPostProcessor>
 	}
 
-export isConfigHash := (h: any): h is TCompilerConfig =>
+export isCompilerInfo := (x: any): x is TCompilerInfo =>
+	return isHash(x) && hasKeys(x, 'tester', 'compiler', 'getOutPaths')
 
-	try
-		assert isHash(h), "GOT not a hash: #{OL(h)}"
-		lNeeded := ['hCompilers', 'hPostProcessors']
-		assert hasKeys(h, lNeeded...), """
-				Bad config hash: #{OL(h)},
-				missing #{missingKeys(h, lNeeded...)}
-				"""
-		hCompilers: hashof<hash> := h.hCompilers
-		for ext of keys(hCompilers)
-			assert ext.startsWith('.'), "Bad key #{OL(ext)} in hCompilers"
-			lNeeded2 := ['getOutPath', 'tester', 'compiler']
-			h := hCompilers[ext]
-			assert hasKeys(h, lNeeded2...), """
-					Bad TCompilerInfo for #{ext},
-					missing #{missingKeys(h, lNeeded2...)}
-					"""
-		hPostProcessors: hashof<hash> := h.hPostProcessors
-		for purp of keys(hPostProcessors)
-			assert isPostProcessor(hPostProcessors[purp]), """
-				Bad postProcessor for #{purp},
-				Not a post processor
-				"""
+export isCompilerConfig := (x: any): x is TCompilerConfig =>
+	return isHash(x) && hasKeys(x, 'hCompilers', 'hPostProcessors')
 
-		return true
-	catch err: any
-		ERR err.message
-		return false
+export type TCompileResult = {
+	status: TCompileStatus
+	path: string
+	lOutPaths?: string[]
+	postProcStatus?: any
+	}
 
-# ---------------------------------------------------------------------------
-# --- NOTES:
-#        1. compiler doesn't need to check if the file exists
-#        2. compiler doesn't need to check the file extension
-
-export hDefaultConfig: TCompilerConfig := {
-
-	hCompilers: {
-		# --- keys are file extensions
-		#     NOTE: compilers must be synchronous!!!
-
-		'.svelte': {
-			getOutPath: (path: string) => withExt(path, '.js')
-			tester: () => return true
-			compiler: (path: string) =>
-				jsPath := withExt(path, '.js')
-				rmFile jsPath
-				{js, warnings} := compileSvelte slurp(path), {
-					customElement: true
-					runes: true
-					}
-				{code, map} := js
-				barf jsPath, code
-				return
-			}
-		'.dot': {
-			getOutPath: (path: string) => withExt(path, '.svg')
-			tester: () => cmdSucceeds('dot', ['--version'], o'quiet')
-			compiler: (path: string) =>
-				svgPath := withExt(path, '.svg')
-				rmFile svgPath
-				execCmdSync 'dot', ['-Tsvg', path]
-				return
-			}
-		'.cielo': {
-			getOutPath: (path: string) => withExt(path, '.temp.civet')
-			tester: () =>
-				return true
-			compiler: (path: string) =>
-				civetPath := withExt(path, '.temp.civet')
-				rmFile civetPath
-				cielo2civetFile path, civetPath
-				civet2tsFile civetPath
-				return
-			}
-		'.civet': {
-			getOutPath: (path: string) => withExt(path, '.ts')
-			tester: () =>
-				return cmdSucceeds('civet', ['--version'], o'quiet')
-			compiler: (path: string) =>
-				civet2tsFile path
-				return
-			}
-		}
-
-	hPostProcessors: {
-		# --- Keys are a purpose
-
-		'test': (hInfo: TPathInfo): void =>
-			{path, stub} := hInfo
-			if (stub == undef)
-				return
-			pass()
-
-		'lib': (hInfo: TPathInfo): void =>
-			{path, stub} := hInfo
-			if (stub == undef)
-				return
-			for {success} of runUnitTestsFor(stub)
-				if not success
-					WARN "Unit test #{path} failed"
-
-		'cmd': (hInfo: TPathInfo): void =>
-			{path} := hInfo
-			LOG "- installing command #{path}"
-			installCmd path
-			return
-		}
+export type TUnitTestResult = {
+	stub: string
+	success: boolean
+	msg?: string
+	code?: number
+	signal?: string
 	}
 
 # ---------------------------------------------------------------------------
-# --- ASYNC !!!
+
+let hCompilerConfig: TCompilerConfig? = undef   # --- loaded when needed
+
+getConfig := (): TCompilerConfig =>
+
+	if defined(hCompilerConfig)
+		return hCompilerConfig
+	else
+		return getCompilerConfig()
+
+# ---------------------------------------------------------------------------
 
 /**
- * loadCompilerConfig() - Load compiler configuration from a file
+ * getCompilerConfig(path) - return compiler configuration from a file
  */
 
-export loadCompilerConfig := (
-	path: string
+export getCompilerConfig := (
+	path: string = 'src/lib/compile.config.civet'
 	): TCompilerConfig =>
 
 	assert isFile(path), "No such compile config file: #{OL(path)}"
 	DBG "load compiler config from #{path}"
-	module := await import("file:///#{mkpath(path)}")
-	h := module.default as TCompilerConfig
-	assert isConfigHash(h), "Bad user config hash"
+	hConfig := configFromFile(path)
+	DBGVALUE 'hConfig', hConfig
+	if isCompilerConfig(hConfig)
 
-	# --- Remove any compilers for which the actual compiler
-	#     has not been installed
+		# --- Remove any compilers for which the actual compiler
+		#     has not been installed
 
-	hCompilers := h.hCompilers
-	for ext of keys(hCompilers)
-		{tester} := hCompilers[ext]
+		hCompilers := hConfig.hCompilers
+		for ext of keys(hCompilers)
+			{tester} := hCompilers[ext]
+			pushLogLevel 'silent'
+			works := tester()
+			popLogLevel()
+
+			if not works
+				DBG "Deleting compiler for ext #{OL(ext)}"
+				delete hCompilers[ext]
+		return hConfig
+	else
+		return {
+			hCompilers: {}
+			hPostProcessors: {}
+			}
+
+# ---------------------------------------------------------------------------
+# --- returns a TCompilerInfo or undef
+
+export getCompilerInfo := (
+		ext: string
+		): TCompilerInfo? =>
+
+	hConfig := getConfig()
+	hInfo := hConfig.hCompilers[ext]
+	if defined(hInfo)
+		return hInfo
+	else
+		DBG "No compiler for #{ext} files"
+		return undef
+
+# ---------------------------------------------------------------------------
+
+export getPostProcessor := (purpose: string): TPostProcessor? =>
+
+	hConfig := getConfig()
+	pp := hConfig.hPostProcessors[purpose]
+	if defined(pp)
+		return pp
+	else
+		DBG "No post processor for #{purpose} files"
+		return undef
+
+# ---------------------------------------------------------------------------
+# --- src can be a full or relative path
+#     throws error if file does not exist
+#
+#     Possible status values:
+#        'temp'       - it was a temp file, not compiled
+#        'nocompiler' - has no compiler, not compiled
+#        'exists'     - newer compiled file already exists
+#        'failed'     - compiling failed
+#        'compiled'   - successfully compiled
+
+export compileFile := (
+	path: string,
+	hOptions: hash={}
+	): TCompileResult =>
+
+	assert isFile(path), "No such file: #{OL(path)}"
+	DBG "COMPILE: #{OL(path)}", INDENT
+
+	hPathInfo := parsePath path
+	{relPath, stub, purpose, ext} := hPathInfo
+
+	if notdefined(ext)
+		DBG "Not compiling - no file extension in #{OL(path)}", UNDENT
+		return {status: 'nocompiler', path: relPath}
+
+	hCompilerInfo := getCompilerInfo(ext)
+	if notdefined(hCompilerInfo)
+		DBG "Not compiling - no compiler for #{OL(ext)}", UNDENT
+		return {status: 'nocompiler', path: relPath}
+
+	{compiler, getOutPaths} := hCompilerInfo
+	lOutPaths := getOutPaths(relPath)
+	DBG "lOutPaths = #{OL(lOutPaths)}"
+
+	let allNewer = true
+	for outPath of lOutPaths
+		if not newerDestFileExists(relPath, outPath)
+			allNewer = false
+			break
+	if allNewer
+		DBG "Not compiling, newer #{OL(lOutPaths)} exist", UNDENT
+		return {status: 'exists', path: relPath, lOutPaths}
+
+	DBG "compiling #{OL(path)} to #{OL(lOutPaths)}"
+	status := compiler path
+	nopp := getOneOption hOptions, 'nopp', false
+	let postProcStatus: any? = undef
+	if (status == 'compiled') && defined(purpose) && not nopp
+		postProc := getPostProcessor(purpose)
+		if defined(postProc)
+			DBG "post-processing file"
+			try
+				postProc path
+			catch err
+				postProcStatus = err
+	DBG UNDENT
+	if defined(postProcStatus)
+		return {status, path: relPath, lOutPaths, postProcStatus}
+	else
+		return {status, path: relPath, lOutPaths}
+
+# ---------------------------------------------------------------------------
+
+export getCompilerGlobPattern := (root: string='**'): string =>
+
+	hConfig := getConfig()
+	lKeys := keys(hConfig.hCompilers)
+	pattern := (
+		(lKeys.length == 1) ? "#{root}/*#{lKeys[0]}"
+		                    : "#{root}/*{#{lKeys.join(',')}}"
+		)
+	DBG "compiler glob: #{OL(pattern)}"
+	return pattern
+
+# ---------------------------------------------------------------------------
+# --- GENERATOR
+
+export allCompilableFiles := (
+		hOptions: hash={}
+		): Generator<TPathInfo, void, void> ->
+
+	{root, filter} := getOptions hOptions, {
+		root: '**'
+		}
+	pattern := getCompilerGlobPattern(root)
+	DBG "pattern = #{pattern}"
+	for hFileInfo of allFilesMatching(pattern, {filter})
+		yield hFileInfo
+	return
+
+# ---------------------------------------------------------------------------
+
+# --- a generator
+
+export runUnitTestsFor := (
+	stub: nonEmptyString
+	hOptions: hash={}
+	): Generator<TUnitTestResult, void, void> ->
+
+	{verbose} := getOptions hOptions, {
+		verbose: false
+		}
+
+	DBG "Running unit tests for #{stub}"
+	if not verbose
 		pushLogLevel 'silent'
-		works := tester()
-		popLogLevel()
 
-		if not works
-			DBG "Deleting compiler for ext #{OL(ext)}"
-			delete hCompilers[ext]
-	return h
+	# --- Ensure that matching lib & cmd files are compiled
+	#     (no error if there is no compiler for the file)
+	for {path} of allFilesMatching("**/#{stub}.*")
+		{status} := compileFile path, o'nopp'
+		assert (status != 'failed'), "compile of #{path} failed"
+
+	# --- Compile and run all unit tests for stub
+	for {path} of allFilesMatching("**/#{stub}*.test.*")
+		{status, lOutPaths} := compileFile path, o'nopp'
+		assert (status != 'failed'), "compile of #{path} failed"
+		if notdefined(lOutPaths)
+			continue
+		for outPath of lOutPaths
+			assert isFile(outPath), "File #{OL(outPath)} not found"
+
+		# --- Compile all files in subdir if it exists
+		if isDir("test/#{stub}")
+			for {path} of allFilesMatching("test/#{stub}/*")
+				{status, lOutPaths} := compileFile path
+				assert (status != 'failed'), "Compile of #{path} failed"
+				if notdefined(lOutPaths)
+					WARN "File #{OL(path)} not compiled to #{OL(lOutPaths)}"
+
+		# --- Run the unit tests, yield results
+		for outPath of lOutPaths
+			{success, code, signal} := execCmdSync 'deno', [
+					'test',
+					'-qA',
+					outPath
+					]
+			yield {stub, success, code, signal}
+	if not verbose
+		popLogLevel()
+	return
+
+# ---------------------------------------------------------------------------
+# --- a generator
+
+export runAllUnitTests := (
+		): Generator<TUnitTestResult, void, void> ->
+
+	DBG "Running all unit tests"
+
+	hGlobOptions := {
+		exclude: ['node_modules/**', '.git/**']
+		}
+
+	pattern := '**/*.{lib,cmd}.ts'
+	DBG "pattern = #{OL(pattern)}"
+	for {path, stub} of allFilesMatching(pattern, hGlobOptions)
+		if (stub == undef)
+			WARN "No stub found in #{OL(path)}"
+		else
+			DBG "UNIT TEST: #{path}"
+			for hResult of runUnitTestsFor(stub)
+				yield hResult
+	return
+
+# ---------------------------------------------------------------------------
+
+# --- userConfigPath resolves '.' to current working directory,
+#     not the current file location
+
+export userConfigPath: string := mkpath('./compiler.config.ts')
 
 # ---------------------------------------------------------------------------
 # ASYNC
@@ -255,273 +368,3 @@ export uninstallCmd := (path: string, name: string?=undef): void =>
 			path
 			]
 	return
-
-# ---------------------------------------------------------------------------
-# --- returns a compilerFunc or undef
-
-export getCompilerInfo := (ext: string): TCompilerInfo? =>
-
-	hInfo := hCompilerConfig.hCompilers[ext]
-	if notdefined(hInfo)
-		DBG "No compiler for #{ext} files"
-		return undef
-	return hInfo
-
-# ---------------------------------------------------------------------------
-
-export getPostProcessor := (purpose: string): postProcessor? =>
-
-	pp := hCompilerConfig.hPostProcessors[purpose]
-	if notdefined(pp)
-		DBG "No post processor for #{purpose} files"
-		return undef
-	return pp
-
-# ---------------------------------------------------------------------------
-# --- src can be a full path or [dirspec, stub, purpose]
-#        where dirspec can be 'lib', 'bin' or 'test'
-#     throws error if file does not exist
-#
-#     Possible status values:
-#        'temp'       - it was a temp file, not compiled
-#        'nocompiler' - has no compiler, not compiled
-#        'exists'     - newer compiled file already exists
-#        'failed'     - compiling failed
-#        'compiled'   - successfully compiled
-
-export type TCompileStatus = 'nofile' |
-	'temp' | 'nocompiler' |
-	'exists' | 'failed' | 'compiled'
-
-export type TCompileResult = {
-	status: TCompileStatus
-	path: string
-	relPath?: string
-	outPath?: string
-	}
-
-export compileFile := (
-	path: string,
-	hOptions: hash={}
-	): TCompileResult =>
-
-	DBG "COMPILE: #{OL(path)}", INDENT
-
-	{nopp} := getOptions hOptions, {
-		nopp: false
-		}
-
-	# --- hPathInfo is needed for post processing
-	hPathInfo := parsePath path
-	if (hPathInfo.type == 'missing')
-		return {
-			status: 'nofile'
-			path
-			}
-	{relPath, stub, purpose, ext} := hPathInfo
-
-	if (purpose == 'temp') || (purpose == 'debug')
-		DBG "Not compiling #{purpose} file #{OL(path)}", UNDENT
-		return {
-			status: 'temp'
-			path
-			relPath
-			}
-
-	if notdefined(ext)
-		DBG "Not compiling - no file extension in #{OL(path)}", UNDENT
-		return {
-			status: 'nocompiler'
-			path
-			relPath
-			}
-
-	hInfo := getCompilerInfo(ext)
-	if notdefined(hInfo)
-		DBG "Not compiling - no compiler for #{OL(ext)}", UNDENT
-		return {
-			status: 'nocompiler'
-			path
-			relPath
-			outPath: undef
-			}
-
-	{compiler, getOutPath} := hInfo
-	outPath := getOutPath(relPath)
-	if newerDestFileExists(relPath, outPath)
-		DBG "Not compiling, newer #{OL(outPath)} exists", UNDENT
-		return {
-			status: 'exists'
-			path
-			relPath
-			outPath
-			}
-
-	DBG "No newer dest file exists"
-	if isFile(outPath)
-		DBG "removing older #{OL(outPath)}"
-		rmFile outPath
-
-	DBG "compiling #{OL(path)}"
-	compiler relPath     # produces file outPath, may throw exception
-
-	if isFile(outPath)
-		# --- If first line is a file name,
-		#     change it to outPath
-		contents := Deno.readTextFileSync outPath
-		lLines := contents.split "\n"
-		lLines[0].replace path, outPath
-		Deno.writeTextFileSync outPath, lLines.join("\n")
-	else
-		ERR "Output file #{relpath(outPath)} not produced", UNDENT
-		return {
-			status: 'failed'
-			path
-			relPath
-			outPath
-			}
-
-	# --- If there's a post-processor, run it
-	if isNonEmptyString(purpose)
-		postProc := getPostProcessor(purpose)
-		if notdefined(postProc)
-			pass()
-		else
-			DBG "post-processing file"
-			postProc hPathInfo
-
-	DBG UNDENT
-	return {
-		status: 'compiled'
-		path
-		relPath
-		outPath
-		}
-
-# ---------------------------------------------------------------------------
-
-export getCompilerGlobPattern := (root: string='**'): string =>
-
-	lKeys := keys(hCompilerConfig.hCompilers)
-	pattern := (
-		(lKeys.length == 1) ? "#{root}/*#{lKeys[0]}"
-		                    : "#{root}/*{#{lKeys.join(',')}}"
-		)
-	DBG "compiler glob: #{OL(pattern)}"
-	return pattern
-
-# ---------------------------------------------------------------------------
-# --- GENERATOR
-
-export allCompilableFiles := (
-		hOptions: hash={}
-		): Generator<TPathInfo, void, void> ->
-
-	{root, filter} := getOptions hOptions, {
-		root: '**'
-		}
-	pattern := getCompilerGlobPattern(root)
-	DBG "pattern = #{pattern}"
-	for hFileInfo of allFilesMatching(pattern, {filter})
-		yield hFileInfo
-	return
-
-# ---------------------------------------------------------------------------
-
-type unitTestResult = {
-	stub: string
-	success: boolean
-	msg?: string
-	code?: number
-	signal?: string
-	}
-
-# --- a generator
-
-export runUnitTestsFor := (
-	stub: nonEmptyString
-	hOptions: hash={}
-	): Generator<unitTestResult, void, void> ->
-
-	{verbose} := getOptions hOptions, {
-		verbose: false
-		}
-
-	DBG "Running unit tests for #{stub}"
-	if not verbose
-		pushLogLevel 'silent'
-
-	# --- Ensure that matching lib & cmd files are compiled
-	#     (no error if there is no compiler for the file)
-	for {path} of allFilesMatching("**/#{stub}.*")
-		{status} := compileFile path, o'nopp'
-		assert (status != 'failed'), "compile of #{path} failed"
-
-	# --- Compile and run all unit tests for stub
-	for {path} of allFilesMatching("**/#{stub}*.test.*")
-		{status, outPath} := compileFile path, o'nopp'
-		assert (status != 'failed'),
-				"compile of #{path} failed, status == 'failed'"
-		if notdefined(outPath)
-			continue
-		assert isFile(outPath), "File #{outPath} not found"
-
-		# --- Compile all files in subdir if it exists
-		if isDir("test/#{stub}")
-			for {path} of allFilesMatching("test/#{stub}/*")
-				{status, outPath} := compileFile path
-				assert (status != 'failed'), "Compile of #{path} failed"
-				if notdefined(outPath)
-					WARN "File #{OL(path)} not compiled to #{outPath}"
-
-		# --- Run the unit test, return return code
-		# --- Return value has keys success, code, signal
-		{success, code, signal} := execCmdSync 'deno', [
-				'test',
-				'-qA',
-				outPath
-				]
-		yield {stub, success, code, signal}
-	if not verbose
-		popLogLevel()
-	return
-
-# ---------------------------------------------------------------------------
-# --- a generator
-
-export runAllUnitTests := (
-		): Generator<unitTestResult, void, void> ->
-
-	DBG "Running all unit tests"
-
-	hGlobOptions := {
-		exclude: ['node_modules/**', '.git/**']
-		}
-
-	pattern := '**/*.{lib,cmd}.ts'
-	DBG "pattern = #{OL(pattern)}"
-	for {path, stub} of allFilesMatching(pattern, hGlobOptions)
-		if (stub == undef)
-			WARN "No stub found in #{OL(path)}"
-		else
-			DBG "UNIT TEST: #{path}"
-			for hResult of runUnitTestsFor(stub)
-				yield hResult
-	return
-
-# ---------------------------------------------------------------------------
-
-# --- userConfigPath resolves '.' to current working directory,
-#     not the current file location
-
-export userConfigPath: string := mkpath('./compiler.config.ts')
-
-# ---------------------------------------------------------------------------
-
-export hCompilerConfig := (
-	if isFile userConfigPath
-		await loadCompilerConfig(userConfigPath)
-	else
-		hDefaultConfig
-	)
-DBGVALUE 'hCompilerConfig', hCompilerConfig

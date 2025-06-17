@@ -2,7 +2,7 @@
 
 import {
 	undef, getCmdArgs, assert, DBG, LOG, isFile,
-	compileFile, execCmd, curLogLevel,
+	compileFile, execCmd, getLogLevel,
 	} from "../lib/utils.lib.ts"
 
 hArgs := getCmdArgs()
@@ -15,7 +15,7 @@ for stub of lStubs
 	compileFile "test/#{stub}.test.civet"
 
 	assert isFile('test/temp.ts'), "Compile of test/temp.civet failed"
-	{code} := if (curLogLevel() == 'debug')
+	{code} := if (getLogLevel() == 'debug')
 		await execCmd 'deno', [
 			'run',
 			'-A',

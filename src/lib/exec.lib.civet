@@ -10,7 +10,7 @@ import {
 
 import {
 	undef, defined, notdefined, assert, hash,
-	isString, isArray, isArrayOfStrings, stringify,
+	isString, isArray, isArrayOfStrings,
 	} from './datatypes.lib.ts'
 import {
 	getOptions, croak, OL, pass, blockToArray,
@@ -19,7 +19,7 @@ import {
 	barf,
 	} from './fs.lib.ts'
 import {
-	curLogLevel, pushLogLevel, popLogLevel,
+	getLogLevel, pushLogLevel, popLogLevel,
 	DBG, LOG, WARN, ERR, LOGVALUE,
 	INDENT, UNDENT,
 	} from './logger.lib.ts'
@@ -115,7 +115,7 @@ export getProcOpt := (
 	): Deno.CommandOptions =>
 
 	hEnv: hash := {
-		DEFAULT_LOGGER: curLogLevel()
+		DEFAULT_LOGGER: getLogLevel()
 		}
 
 	return if collect

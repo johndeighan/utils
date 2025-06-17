@@ -5,7 +5,7 @@ import {
 	} from '../src/lib/utils.lib.ts'
 import {
 	equal, truthy, falsy, fails, succeeds, iterEqual, iterLike,
-	like, listLike,
+	like, strListLike, objListLike,
 	matches, includes, includesAll, isType, notType,
 	splitFuncStr, getTsCode,
 	getSymbolsFromType, getImportCode, checkType,
@@ -81,9 +81,14 @@ DBG "like()"
 
 like     {a:1, b:2, c:3}, {a:1, c:3}
 
-DBG "listLike()"
+DBG "strListLike()"
 
-listLike [{a:1, b:2, c:3}], [{a:1, c:3}]
+strListLike ['a','b'], ['a', 'b']
+strListLike ['b','a'], ['a', 'b']
+
+DBG "objListLike()"
+
+objListLike [{a:1, b:2, c:3}], [{a:1, c:3}]
 
 DBG "includes()"
 
@@ -128,8 +133,8 @@ equal splitFuncStr("(a: string, b)=>true"), [
 DBG "getTsCode(typeStr, valueStr)"
 
 equal getTsCode('integer', '42'), 'const x: integer = 42'
-equal getTsCode('FilterFunc', '(x) => true'),
-	'const x: FilterFunc = (x: any) => true'
+equal getTsCode('TFilterFunc', '(x) => true'),
+	'const x: TFilterFunc = (x: any) => true'
 
 DBG "checkType(x, typeStr)"
 
@@ -146,7 +151,7 @@ isType 'boolean', false
 isType '() => void', () => return
 isType '() => void', dump
 isType 'voidFunc', dump
-isType 'FilterFunc', (x: any) => return true
+isType 'TFilterFunc', (x: any) => return true
 
 DBG "notType()"
 

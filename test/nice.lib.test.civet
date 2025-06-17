@@ -6,7 +6,7 @@ import {
 	setDirTree, allTokensInBlock,
 	} from '../src/lib/utils.lib.ts'
 import {
-	niceSplitter, needsEsc, allNiceTokens,
+	niceSplitter, needsPreEsc, allNiceTokens,
 	} from '../src/lib/nice.lib.ts'
 import {
 	equal, iterEqual, iterLike, like,
@@ -34,19 +34,26 @@ setup()
 
 DBG "toNice()"
 
-equal toNice('abc'), 'abc'
+equal toNice(undef),      '.undef.'
+equal toNice(null),       '.null.'
+equal toNice(true),       '.true.'
+equal toNice(false),      '.false.'
+equal toNice('abc'),      'abc'
 equal toNice('say "hi"'), 'say "hi"'
 equal toNice('a\tb'),     'a\\tb'
 equal toNice('a\nb'),     'a\\nb'
-
-equal toNice(undef),      '.undef.'
-equal toNice(true),       '.true.'
-equal toNice(false),      '.false.'
+equal toNice('.true.'),   '\\.true.'
+equal toNice('.abc'),     '\\.abc'
+equal toNice('- abc'),    '\\- abc'
+equal toNice('-abc'),     '\\-abc'
+equal toNice('flag: 3'),  '\\flag: 3'
+equal toNice('123'),      '\\123'
 equal toNice(NaN),        '.NaN.'
 equal toNice(Infinity),   '.infinity.'
 equal toNice(-Infinity),  '.neginfinity.'
 equal toNice(42),         '42'
 equal toNice(3.14),       '3.14'
+equal toNice(12345678n),  '12345678'
 
 class TempClass
 	var: string = ''
@@ -60,7 +67,7 @@ func := (x: string): string =>
 
 equal toNice(TempClass),  '.class TempClass.'
 equal toNice(func),       '.function func.'
-equal toNice(Symbol()),   '.symbol <unknown>.'
+equal toNice(Symbol()),   '.symbol.'
 equal toNice(Symbol('abc')), '.symbol abc.'
 equal toNice(/^abc$/),    '.regexp ^abc$.'
 equal toNice([1,2]), """
@@ -215,6 +222,7 @@ equal fromNice('say "hi"'), 'say "hi"'
 equal fromNice('a\\nb'),    'a\nb'
 equal fromNice('a\\tb'),    'a\tb'
 equal fromNice('.undef.'),  undef
+equal fromNice('.null.'),   null
 equal fromNice('.true.'),   true
 equal fromNice('.false.'),  false
 equal fromNice('.NaN.'),    NaN
@@ -233,13 +241,6 @@ truthy isSymbol(fromNice('.symbol.'))
 equal fromNice('.regexp ^abc$.'), /^abc$/
 equal fromNice('.[].'), []
 equal fromNice('.{}.'), {}
-
-# equal fromNice("""
-# 	- 1
-# 	"""), [1]
-# equal fromNice("""
-# 	a: 1
-# 	"""), {a: 1}
 
 DBG "allNiceTokens(block)"
 
@@ -322,3 +323,97 @@ iterLike allNiceTokens("""
 	{kind: 'list-item', value: 'b'}
 	{kind: 'undent'}
 	]
+
+iterLike allNiceTokens("""
+	a: 1
+	b: 2
+	"""), [
+	{kind: 'hash-item', name: 'a', value: 1}
+	{kind: 'hash-item', name: 'b', value: 2}
+	]
+
+iterLike allNiceTokens("""
+	lItems:
+		a: 1
+		b: 2
+	"""), [
+	{kind: 'hash-head', name: 'lItems'}
+	{kind: 'indent'}
+	{kind: 'hash-item', name: 'a', value: 1}
+	{kind: 'hash-item', name: 'b', value: 2}
+	{kind: 'undent'}
+	]
+
+iterLike allNiceTokens("""
+	lItems:
+		a: 1
+		b: 2
+	a: 1
+	b: 2
+	"""), [
+	{kind: 'hash-head', name: 'lItems'}
+	{kind: 'indent'}
+	{kind: 'hash-item', name: 'a', value: 1}
+	{kind: 'hash-item', name: 'b', value: 2}
+	{kind: 'undent'}
+	{kind: 'hash-item', name: 'a', value: 1}
+	{kind: 'hash-item', name: 'b', value: 2}
+	]
+
+iterLike allNiceTokens("""
+	a: 1
+	b: 2
+	lItems:
+		a: 1
+		b: 2
+	"""), [
+	{kind: 'hash-item', name: 'a', value: 1}
+	{kind: 'hash-item', name: 'b', value: 2}
+	{kind: 'hash-head', name: 'lItems'}
+	{kind: 'indent'}
+	{kind: 'hash-item', name: 'a', value: 1}
+	{kind: 'hash-item', name: 'b', value: 2}
+	{kind: 'undent'}
+	]
+
+iterLike allNiceTokens("""
+	a: 1
+	b: 2
+	lItems:
+		lMoreItems:
+			a: 1
+			b: 2
+		x: abc
+	"""), [
+	{kind: 'hash-item', name: 'a', value: 1}
+	{kind: 'hash-item', name: 'b', value: 2}
+	{kind: 'hash-head', name: 'lItems'}
+	{kind: 'indent'}
+	{kind: 'hash-head', name: 'lMoreItems'}
+	{kind: 'indent'}
+	{kind: 'hash-item', name: 'a', value: 1}
+	{kind: 'hash-item', name: 'b', value: 2}
+	{kind: 'undent'}
+	{kind: 'hash-item', name: 'x', value: 'abc'}
+	{kind: 'undent'}
+	]
+
+equal fromNice("""
+	- 1
+	"""), [1]
+
+equal fromNice("""
+	a: 1
+	"""), {a: 1}
+
+equal fromNice("""
+	a: 1
+	b: 3
+	c:
+		- 1
+		- 2
+	"""), {
+		a: 1
+		b: 3
+		c: [1,2]
+		}

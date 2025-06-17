@@ -12,6 +12,6 @@ export function indented(
 export interface hashof<T> {
 export enum LogCmd {
 export class FileEventHandler
-export assert: AssertFunc := (
+export assert: TAssertFunc := (
 export isArrayOfStrings := (x: any): x is string[] =>
 export getV8Stack = (): stackFrame[] =>

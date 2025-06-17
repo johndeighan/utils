@@ -4,7 +4,7 @@ import {
 	lMark, rMark, hide, unhide,
 	} from '../src/lib/datatypes.lib.ts'
 import {
-	undef, defined, notdefined, assert,
+	pass, deepEqual, undef, defined, notdefined, assert,
 	array, arrayof, isArray,
 	hash, hashof, isHash,
 	voidFunc, nonEmptyString,
@@ -12,19 +12,30 @@ import {
 	isNumber, isPrimitive, isNonPrimitive, isInteger,
 	isArrayOfStrings, isArrayOfIntegers,
 	isFunction, isObject, isRegExp,
-	isEmpty, nonEmpty,
-	DBG, getCmdArgs, stringify,
+	isEmpty, nonEmpty, DBG, getCmdArgs,
 	isClass, className, isPromise, isClassInstance, isIterable,
-	jsType,
+	jsType, isSymbol, symbolName, functionName, functionDef,
+	classDef, regexpDef, hashLike, normalizeCode,
 	} from '../src/lib/utils.lib.ts'
 import {
 	equal, truthy, falsy, fails, succeeds, isType, notType,
 	} from '../src/lib/unit-test.lib.ts'
 
 # --- This interprets options like -D for "debug logging"
-hArgs := getCmdArgs()
+getCmdArgs()
 
 # ---------------------------------------------------------------------------
+
+DBG "deepEqual()"
+
+truthy deepEqual 'a', 'a'
+truthy deepEqual ['a'], ['a']
+truthy deepEqual {a:1}, {a:1}
+truthy deepEqual {a: [1,2]}, {a: [1,2]}
+falsy  deepEqual 'a', 'b'
+falsy  deepEqual ['a'], ['b']
+falsy  deepEqual {a:1}, {a:2}
+falsy  deepEqual {a: [1,2]}, {a: [1,3]}
 
 DBG "const undef"
 
@@ -77,11 +88,15 @@ falsy  notdefined('abc')
 	succeeds () => logit 'abc'
 	)()
 
-DBG "type FilterFunc"
+DBG "type TFilterFunc"
 
-isType 'FilterFunc', (x: any) => return true
+isType 'TFilterFunc', (x: any) => return true
 
-DBG "type AssertFunc", "assert()"
+DBG "type TAssertFunc"
+
+isType 'TAssertFunc', (cond: boolean) => return
+
+DBG "assert()"
 
 succeeds () => assert 2+2 == 4
 fails    () => assert 2+2 == 5
@@ -93,7 +108,7 @@ equal jsType(3.14), 'number'
 equal jsType('abc'), 'string'
 equal jsType(''), 'string'
 equal jsType(undef), 'undef'
-equal jsType(null), 'undef'
+equal jsType(null), 'null'
 equal jsType(true), 'boolean'
 equal jsType([]), 'array'
 equal jsType([1,2]), 'array'
@@ -112,11 +127,64 @@ equal jsType(Symbol('abc')), 'symbol'
 	equal jsType(new TempClass('x')), 'instance'
 	)()
 
+DBG "isSymbol()"
+
+truthy isSymbol(Symbol('a'))
+falsy  isSymbol('abc')
+
+DBG "symbolName()"
+
+equal symbolName(Symbol('something')), 'something'
+
+DBG "functionName()"
+
+(() =>
+	func1 := (str: string): boolean =>
+		return true
+	function func2(str: string): boolean
+		return false
+	equal functionName(func1), 'func1'
+	equal functionName(func2), 'func2'
+	)()
+
+DBG "functionDef()"
+
+(() =>
+	func1 := (str: string): boolean =>
+		return true
+	function func2(str: string): boolean
+		return false
+	equal functionDef(func1), 'str=>{return true}'
+	equal functionDef(func2), 'function func2(str){return false}'
+	)()
+
+DBG "classDef()"
+
+pass()
+
+DBG "regexpDef()"
+
+pass()
+
+DBG "className()"
+
+pass()
+
 DBG "type array"
 
 isType 'array', [1,2]
 isType 'array', ['a', 42]
 notType 'array', 42
+
+DBG "type arrayof<T>"
+
+isType 'arrayof<number>', [1,2]
+isType 'arrayof<string>', ['a', 'b']
+notType 'arrayof<number>', 42
+isType "arrayof<integer>", [1,2]
+isType "arrayof<string>", ['a','b']
+notType "arrayof<integer>", [1,'b']
+notType "arrayof<string>", [1,'b']
 
 DBG "isArray()"
 
@@ -127,18 +195,18 @@ falsy  isArray(42)
 falsy  isArray(undef)
 falsy  isArray(null)
 
-DBG "type arrayof<T>"
-
-isType "arrayof<integer>", [1,2]
-isType "arrayof<string>", ['a','b']
-notType "arrayof<integer>", [1,'b']
-notType "arrayof<string>", [1,'b']
-
 DBG "type hash"
 
 isType 'hash', {a: 1}
 isType 'hash', {}
 isType 'hash', {a:1, b:'def'}
+
+DBG "type hashof<T>"
+
+isType  'hashof<integer>', {a: 1}
+notType 'hashof<string>',  {a: 1}
+isType  'hashof<integer>', ({a:1, b:2})
+isType  'hashof<integer>', {}
 
 DBG "isHash()"
 
@@ -160,12 +228,22 @@ DBG "isHash()"
 	falsy  isHash(new TempClass('x'))
 	)()
 
-DBG "type hashof<T>"
+DBG "type TObjCompareFunc"
 
-isType  'hashof<integer>', {a: 1}
-notType 'hashof<string>',  {a: 1}
-isType  'hashof<integer>', ({a:1, b:2})
-isType  'hashof<integer>', {}
+pass()
+
+DBG "type TObjLikeFunc"
+
+pass()
+
+DBG "type TToStringFunc"
+
+pass()
+
+DBG "hashLike()"
+
+truthy hashLike({a:1, b:2}, {a:1})
+truthy hashLike({a:1, b:2, c:3}, {a:1, c:3})
 
 DBG "type voidFunc"
 
@@ -187,14 +265,25 @@ falsy isString([1,2])
 falsy isString({a:1, b:2})
 falsy isString(/\s/)
 
-DBG "type char", "isChar()"
+DBG "type char"
+
+isType 'char', 'a'
+notType 'char', 42
+
+DBG "isChar()"
 
 truthy isChar('a')
 falsy  isChar(undef)
 falsy  isChar(42)
 falsy  isChar('abc')
 
-DBG "type nonEmptyString", "isNonEmptyString()"
+DBG "type nonEmptyString"
+
+isType 'nonEmptyString', 'abc'
+notType 'nonEmptyString', '', isNonEmptyString
+notType 'nonEmptyString', 42
+
+DBG "isNonEmptyString()"
 
 str: nonEmptyString := 'abc'
 truthy isNonEmptyString('a')
@@ -234,13 +323,25 @@ truthy isNonPrimitive([1,2])
 truthy isNonPrimitive({})
 truthy isNonPrimitive({a:1, b:2})
 
-DBG "type integer", "isInteger()"
+DBG "type integer"
+
+isType 'integer', 42, isInteger
+notType 'integer', 3.14, isInteger
+notType 'integer', '42', isInteger
+
+DBG "isInteger()"
 
 truthy isInteger(42)
 falsy  isInteger(3.14159)
 falsy  isInteger('42')
 
-DBG "type intArray", "isArrayOfIntegers()"
+DBG "type intArray"
+
+isType  'intArray', [1,13], isArrayOfIntegers
+notType 'intArray', 42, isArrayOfIntegers
+notType 'intArray', [1,'abc'], isArrayOfIntegers
+
+DBG "isArrayOfIntegers()"
 
 truthy isArrayOfIntegers([1,13])
 falsy  isArrayOfIntegers(42)
@@ -253,7 +354,12 @@ falsy  isArrayOfStrings(42)
 falsy  isArrayOfStrings([1,2])
 falsy  isArrayOfStrings(['abc',2])
 
-DBG "type regexp", "isRegExp()"
+DBG "type regexp"
+
+isType  'regexp', /^abc$/
+notType 'regexp', 'abc'
+
+DBG "isRegExp()"
 
 truthy isRegExp(/^abc$/)
 falsy  isRegExp('abc')
@@ -296,7 +402,15 @@ truthy nonEmpty('abc')
 truthy nonEmpty([1,2])
 truthy nonEmpty({a:1})
 
-DBG "hide(str)", "const lMark", "const rMark"
+DBG 'const lMark'
+
+pass()
+
+DBG 'const rMark'
+
+pass()
+
+DBG "hide(str)"
 
 equal hide('abc'), "#{lMark}abc#{rMark}"
 
@@ -311,28 +425,6 @@ equal unhide("\"#{lMark}a#{rMark}\"b\"#{lMark}c#{rMark}\""), 'abc'
 	equal unhide("#{hideq('abc')}"), 'abc'
 	equal unhide("#{hideq('abc')}def#{hideq('ghi')}"), 'abcdefghi'
 	)()
-
-DBG "stringify(x)"
-
-equal stringify(undef),        'undef'
-equal stringify(null),         'null'
-equal stringify('abc'),        '"abc"'
-equal stringify(42),           '42'
-equal stringify(true),         'true'
-equal stringify(['a',1]),      '["a",1]'
-equal stringify({a:1, b:'c'}), '{"a":1,"b":"c"}'
-equal stringify((a: string) => return), '(a)=>{ return; }'
-equal stringify({a: undef}),   '{"a":undef}'
-equal stringify({a: null}),    '{"a":null}'
-equal stringify({f: (a: string) => return}), '{"f":(a)=>{ return; }}'
-equal stringify({
-	a: undef
-	b: null
-	c: 'abc'
-	d: 42
-	e: false
-	f:(a: string) => return
-	}), '{"a":undef,"b":null,"c":"abc","d":42,"e":false,"f":(a)=>{ return; }}'
 
 DBG "isClass(x)"
 
@@ -358,6 +450,14 @@ falsy isClass([])
 	equal className(instance), 'TempClass'
 	)()
 
+DBG "isPromise(x)"
+
+pass()
+
+DBG "isClassInstance(x)"
+
+pass()
+
 DBG "isIterable(x)"
 
 truthy isIterable([1,2])
@@ -368,3 +468,9 @@ truthy isIterable([1,2])
 		return
 	truthy isIterable(gen())
 	)()
+
+DBG "normalizeCode(code)"
+
+equal normalizeCode("""
+	let x = 42
+	"""), 'let x=42;'

@@ -29,20 +29,31 @@ import {
 	integer, hash, voidFunc,
 	} from './datatypes.lib.ts'
 import {
-	croak, OL, getOptions, removeEmptyKeys, pass,
+	croak, OL, ML, getOptions, removeEmptyKeys, pass, hasKey,
 	spaces, sinceLoadStr, sleep, relpath,
+	getImportSync, require,
 	} from './llutils.lib.ts'
+import {
+	pushLogLevel, popLogLevel, DBG, DBGVALUE, ERR,
+	INDENT, UNDENT,
+	} from './logger.lib.ts'
 import {TextTable} from './text-table.lib.ts'
 import {indented} from './indent.lib.ts'
 import {
-	Token, allTokensInBlock, tokenTable,
-	} from './tokens.lib.ts'
+	TPLLToken, allTokensInBlock, tokenTable,
+	} from './pll.lib.ts'
+import {
+	civet2tsFile,
+	} from './civet.lib.ts'
 
 export {relpath}
 
 /**
  * @module fs - file system utilities
  */
+
+# --- Create a function capable of synchronously
+#     importing ESM modules
 
 Deno := globalThis.Deno
 
@@ -122,6 +133,7 @@ export fileExt := (path: string): string =>
 
 export withExt := (path: string, ext: string): string =>
 
+	assert isNonEmptyString(path), "path = #{OL(path)}"
 	assert ext.startsWith('.'), "Bad file extension: #{ext}"
 	lMatches := path.match(/^(.*)(\.[^\.]+)$/)
 	if (lMatches == null)
@@ -190,7 +202,7 @@ export parsePath := (path: string): TPathInfo =>
 	assert isNonEmptyString(path), "path not a string #{OL(path)}"
 	if defined(path.match(/^file\:\/\//))
 		path = fromFileUrl(path)
-	path = normalizePath path
+	path = mkpath path
 
 	{root, dir, base: fileName} := parse(path)
 
@@ -428,7 +440,7 @@ export myself := (url: string): string =>
 
 export slurp := (path: string): string =>
 
-	assert isFile(path), "No such file: #{path} (slurp)"
+	assert isFile(path), "No such file: #{resolve(path)} (slurp)"
 	data := Deno.readFileSync path
 	return decoder.decode(data).replaceAll('\r', '')
 
@@ -440,10 +452,10 @@ export slurp := (path: string): string =>
  */
 
 export barf := (
-	path: string,
-	contents: string,
-	hOptions: hash={}
-	): void =>
+		path: string,
+		contents: string,
+		hOptions: hash = {}
+		): void =>
 
 	{append} := getOptions hOptions, {
 		append: false
@@ -455,6 +467,21 @@ export barf := (
 	else
 		Deno.writeFileSync path, data
 	return
+
+# ---------------------------------------------------------------------------
+
+export barfTempFile := (
+		contents: string
+		hOptions: hash = {}
+		): string =>
+
+	{ext} := getOptions hOptions, {
+		ext: '.civet'
+		}
+	tempFilePath := Deno.makeTempFileSync {suffix: ext}
+	barf tempFilePath, contents
+	return tempFilePath
+
 
 # ---------------------------------------------------------------------------
 
@@ -739,7 +766,7 @@ export watchFiles := watchFile
 
 export allTokensInFile := (
 		path: string
-		): Generator<Token, void, void> ->
+		): Generator<TPLLToken, void, void> ->
 
 	for tok of allTokensInBlock(slurp(path))
 		yield tok
@@ -762,19 +789,13 @@ export setDirTree := (
 
 	# --- Extract options
 	{debug, clear, scaffold} := getOptions hOptions, {
-		debug: true
+		debug: false
 		clear: false
 		scaffold: false
 		}
 
-	# --- fs lib can't use logger lib directly, so
-	#     we define and use a local DBG() function
-
-	DBG := (str: string): void =>
-		if debug
-			console.log str
-		return
-
+	if not debug
+		pushLogLevel 'info'
 	let level: integer = 0
 
 	dbgEnter := (name: string, ...lArgs: any[]) =>
@@ -842,7 +863,7 @@ export setDirTree := (
 
 	fileHandler := (
 			filePath: string,
-			lTokens: Token[]
+			lTokens: TPLLToken[]
 			): void =>
 
 		dbgEnter 'fileHandler', filePath
@@ -882,7 +903,7 @@ export setDirTree := (
 
 	dirHandler := (
 			dirPath: string,
-			lTokens: Token[]
+			lTokens: TPLLToken[]
 			): void =>
 
 		dbgEnter 'dirHandler', dirPath
@@ -896,10 +917,10 @@ export setDirTree := (
 		dbgExit 'dirHandler', dirPath
 		return
 
-	blockHandler := (dirPath: string, lTokens: Token[]) =>
+	blockHandler := (dirPath: string, lTokens: TPLLToken[]) =>
 		dbgEnter 'blockHandler', dirPath
 		while (lTokens.length > 0) && (lTokens[0].kind != 'undent')
-			tok: Token := lTokens[0]
+			tok: TPLLToken := lTokens[0]
 			lTokens.shift()
 			{kind, str} := tok
 			switch kind
@@ -928,6 +949,8 @@ export setDirTree := (
 	blockHandler(currentDir, lTokens)
 	assert (lTokens.length == 0),
 			"Tokens remaining after parse: #{OL(lTokens)}"
+	if not debug
+		popLogLevel()
 	return lFileOps
 
 # ---------------------------------------------------------------------------
@@ -949,3 +972,44 @@ export fileOpsTable := (lFileOps: TFileOp[]): string =>
 						tt.data ['', line.replace('\t', spaces(3))]
 	tt.fullsep()
 	return tt.asString()
+
+# ---------------------------------------------------------------------------
+
+export patchFirstLine := (
+		path: string
+		str: string
+		newstr: string
+		): void =>
+
+	# --- Replace str with newstr, but only on first line
+	contents := Deno.readTextFileSync path
+	nlPos := contents.indexOf "\n"
+	strPos := contents.indexOf str
+	if (strPos != -1) && ((nlPos == -1) || (strPos < nlPos))
+		Deno.writeTextFileSync path, contents.replace(str, newstr)
+	return
+
+# ---------------------------------------------------------------------------
+
+export configFromFile := (aPath: string): hash =>
+
+	{path, type, purpose, ext} := parsePath(aPath)
+	assert (type == 'file'), "Not a file: #{OL(path)}"
+	assert (purpose == 'config'), "Not a config file: #{OL(path)}"
+	DBG "GET CONFIG: path = #{OL(path)}"
+
+	srcPath := (
+		if (ext == '.civet')
+			civet2tsFile path
+			withExt path, '.ts'
+		else
+			path
+		)
+	DBGVALUE 'srcPath', srcPath
+	hImported := require(srcPath)
+	DBGVALUE 'hImported', hImported
+	hResult := hImported?.default || hImported
+	DBGVALUE "hResult", hResult
+	assert isHash(hResult),
+			"Default import in #{OL(srcPath)} not a hash: #{ML(hResult)}"
+	return hResult

@@ -45,7 +45,7 @@ equal civet2ts('x := 42'), """
 DBG "civet2tsFile(path)"
 
 (() =>
-	civet2tsFile testPath, o'!inlineMap'
+	civet2tsFile testPath, withExt(testPath, '.ts'), o'!inlineMap'
 	code := slurp withExt(testPath, '.ts')
 	equal code, """
 		"use strict";

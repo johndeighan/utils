@@ -1,8 +1,30 @@
 # datatypes.lib.civet
 
+import deepEqual from 'fast-deep-equal'
+
+import {
+	normalizeCode, normalizeExpr, truncStr,
+	} from './typescript.lib.ts'
+
+export {deepEqual}
+
 /**
  * @module datatypes - TypeScript datatype checking
  */
+
+# ---------------------------------------------------------------------------
+
+/**
+ * a function that takes no arguments and returns nothing
+ * [unit tests](../test/datatypes.test.civet#:~:text=DBG,voidFunc)
+ */
+
+export type voidFunc = () => void
+
+export type TFilterFunc = (item: any) => boolean
+export type TStringifier = (item: any) => string
+export type TStringParser = (str: string) => any
+export type TAssertFunc = (cond: boolean, msg?: string) => void
 
 # ---------------------------------------------------------------------------
 
@@ -40,17 +62,12 @@ export notdefined := (x: any): x is undefined =>
 
 # ---------------------------------------------------------------------------
 
-export type FilterFunc = (item: any) => boolean
-
-# ---------------------------------------------------------------------------
-
 /**
  * Asserts that `cond` is true. If it isn't, an exception is
  * thrown with the given `msg`
  */
 
-export type AssertFunc = (cond: boolean, msg?: string) => void
-export assert: AssertFunc := (
+export assert: TAssertFunc := (
 		cond: boolean,
 		msg: string="An error occurred"
 		): asserts cond =>
@@ -64,31 +81,25 @@ export assert: AssertFunc := (
 
 export jsType := (x: any): string =>
 
-	if (x == null)
-		return "undef"
-
 	typ := typeof x
 	switch typ
 		when 'undefined'
 			return 'undef'
 		when 'bigint'
 			return 'integer'
-		when 'symbol'
-			return 'symbol'  # --- get name with symbolName(x)
-		when 'boolean','string'
+		when 'boolean','string','symbol'
+			# --- get symbol name with symbolName(x)
 			return typ
 		when 'number'
 			return (
-				  Number.isNaN(x)        ? 'NaN'
-				: not Number.isFinite(x) ? 'infinity'
-				: Number.isInteger(x)    ? 'integer'
-				:                          'number'
+				  Number.isNaN(x)    ? 'NaN'
+				: Number.isFinite(x) ? (Number.isInteger(x) ? 'integer' : 'number')
+				: ((x < 0) ? 'neginfinity' : 'infinity')
 				)
 		when 'function'
 			# --- If it's a function whose source code starts with
 			#     the "class" keyword, it's a class
 			str := x.toString()
-#			str := Function.prototype.toString.call(x)
 			if str.startsWith('class')
 				# --- get name with className(x)
 				#     get definition with classDef(x)
@@ -96,6 +107,8 @@ export jsType := (x: any): string =>
 			else
 				return 'function' # get name with functionName(x)
 		when 'object'
+			if (x == null)
+				return 'null'
 			if Array.isArray(x)
 				return 'array'
 			if (x instanceof String)
@@ -107,7 +120,7 @@ export jsType := (x: any): string =>
 			if (x instanceof RegExp)
 				# --- get definition with regexpDef(x)
 				return 'regexp'
-			className := x.constructor.name
+			className := x?.constructor?.name
 			if (className == 'Object')
 				return 'hash'
 			else
@@ -124,25 +137,25 @@ export isSymbol := (x: any): boolean =>
 
 export symbolName := (x: any): string =>
 
-	return x.description || '<unknown>'
+	return x.description || ''
 
 # ---------------------------------------------------------------------------
 
-export functionName := (x: any): string =>
+export functionName := (x: Function): string =>
 
-	return x.name
+	return x.name || ''
 
 # ---------------------------------------------------------------------------
 
-export functionDef := (x: any): string =>
+export functionDef := (x: Function): string =>
 
-	return x.toString()
+	return normalizeExpr(x.toString())
 
 # ---------------------------------------------------------------------------
 
 export classDef := (x: any): string =>
 
-	return x.toString()
+	return normalizeCode(x.toString())
 
 # ---------------------------------------------------------------------------
 
@@ -157,10 +170,11 @@ export className = (x: any): string? =>
 
 	switch jsType(x)
 		when 'class'
-			return x.name || '<unknown>'
+			return x.name || ''
 		when 'instance'
-			return x.constructor.name || '<unknown>'
-	return undef
+			return x.constructor.name || ''
+		else
+			return ''
 
 # ---------------------------------------------------------------------------
 
@@ -207,12 +221,21 @@ export isHash := (x: any): x is hash =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * a function that takes no arguments and returns nothing
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,voidFunc)
- */
+export type TObjCompareFunc = (h1: hash, h2: hash) => number
+export type TObjLikeFunc = (h: hash, hPat: hash) => boolean
+export type TToStringFunc = (h: hash) => string
 
-export type voidFunc = () => void
+export hashLike := (h: hash, hPat: hash): boolean =>
+
+	lHashKeys := Object.keys(h)
+	for key of Object.keys(hPat)
+		if lHashKeys.includes(key)
+			patVal := hPat[key]
+			if defined(patVal) && not deepEqual(h[key], patVal)
+				return false
+		else
+			return false
+	return true
 
 # ---------------------------------------------------------------------------
 
@@ -439,50 +462,6 @@ export unhide := (str: string): string =>
 		start = str.indexOf('"'+lMark, pos)
 	lParts.push str.substring(pos)
 	return lParts.join('')
-
-# ---------------------------------------------------------------------------
-
-stringifyFunc := (
-		x: Function,
-		space: string|number=0
-		): string =>
-
-	if (space == 0)
-		return x.toString().replaceAll(/\s+/g, ' ')
-	else
-		return x.toString().replaceAll(/[\t\ ]+/g, ' ')
-
-# ---------------------------------------------------------------------------
-
-/**
- * stringify any value
- * NOTE: JSON.stringify sucks! - it can't handle undefined, functions,
- * and other standard JavaScript values. Fortunately,
- * it provides a mechanism to handle that and other anomolies - a
- * replacer function
- */
-
-export stringify := (x: any, hOptions: hash={}): string =>
-
-	strict := hOptions.strict || false
-	space := hOptions.space || 0
-	if (x == undef)
-		return strict ? 'undefined' : 'undef'
-	else if (x == null)
-		return 'null'
-	else if (typeof x == 'function')
-		return stringifyFunc(x, space)
-
-	replacer := (key: string, value: any) =>
-		return (
-			  (value == undef)             ? hide(strict ? 'undefined' : 'undef')
-			: (value == null)              ? hide('null')
-			: (typeof value == 'function') ? hide(stringifyFunc(value, space))
-			: (typeof value == 'symbol')   ? '[SYMBOL]'
-			:                                value
-			)
-	str := JSON.stringify(x, replacer, space)
-	return unhide(str)
 
 # ---------------------------------------------------------------------------
 

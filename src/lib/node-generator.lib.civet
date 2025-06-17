@@ -1,0 +1,50 @@
+# node-generator.lib.civet
+
+import {
+	integer, isNonPrimitive,
+	} from './datatypes.lib.ts'
+
+# ---------------------------------------------------------------------------
+# GENERATOR
+
+export type TNodeInfo = {
+	node: any
+	level: integer
+	}
+
+export class NodeGenerator
+
+	# --- data fields
+	setYielded = new WeakSet<any>()
+
+	filter(x: any): boolean
+
+		return isNonPrimitive(x)
+
+	allNodes(
+			obj: any
+			objLevel: integer = 0
+			): Generator<TNodeInfo, void, void>
+
+		if (objLevel == 0)
+			@setYielded = new WeakSet<any>()
+		if @setYielded.has(obj)
+			return
+		if @filter(obj)
+			yield {
+				node: obj,
+				level: objLevel
+				}
+			@setYielded.add obj
+		if Array.isArray(obj)
+			for item of obj
+				for {node, level} of @allNodes(item, objLevel+1)
+					yield {node, level}
+					@setYielded.add node
+		else if isNonPrimitive(obj)
+			for key of Object.keys(obj)
+				value := obj[key]
+				for {node, level} of @allNodes(value, objLevel+1)
+					yield {node, level}
+					@setYielded.add node
+		return

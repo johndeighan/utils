@@ -8,18 +8,21 @@ src/lib/cielo.lib.ts
 src/lib/civet.lib.ts
 	civet2ast pprintAST
 src/lib/compile.lib.ts
-	testerFunc compilerFunc isCompilerFunc postProcessor isPostProcessor
+	TTesterFunc TCompilerFunc isCompilerFunc TPostProcessor isPostProcessor
 	isCompilerInfo TCompilerConfig isConfigHash hDefaultConfig
 	installCmd uninstallCmd getCompilerInfo getPostProcessor TCompileStatus
 	compileFile getCompilerGlobPattern allCompilableFiles runUnitTestsFor
 	userConfigPath hCompilerConfig
-	TCompilerInfo TCompileResult
+	TCompilerInfo TCompileResult TUnitTestResult
 src/lib/datatypes.lib.ts
-	undef defined notdefined FilterFunc AssertFunc assert array arrayof isArray
+	TFilterFunc TStringifier TStringParser TAssertFunc
+	undef defined notdefined assert array arrayof isArray
 	hash hashof isHash voidFunc isString char isChar nonEmptyString
 	isBoolean isNumber isPrimitive integer isInteger intArray
 	isArrayOfStrings regexp isRegExp isObject isFunction isEmpty nonEmpty
 	rMark hide unhide stringify
+src/lib/node-generator.lib.ts
+	TNodeInfo NodeGenerator
 src/lib/exec.lib.ts
 	mkstr getCmdLine TExecCmdResult getProcOpt execCmd execCmdSync cmdSucceeds
 src/lib/fs.lib.ts
@@ -37,10 +40,15 @@ src/lib/llutils.lib.ts
 	hit sleep spaces tabs rtrim countChars blockToArray allLinesInBlock
 	isBlockSpec toArray arrayToBlock toBlock escapeStr escapeBlock relpath
 	words getNExtra rpad lpad centered alignment isAlignment alignString zpad
-	allNodes TNodeInfo NodeGenerator
+	allNodes
+src/lib/log-levels.lib.ts
+	TLogLevel getLogLevel setLogLevel isLobLevel isInactiveLevel
+	pushLogLevel popLogLevel resetLogLevel
+src/lib/log-formatter.lib.ts
+	getFormatter indentLog undentLog
 src/lib/logger.lib.ts
-	LogCmd setLogLevel pushLogLevel popLogLevel curLogLevel DBG LOG WARN ERR
-	DBGVALUE getFullLog getLog clearLog
+	getLog clearLog INDENT UNDENT
+	DBG LOG WARN ERR LOGVALUE DBGVALUE
 src/lib/logger.org.lib.ts
 	LogCmd setLogLevel pushLogLevel popLogLevel curLogLevel DBG LOG WARN ERR
 	getFullLog getLog flushLog clearLog
@@ -50,8 +58,8 @@ src/lib/temp.lib.ts
 	indented
 src/lib/text-table.lib.ts
 	TextTable
-src/lib/tokens.lib.ts
-	Token TTokenGenerator allTokensIn allTokensInBlock tokenTable
+src/lib/pll.lib.ts
+	TPLLToken EOFToken TTokenGenerator allTokensIn allTokensInBlock tokenTable
 src/lib/unit-test.lib.ts
 	equal truthy falsy fails succeeds matches like listLike includes
 	getSymbolsFromType getImportCode splitFuncStr getTsCode checkType isType

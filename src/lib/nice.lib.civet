@@ -14,58 +14,11 @@ import {
 	indented,
 	} from './indent.lib.ts'
 import {
-	Token, TTokenGenerator, allTokensInBlock,
-	} from './tokens.lib.ts'
+	TPLLToken, tkEOF, tkIndent, tkUndent,
+	TTokenGenerator, allTokensInBlock,
+	} from './pll.lib.ts'
 
 type TCompareFunc = (a: string, b: string) => number
-
-# ---------------------------------------------------------------------------
-
-export niceSplitter: TTokenGenerator := (
-		str: string
-		) ->
-	if let lMatches = str.match(///^
-			-
-			(.*)
-			$///)
-		tail := lMatches[1].trim()
-		if tail
-			yield {
-				kind: 'list-item'
-				str
-				value: getPrimitive(tail)
-				}
-		else
-			yield {
-				kind: 'list-head'
-				str
-				}
-	else if let lMatches = str.match(///^
-			([A-Za-z][A-Za-z0-9_]*)
-			:
-			(.*)
-			$///)
-		name := lMatches[1]
-		tail := lMatches[2].trim()
-		if tail
-			yield {
-				kind: 'hash-item'
-				str
-				name
-				value: getPrimitive(tail)
-				}
-		else
-			yield {
-				kind: 'hash-head'
-				name
-				str
-				}
-	else
-		yield {
-			kind: 'primitive'
-			str
-			value: getPrimitive(str)
-			}
 
 # ---------------------------------------------------------------------------
 
@@ -96,25 +49,36 @@ getCompareFunc := (lSortKeys: string[]): TCompareFunc =>
 
 export toNice := (x: any, hOptions: hash={}): string =>
 
+	# --- When strict, classes and function
+	#     include their definitions, with escaped chars
+
+	{strict} := getOptions hOptions, {
+		strict: false
+		}
+
 	switch jsType(x)
 		when 'undef'
 			return '.undef.'
+		when 'null'
+			return '.null.'
 		when 'boolean'
 			return x ? '.true.' : '.false.'
 		when 'string'
-			if needsEsc(x)
+			if needsPreEsc(x)
 				return '\\' + escapeStr(x, o'style=C')
 			else
 				return escapeStr(x, o'style=C')
 		when 'NaN'
 			return '.NaN.'
 		when 'infinity'
-			return (x > 0) ? '.infinity.' : '.neginfinity.'
+			return '.infinity.'
+		when 'neginfinity'
+			return '.neginfinity.'
 		when 'number','integer'
 			return x.toString()
 		when 'class'
 			name := className(x)
-			return name ? ".class #{name}." : '.class'
+			return name ? ".class #{name}." : '.class.'
 		when 'function'
 			name := functionName(x)
 			return name ? ".function #{name}." : ".function."
@@ -124,7 +88,6 @@ export toNice := (x: any, hOptions: hash={}): string =>
 		when 'regexp'
 			def := regexpDef(x)
 			return def ? ".regexp #{def}." : '.regexp.'
-
 		when 'array'
 			if (x.length == 0)
 				return '.[].'
@@ -172,18 +135,22 @@ export toNice := (x: any, hOptions: hash={}): string =>
 
 # ---------------------------------------------------------------------------
 
-export needsEsc := (str: string) =>
+export needsPreEsc := (str: string) =>
 
-	# --- if it looks like an array item, it needs quotes
+	# --- if it looks like an array item, it needs leading \
 	if str.match(/^-/)
 		return true
 
-	# --- if it looks like a hash key, it needs quotes
+	# --- if it looks like a hash key, it needs leading \
 	if str.match(/^[A-Za-z][A-Za-z0-9_]*:/)
 		return true
 
-	# --- if it looks like a number, it needs quotes
+	# --- if it looks like a number, it needs leading \
 	if str.match(/^\d+(?:\.\d*)?/)
+		return true
+
+	# --- if it starts with a '.', it needs leading \
+	if (str.length > 0) && (str[0] == '.')
 		return true
 
 	return false
@@ -196,9 +163,58 @@ shouldSplit := (x: any): boolean =>
 
 # ---------------------------------------------------------------------------
 
+export niceSplitter: TTokenGenerator := (
+		str: string
+		) ->
+	if let lMatches = str.match(///^
+			-
+			(.*)
+			$///)
+		tail := lMatches[1].trim()
+		if tail
+			yield {
+				kind: 'list-item'
+				str
+				value: getPrimitive(tail)
+				}
+		else
+			yield {
+				kind: 'list-head'
+				name: str
+				str: ''
+				}
+	else if let lMatches = str.match(///^
+			([A-Za-z][A-Za-z0-9_]*)
+			:
+			(.*)
+			$///)
+		name := lMatches[1]
+		tail := lMatches[2].trim()
+		if tail
+			yield {
+				kind: 'hash-item'
+				str
+				name
+				value: getPrimitive(tail)
+				}
+		else
+			yield {
+				kind: 'hash-head'
+				name
+				str
+				}
+	else
+		yield {
+			kind: 'primitive'
+			str
+			value: getPrimitive(str)
+			}
+
+# ---------------------------------------------------------------------------
+
 export allNiceTokens := (
 		block: string,
-		): Generator<Token, void, void> ->
+		): Generator<TPLLToken, void, void> ->
 
 	for h of allTokensInBlock(block, niceSplitter)
 		yield h
@@ -213,24 +229,59 @@ export fromNice := (
 	# --- Create a Fetcher, then use
 	#     recursive descent parsing
 
-	if lMatches := str.match(///^
-			-
-			(?:
-				\s+
-				(.*)
-				)?
-			$///)
-		# --- an array
-		croak "Not Implemented"
-	else if lMatches := str.match(///^
-			([A-Za-z][A-Za-z0-9_]*)
-			\:
-			\s+(.*)
-			$///)
-		# --- a hash
-		croak "Not Implemented"
-	else
-		return getPrimitive(str)
+	fetcher := new Fetcher<TPLLToken>(allNiceTokens(str), tkEOF)
+
+	parseObj := (): any =>
+		{kind, str} := fetcher.peek()
+		switch kind
+			'list-item', 'list-head'
+				return parseList()
+			'hash-item', 'hash-head'
+				return parseHash()
+			'eof'
+				return undef
+			else
+				fetcher.skip()
+				return getPrimitive(str)
+
+	parseList := (): any[] =>
+		lItems: any[] := []
+		let {kind} = fetcher.peek()
+		while ['list-item', 'list-head'].includes kind
+			if (kind == 'list-head')
+				lItems.push parseListNest()
+			else
+				lItems.push fetcher.get().value
+			kind = fetcher.peek().kind
+		return lItems
+
+	parseListNest := (): any[] =>
+		fetcher.get({kind: 'list-head', str: ''})
+		fetcher.get({kind: 'indent', str: ''})
+		value := parseObj()
+		fetcher.get({kind: 'undent', str: ''})
+		return value
+
+	parseHash := (): hash =>
+		hItems: hash := {}
+		let {kind, name} = fetcher.peek()
+		if (kind == 'hash-head')
+			fetcher.skip()
+			fetcher.get({kind: 'indent', str: ''})
+			value := parseObj()
+			if defined(name)
+				hItems[name] = value
+			fetcher.get({kind: 'undent', str: ''})
+		else
+			while (kind == 'hash-item')
+				{name, value} := fetcher.get()
+				if defined(name)
+					hItems[name] = value
+				{kind} = fetcher.peek()
+		return hItems
+
+	debugger
+	return parseObj()
 
 # ---------------------------------------------------------------------------
 
@@ -238,19 +289,20 @@ export getPrimitive := (
 		str: string,
 		): any =>
 
-	str = rtrim(str)
+	str = str.trim()
 	if lMatches := str.match(/^\.(.*)\.$/)
 		s := lMatches[1].trim()
 		switch s
-			'undef' then return undef
-			'true'  then return true
-			'false' then return false
-			'NaN'   then return NaN
-			'infinity'   then return Infinity
-			'neginfinity'   then return -Infinity
-			'symbol' then return Symbol()
-			'[]'     then return []
-			'{}'     then return {}
+			'undef'       then return undef
+			'null'        then return null
+			'true'        then return true
+			'false'       then return false
+			'NaN'         then return NaN
+			'infinity'    then return Infinity
+			'neginfinity' then return -Infinity
+			'symbol'      then return Symbol()
+			'[]'          then return []
+			'{}'          then return {}
 			/^symbol\s+(.+)$/
 				lMatches := s.match(/^symbol\s+(.+)$/)
 				if defined(lMatches)

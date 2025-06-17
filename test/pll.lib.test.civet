@@ -1,23 +1,21 @@
-# tokens.lib.test.civet
+# pll.lib.test.civet
 
 import {
 	undef, DBG, allLinesInBlock,
+	TPLLToken, TTokenGenerator,
+	allTokensIn, allTokensInBlock, tokenTable,
 	} from '../src/lib/utils.lib.ts'
 import {
-	Token, TTokenGenerator,
-	allTokensIn, allTokensInBlock, tokenTable,
-	} from '../src/lib/tokens.lib.ts'
-import {
-	equal, iterEqual, iterLike, listLike, isType,
+	equal, iterEqual, iterLike, isType,
 	} from '../src/lib/unit-test.lib.ts'
 
 # ---------------------------------------------------------------------------
 
-DBG "type Token"
+DBG "type TPLLToken"
 
-isType 'Token', {kind: 'xxx', str: 'yyy'}
-isType 'Token', {kind: 'xxx', str: 'yyy', value: undef}
-isType 'Token', {kind: 'xxx', str: 'yyy', value: 42}
+isType 'TPLLToken', {kind: 'xxx', str: 'yyy'}
+isType 'TPLLToken', {kind: 'xxx', str: 'yyy', value: undef}
+isType 'TPLLToken', {kind: 'xxx', str: 'yyy', value: 42}
 
 DBG "type TTokenGenerator"
 

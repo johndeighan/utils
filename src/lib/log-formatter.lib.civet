@@ -1,0 +1,89 @@
+# log-formatter.lib.civet
+
+import {LogRecord} from '@std/log'
+import {LogLevels} from "@std/log/levels"
+
+import {
+	spaces, sinceLoadStr, interpolate,
+	} from './llutils.lib.ts'
+import {getLogLevel} from './log-levels.lib.ts'
+
+let indent: number = 0
+prefix := () => spaces(3).repeat(indent)
+
+# --- Everything returned by a formatter is also
+#     appended to this string
+
+lConsoleLog: string[] := []
+
+# ---------------------------------------------------------------------------
+
+export clearConsoleLog := () =>
+
+	lConsoleLog.length = 0
+	return
+
+# ---------------------------------------------------------------------------
+
+export getConsoleLog := () =>
+
+	return lConsoleLog.join('\n')
+
+# ---------------------------------------------------------------------------
+
+levelStr := (level: number): string =>
+
+	switch level
+		when LogLevels.DEBUG   then return 'D'
+		when LogLevels.INFO    then return 'I'
+		when LogLevels.WARN    then return 'W'
+		when LogLevels.ERROR   then return 'E'
+		else return 'UNKNOWN'
+
+# ---------------------------------------------------------------------------
+
+msgStr := (msg: string): string =>
+
+	if msg.startsWith('=====') || msg.startsWith('-----')
+		return msg
+	else
+		return prefix() + msg
+
+# ---------------------------------------------------------------------------
+# --- str may contain:
+#        $ts  - num milliseconds since start
+#        $tt  - num milliseconds since last formatting
+#        $ll  - log level as a single character
+#        $msg - the message
+# --- returns a function (rec: LogRecord) => string
+
+export getFormatter := (str: string, dest: string) =>
+
+	return (rec: LogRecord): string =>
+		{datetime, level, msg} := rec
+		result := interpolate(str, {
+			'$ts':  sinceLoadStr(datetime)
+			'$tt':  sinceLoadStr(datetime)
+			'$ll':  levelStr(level)
+			'$msg': msgStr(msg)
+			})
+		if (dest == 'console')
+			lConsoleLog.push result
+		return result
+
+# ---------------------------------------------------------------------------
+
+export indentLog := (): void =>
+
+	indent += 1
+	return
+
+# ---------------------------------------------------------------------------
+
+export undentLog := (): void =>
+
+	if (indent > 0)
+		indent -= 1
+	return
+
+# ---------------------------------------------------------------------------

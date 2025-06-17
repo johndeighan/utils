@@ -5,11 +5,10 @@ import {
 	isString, isArray, isArrayOfStrings, isHash, integer, isInteger,
 	} from './datatypes.lib.ts'
 import {
-	pass, OL, ML, rtrim, countChars,
+	rtrim, countChars,
 	blockToArray, arrayToBlock, toArray, toBlock,
 	croak, escapeStr,
 	} from './llutils.lib.ts'
-import {DBG} from './logger.lib.ts'
 
 /**
  * @module indent - indent level utilities
@@ -149,7 +148,7 @@ export undented := (input: string | string[]): string | string[] =>
 				return rest
 		else
 			assert (line.indexOf(toRemove)==0),
-				"can't remove #{OL(toRemove)} from #{OL(line)}"
+				"can't remove #{escapeStr(toRemove)} from #{escapeStr(line)}"
 			return line.substr(nToRemove)
 		)
 

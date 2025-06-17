@@ -2,12 +2,12 @@
 
 import {
 	undef, defined, notdefined, spaces, tabs, DBG,
-	assert, throwsError, getCmdArgs, deeplyEquals,
+	assert, throwsError, getCmdArgs, deepEqual,
 	oneIndent, resetOneIndent, indentLevel, splitLine,
 	indented, undented,
 	} from '../src/lib/utils.lib.ts'
 import {
-	equal, truthy, falsy, like, listLike, succeeds, fails,
+	equal, truthy, falsy, like, succeeds, fails,
 	} from '../src/lib/unit-test.lib.ts'
 
 hArgs := getCmdArgs()
@@ -57,10 +57,10 @@ DBG "type lineDesc", "splitLine()"
 
 succeeds () =>
 	resetOneIndent()
-	assert deeplyEquals(splitLine('abc'), [0, 'abc'])
-	assert deeplyEquals(splitLine('\t\tabc'), [2, 'abc'])
+	assert deepEqual(splitLine('abc'), [0, 'abc'])
+	assert deepEqual(splitLine('\t\tabc'), [2, 'abc'])
 
-	assert deeplyEquals(splitLine('\tabc'), [1, 'abc'])
+	assert deepEqual(splitLine('\tabc'), [1, 'abc'])
 
 	# --- fails since we're now expecting TABs
 	throwsError () =>  splitLine('      abc')
@@ -106,7 +106,7 @@ succeeds () =>
 
 succeeds () =>
 	resetOneIndent()
-	assert deeplyEquals(indented([
+	assert deepEqual(indented([
 		'first line'
 		'\tsecond line'
 		'\t\tthird line'
@@ -116,7 +116,7 @@ succeeds () =>
 		'\t\t\tthird line'
 		])
 
-	assert deeplyEquals(indented([
+	assert deepEqual(indented([
 		'first line'
 		'\tsecond line'
 		'\t\tthird line'
@@ -188,14 +188,14 @@ succeeds () =>
 	resetOneIndent()
 	assert notdefined(oneIndent)
 
-	assert deeplyEquals(splitLine('abc'), [0, 'abc'])
+	assert deepEqual(splitLine('abc'), [0, 'abc'])
 	assert notdefined(oneIndent)
-	assert deeplyEquals(splitLine('   abc'), [1, 'abc'])
+	assert deepEqual(splitLine('   abc'), [1, 'abc'])
 	assert defined(oneIndent)
-	assert deeplyEquals(splitLine('      abc'), [2, 'abc'])
+	assert deepEqual(splitLine('      abc'), [2, 'abc'])
 	assert (oneIndent == '   ')
 
-	assert deeplyEquals(splitLine('   abc'), [1, 'abc'])
+	assert deepEqual(splitLine('   abc'), [1, 'abc'])
 
 	# ---fails since we're now expecting spaces
 	throwsError () => splitLine('\t\tabc')
@@ -240,7 +240,7 @@ succeeds () =>
 
 succeeds () =>
 	resetOneIndent('   ')
-	assert deeplyEquals(indented([
+	assert deepEqual(indented([
 		'first line'
 		'   second line'
 		'      third line'
@@ -250,7 +250,7 @@ succeeds () =>
 		'         third line'
 		])
 
-	assert deeplyEquals(indented([
+	assert deepEqual(indented([
 		'first line'
 		'   second line'
 		'      third line'

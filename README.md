@@ -89,3 +89,65 @@ tests. Note that, when inline source maps exist, the line number
 will be from the original source file, even if you use `civet`,
 `CoffeeScript`, or any other JavaScript generating system to
 write your unit tests.
+
+Logging
+-------
+
+Logging is accomplished via one of 4 functions:
+	DBG()
+	LOG()
+	WARN()
+	ERR()
+
+There are 4 possible handlers (see usage below),
+	where they write to and any prefix added
+	in addition to indentation by level
+
+	console - CONSOLE
+	profile - CONSOLE   prefix with ms since start
+	file    - LOG FILE
+	pfile   - LOG FILE  prefix with ms since start
+
+Whether logging happens depends on the 'log level'.
+Here are the functions supported and handlers invoked
+for each possible log level
+
+	'profile' - ALL       - invoke 'profile' and 'pfile'
+	'debug'   - ALL       - invoke 'console' and 'file'
+	'info'    - ALL - DBG - invoke 'console' and 'file'
+	'warn'    - WARN, ERR - invoke 'console' and 'file
+	'error'   - ERR       - invoke 'console' and 'file'
+	'file'    - ALL       - invoke 'file'
+	'silent'  - ERR       - invoke no handlers
+
+The initial log level is 'info'
+The log file is at "./logs/logs.txt"
+
+There are also utility functions:
+
+setLogLevel(level) - set the log level
+curLogLevel() - return the current log level
+clearLog - make log file empty
+resetLog - clear log and set level to 'info'
+
+Using uglify-js with deno
+-------------------------
+
+```bash
+$ deno install npm:uglify-js
+$ deno install npm:@types/uglify-js
+```
+Then
+```coffee
+import {minify} from 'npm:uglify-js'
+
+minimized := minify(jsCode).code
+```
+
+Using rd-parse with deno
+------------------------
+
+```bash
+$ deno install npm:rd-parse
+```
+

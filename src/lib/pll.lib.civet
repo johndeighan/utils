@@ -1,4 +1,4 @@
-# tokens.lib.civet
+# pll.lib.civet
 
 import {
 	undef, defined, notdefined, hash, isEmpty, nonEmpty,
@@ -15,20 +15,24 @@ import {TextTable} from './text-table.lib.ts'
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 # --- Common token types:
-#        'line', 'empty', 'indent', 'undent'
+#        'line', 'empty', 'indent', 'undent', 'eof'
 
-export type Token = {
+export type TPLLToken = {
 	kind: string
 	str: string
 	name?: string
 	value?: any
 	}
 
+export tkEOF := {kind: 'eof', str: ''}
+export tkIndent := {kind: 'indent', str: ''}
+export tkUndent := {kind: 'indent', str: ''}
+
 # ---------------------------------------------------------------------------
 
 export type TTokenGenerator = (
 		line: string
-		) => Generator<Token, void, void>
+		) => Generator<TPLLToken, void, void>
 
 identTokenGen: TTokenGenerator := (line: string) ->
 	yield {kind: 'line', str: line}
@@ -38,7 +42,7 @@ export allTokensIn := (
 		iterable: Iterable<string>,
 		gen: TTokenGenerator = identTokenGen
 		hOptions: hash={}
-		): Generator<Token, void, void> ->
+		): Generator<TPLLToken, void, void> ->
 
 	{lTypes} := getOptions hOptions, {
 		lTypes: ['indent','undent']
@@ -54,21 +58,21 @@ export allTokensIn := (
 			[indent, line] := splitLine(str)
 			if lTypes.includes('indent') && (indent > level)
 				level += 1
-				yield {kind: 'indent', str: ''}
+				yield tkIndent
 				while (indent > level)
 					level += 1
-					yield {kind: 'indent', str: oneIndent || ''}
+					yield tkIndent
 			if lTypes.includes('undent') && (indent < level)
 				level -= 1
-				yield {kind: 'undent', str: oneIndent || ''}
+				yield tkUndent
 				while (indent < level)
 					level -= 1
-					yield {kind: 'undent', str: ''}
+					yield tkUndent
 			for tok of gen(line)
 				yield tok
 	if lTypes.includes('undent')
 		while (level > 0)
-			yield {kind: 'undent', str: ''}
+			yield tkUndent
 			level -= 1
 	return
 
@@ -77,7 +81,7 @@ export allTokensIn := (
 export allTokensInBlock := (
 		block: string
 		gen: TTokenGenerator = identTokenGen
-		): Generator<Token, void, void> ->
+		): Generator<TPLLToken, void, void> ->
 
 	for tok of allTokensIn(allLinesInBlock(block), gen)
 		yield tok
@@ -86,7 +90,7 @@ export allTokensInBlock := (
 # ---------------------------------------------------------------------------
 
 export tokenTable := (
-		lTokens: Iterable<Token>
+		lTokens: Iterable<TPLLToken>
 		title='Tokens'
 		): string =>
 
@@ -97,6 +101,6 @@ export tokenTable := (
 	table.labels ['kind', 'str']
 	table.sep()
 	for tok of lTokens
-		table.data [tok.kind, tok.str]
+		table.data [tok.kind, "'" + tok.str + "'"]
 	table.fullsep '='
 	return table.asString()

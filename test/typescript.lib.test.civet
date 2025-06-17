@@ -2,8 +2,14 @@
 
 import {SourceFile} from 'typescript'
 import {
-	getCmdArgs, DBG, isHash, setDirTree, slurp, withExt, o,
-	ts2ast, civet2tsFile, civet2ts, civet2ast, pprintAST,
+	addFunctionNames, removeFunctionNames,
+	} from '../src/lib/typescript.lib.ts'
+import {
+	getCmdArgs, DBG, isHash, setDirTree, pass,
+	slurp, withExt, o, s, t
+
+	ts2ast, ts2js, ast2ts, ast2js, typeCheckFiles, pprintAST,
+	getCode, normalizeCode, truncStr,
 	} from '../src/lib/utils.lib.ts'
 import {
 	equal, like, succeeds, fails, truthy, falsy, isType,
@@ -18,60 +24,123 @@ setup := (): void =>
 	DBG "setDirTree()"
 
 	setDirTree 'test/typescript', """
-		test.civet
-			x := 42
-
+		test.ts
+			const str: string = 'abc'
+		test2.ts
+			const func1 = (str: string): boolean =>
+				return true
 		"""
 
 setup()
 
 # ---------------------------------------------------------------------------
 
-testPath := './test/typescript/test.civet'
-civetCode := slurp testPath
+DBG "getCode(str)"
 
-tsCode := civet2ts civetCode
-ast1 := ts2ast tsCode
-ast2 := civet2ast civetCode
-equal ast1, ast2
-
-DBG "ts2ast(code)"
-
-succeeds () => ts2ast('x := 42')
-
-DBG "civet2ts(code)"
-
-equal civet2ts('x := 42'), """
-	"use strict";
-	const x = 42
+equal getCode('let x = 42;'), 'let x = 42;'
+equal getCode('test/typescript/test.ts'), """
+	const str: string = 'abc'
 	"""
 
-DBG "civet2tsFile(path)"
+DBG "addFunctionNames(code)"
 
 (() =>
-	civet2tsFile testPath, o'!inlineMap'
-	code := slurp withExt(testPath, '.ts')
-	equal code, """
-		"use strict";
-		const x = 42
+	str1 := """
+		function*(line) {
+			yield {
+				kind: 'line',
+				str: line
+				};
+			return;
+		}
+		"""
+
+	str2 := """
+		function(line) {
+		  return 42;
+		}
+		"""
+	str3 := "#{str1}\n#{str2}"
+
+	equal addFunctionNames(str1), """
+		function* __dummy99(line) {
+			yield {
+				kind: 'line',
+				str: line
+				};
+			return;
+		}
+		"""
+	equal addFunctionNames(str2), """
+		function __dummy99(line) {
+		  return 42;
+		}
+		"""
+	equal addFunctionNames(str3), """
+		function* __dummy99(line) {
+			yield {
+				kind: 'line',
+				str: line
+				};
+			return;
+		}
+		function __dummy100(line) {
+		  return 42;
+		}
 		"""
 	)()
 
-DBG "civet2ast(code)"
+DBG "removeFunctionNames(code)"
 
-# isType 'SourceFile', ast1
-# isType 'SourceFile', ast2
+equal removeFunctionNames("function __dummy9999("),
+	"function ("
+equal removeFunctionNames("function* __dummy9999("),
+	"function* ("
 
-DBG "pprintAST(hAST)"
+DBG "normalizeCode(code)"
 
-equal pprintAST(ts2ast('x := 42')), """
-	SourceFile - 'x := 42'
-		LabeledStatement - 'x := 42'
-			Identifier - 'x'
-			ExpressionStatement - '= 42'
-				BinaryExpression - '= 42'
-					Identifier - ''
-					FirstAssignment - '='
-					FirstLiteralToken - '42'
+equal normalizeCode('  let x  =  42;'), 'let x=42;'
+equal normalizeCode('a  b  c', '.txt'), 'a b c'
+
+(() =>
+	func := (str: string): boolean =>
+		// --- just return a true value
+		const s: string = 'abcde'
+		return true
+
+	equal normalizeCode(func.toString()),
+		"str=>{const s=\"abcde\";return true};"
+	)()
+
+DBG "truncStr(str, len)"
+
+equal truncStr('abc', 12), 'abc'
+equal truncStr('abcdefg', 5), 'ab...'
+
+# ---------------------------------------------------------------------------
+
+DBG "ts2js(tsCode)"
+
+equal ts2js('const s: string = "abc";'),
+		'var s = "abc";'
+
+DBG "ts2ast(tsCode)", "pprintAST(ast)"
+
+equal pprintAST(ts2ast('test/typescript/test2.ts')), s"""
+	SourceFile - 'const func1 = (str: string): ...'
+		FirstStatement - 'const func1 = (str: string): ...'
+			VariableDeclarationList - 'const func1 = (str: string): ...'
+				VariableDeclaration - 'func1 = (str: string): boolea...'
+					Identifier - 'func1'
+					ArrowFunction - '(str: string): boolean =>\\n\tr...'
+						Parameter - 'str: string'
+							Identifier - 'str'
+							StringKeyword - 'string'
+						BooleanKeyword - 'boolean'
+						EqualsGreaterThanToken - '=>'
+						Block - 'return true'
+							ReturnStatement - 'return true'
+								TrueKeyword - 'true'
 		EndOfFileToken - ''
-	""".replaceAll('\t', '   ')
+	"""
+

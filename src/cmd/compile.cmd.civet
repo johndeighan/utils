@@ -26,15 +26,15 @@ let numCompiled = 0
 
 logResult := (hResult: TCompileResult): void =>
 
-	{relPath, status, outPath} := hResult
+	{path, status} := hResult
 	switch status
 		when 'compiled'
-			LOG "COMPILED: #{OL(relPath)}"
+			LOG "COMPILED: #{OL(path)}"
 			numCompiled += 1
 		when 'exists'
 			pass()
 		else
-			ERR "NOT COMPILED: #{OL(relPath)}"
+			ERR "NOT COMPILED: #{OL(path)}"
 	return
 
 # ---------------------------------------------------------------------------

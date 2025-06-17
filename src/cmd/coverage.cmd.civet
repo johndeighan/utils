@@ -8,7 +8,7 @@ import {
 	} from '../lib/analyze.lib.ts'
 
 lValidStubs: string[] := words(
-	'datatypes llutils logger text-table indent tokens fs',
+	'datatypes llutils logger text-table indent pll fs',
 	'symbols exec cielo compile utils analyze v8-stack unit-test'
 	)
 

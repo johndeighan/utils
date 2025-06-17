@@ -2,8 +2,9 @@
 
 import {
 	undef, sinceLoad, sinceLoadStr,
-	croak, assert, throwsError, pass, deeplyEquals,
-	truncStr, OL, ML, o,
+	croak, assert, throwsError, pass, deepEqual,
+	functionDef,
+	stringify, OL, ML, o, s, t,
 	strToHash, addDefaults, getOptions,
 	removeEmptyKeys, keys, hasKey, hasKeys, missingKeys,
 	merge, hit, sleep, spaces, tabs,
@@ -16,10 +17,12 @@ import {
 	getNExtra, rpad, lpad, centered, relpath,
 	TAlignment, isAlignment, alignString, zpad,
 	TBlockSpec, isBlockSpec, allMatches,
-	TNodeInfo, NodeGenerator, range, Fetcher,
+	range, Fetcher,
+	assertSameStr, interpolate,
 	} from '../src/lib/utils.lib.ts'
 import {
-	equal, truthy, falsy, succeeds, fails, isType, notType,
+	equal, truthy, falsy, succeeds, fails, codeLike,
+	isType, notType,
 	} from '../src/lib/unit-test.lib.ts'
 
 hArgs := getCmdArgs()
@@ -47,17 +50,90 @@ DBG "pass()"
 
 succeeds () => pass()
 
-DBG "deeplyEquals()"
+DBG "deepEqual()"
 
-truthy deeplyEquals(2, 2)
-truthy deeplyEquals('a', 'a')
-truthy deeplyEquals(['a','b'], ['a','b'])
-falsy  deeplyEquals(['a','b'], ['a','b','c'])
+truthy deepEqual(2, 2)
+truthy deepEqual('a', 'a')
+truthy deepEqual(['a','b'], ['a','b'])
+falsy  deepEqual(['a','b'], ['a','b','c'])
 
-DBG "truncStr(str, len)"
+DBG "stringify(x)"
 
-equal truncStr('abc', 12), 'abc'
-equal truncStr('abcdefg', 5), 'ab...'
+equal stringify(undef), 'undefined'
+equal stringify(undefined), 'undefined'
+equal stringify(null), 'null'
+equal stringify('abc'), '"abc"'
+equal stringify('ab\ncd'), '"ab\\ncd"'
+equal stringify(42), '42'
+equal stringify(3.14), '3.14'
+equal stringify(true), 'true'
+equal stringify(false), 'false'
+equal stringify(100n), '100n'
+equal stringify(Symbol()), 'Symbol()'
+equal stringify(Symbol('abc')), 'Symbol("abc")'
+
+lFruit := ['apple','peach','pear'] as const
+equal stringify(lFruit), """
+	[
+	"apple",
+	"peach",
+	"pear"
+	]
+	"""
+equal stringify(lFruit, o'oneLine'),
+	'["apple", "peach", "pear"]'
+
+hInfo := {
+	name: 'John'
+	age: 72
+	} as const
+equal stringify(hInfo, o'oneLine'),
+	'{name: "John", age: 72}'
+equal stringify(hInfo, o'!oneLine'), """
+	{
+	name: "John",
+	age: 72
+	}
+	"""
+
+func := (x: string): string =>
+	return x.toUpperCase()
+
+codeLike functionDef(func),
+	"x=>{return x.toUpperCase()};"
+
+function double(x: number): number
+	return 2 * x
+
+codeLike functionDef(double),
+	"function double(x){return 2*x;}"
+
+equal stringify({
+	a: undef
+	b: null
+	c: 'abc'
+	d: 42
+	e: false
+	f:(a: string) => return
+	}, o'oneLine'), '{a: undefined, b: null, c: "abc", d: 42, e: false, f: a=>{return}}'
+
+equal stringify({
+	a: undef
+	b: null
+	c: 'abc'
+	d: 42
+	e: false
+	f:(a: string) => return
+	}), """
+	{
+	a: undefined,
+	b: null,
+	c: "abc",
+	d: 42,
+	e: false,
+	f: a=>{return}
+	}
+	"""
 
 DBG "OL()"
 
@@ -112,6 +188,16 @@ equal o"!debug", {debug: false}
 equal o"  debug  ", {debug: true}
 equal o"  !debug  ", {debug: false}
 equal o"debug label=abc n=42", {debug: true, label: 'abc', n: 42}
+
+DBG "s()"
+
+equal s"\tabc", "   abc"
+equal s"\t\tabc", "      abc"
+
+DBG "t()"
+
+equal t"   abc", "\tabc"
+equal t"      abc", "\t\tabc"
 
 DBG "addDefaults()"
 
@@ -427,68 +513,6 @@ DBG "allMatches()"
 	equal lIdents, ['TBlockSpec', 'isBlockSpec']
 	)()
 
-DBG "type TNodeInfo"
-
-isType  'TNodeInfo', {node: 42, level: 1}
-notType 'TNodeInfo', {node: 42, level: 'abc'}
-
-DBG "class NodeGenerator"
-
-(() =>
-	hStudents := {
-		name: 'John'
-		gender: 'male'
-		address: {
-			street: '1749 Main St.'
-			city: 'Blacksburg'
-			state: 'VA'
-			}
-		friends: ['John', 'Julie']
-		}
-	gen := new NodeGenerator()
-	lParts := Array.from(gen.allNodes(hStudents))
-	console.dir lParts, {level: null}
-
-	truthy isHash(lParts[0].node)
-	equal lParts[0].level, 0
-
-	truthy isHash(lParts[1].node)
-	equal lParts[1].level, 1
-
-	truthy isArray(lParts[2].node)
-	equal lParts[2].level, 1
-
-	)()
-
-(() =>
-	hAST := {
-		type: 'Block'
-		expressions: [
-			'abc',
-			{
-				type: 'Declaration',
-				parent: null
-				},
-			]
-		}
-	# @ts-ignore
-	hAST.expressions[1].parent = hAST
-
-	gen := new NodeGenerator()
-	lParts := Array.from(gen.allNodes(hAST))
-	console.dir lParts, {level: null}
-
-	truthy isHash(lParts[0].node)
-	equal lParts[0].level, 0
-
-	truthy isArray(lParts[1].node)
-	equal lParts[1].level, 1
-
-	truthy isHash(lParts[2].node)
-	equal lParts[2].level, 2
-
-	)()
-
 DBG "range()"
 
 equal Array.from(range(3)), [0, 1, 2]
@@ -497,7 +521,7 @@ equal Array.from(range(5)), [0, 1, 2, 3, 4]
 DBG "class Fetcher"
 
 (() =>
-	fetcher := new Fetcher<number>(range(3))
+	fetcher := new Fetcher<number>(range(3), -1)
 	equal fetcher.get(), 0
 	equal fetcher.get(), 1
 	falsy fetcher.atEnd()
@@ -506,3 +530,24 @@ DBG "class Fetcher"
 	equal fetcher.get(), 2
 	truthy fetcher.atEnd()
 	)()
+
+DBG "interpolate()"
+
+equal interpolate("time: $time", {'$time': '3pm'}),
+	"time: 3pm"
+
+(() =>
+	hReplace := {
+		'$time': '3pm'
+		'$name': 'John'
+		'$age' : '72'
+		}
+	result := interpolate(
+		'$name is $age years old at $time',
+		hReplace
+		)
+	equal result, 'John is 72 years old at 3pm'
+	)()
+
+# --- all keys must begin with '$'
+fails () => interpolate("abc", {'abc': 'def'})

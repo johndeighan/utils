@@ -1,8 +1,8 @@
 # fs.lib.test.civet
 
 import {
-	undef, defined, o, hash, voidFunc, spaces,
-	sinceLoad, sinceLoadStr, hasKey, sleep, deeplyEquals,
+	undef, defined, o, hash, voidFunc, spaces, isString,
+	sinceLoad, sinceLoadStr, hasKey, sleep, deepEqual,
 	isFile, isDir, getPathType, fileExt, withExt,
 	lStatFields, getStats, isStub, parsePath,
 	allFilesMatching, allLinesIn,
@@ -12,11 +12,11 @@ import {
 	removeFilesMatching, removeFilesExcept,
 	watchFile, FileEventHandler, TWatcherCallbackFunc,
 	TFsChangeType, TFsCallbackFunc, setDirTree,
-	DBG, getCmdArgs, allTokensInFile, Token, TPathType,
-	TFileOp, fileOpsTable,
+	DBG, getCmdArgs, allTokensInFile, TPLLToken, TPathType,
+	TFileOp, fileOpsTable, patchFirstLine, configFromFile,
 	} from '../src/lib/utils.lib.ts'
 import {
-	equal, truthy, falsy, like, listLike,
+	equal, truthy, falsy, like, objListLike, matches,
 	succeeds, fails, includesAll, isType, notType,
 	} from '../src/lib/unit-test.lib.ts'
 
@@ -49,6 +49,21 @@ setup := (): void =>
 
 				LOG := (str) => console.log str
 				LOG "Hello, World!"
+			file4.cielo
+				# file.cielo
+
+				abc
+			file5.cielo
+				this is the REAL first line
+				# file.cielo
+
+				abc
+			file.config.ts
+				export default new Object({
+					a: 1,
+					b: 'abc',
+					f: () => 'hello'
+					})
 			/aaa
 				/bbb
 					newfile.txt
@@ -155,7 +170,7 @@ like parsePath(import.meta.url), {
 
 DBG "allFilesMatching()"
 
-listLike Array.from(allFilesMatching('**/test/fs/file*.txt')), [
+objListLike Array.from(allFilesMatching('**/test/fs/file*.txt')), [
 	{
 		type: 'file'
 		root: 'C:/'
@@ -183,7 +198,7 @@ listLike Array.from(allFilesMatching('**/test/fs/file*.txt')), [
 		}
 	]
 
-listLike Array.from(allFilesMatching('**/test/fs/**', o'includeDirs')), [
+objListLike Array.from(allFilesMatching('**/test/fs/**', o'includeDirs')), [
 	{
 		type: 'dir'
 		fileName: 'fs',
@@ -225,6 +240,14 @@ listLike Array.from(allFilesMatching('**/test/fs/**', o'includeDirs')), [
 		fileName: 'file3.flags.txt',
 		}
 	{
+		type: 'file'
+		fileName: 'file4.cielo',
+		}
+	{
+		type: 'file'
+		fileName: 'file5.cielo',
+		}
+	{
 		type: 'dir'
 		fileName: 'subdir',
 		}
@@ -236,7 +259,13 @@ listLike Array.from(allFilesMatching('**/test/fs/**', o'includeDirs')), [
 		type: 'file'
 		fileName: 'tokens.txt',
 		}
-	]
+	{
+		type: 'file'
+		fileName: 'file.config.ts',
+		}
+	], (h) =>
+		x := h['fileName']
+		return defined(x) && isString(x) ? x : ''
 
 (() =>
 	hOptions := {
@@ -252,7 +281,7 @@ listLike Array.from(allFilesMatching('**/test/fs/**', o'includeDirs')), [
 			return flag ? hFile : undef
 		}
 
-	listLike Array.from(allFilesMatching('**/test/fs/**', hOptions)), [
+	objListLike Array.from(allFilesMatching('**/test/fs/**', hOptions)), [
 		{
 			type: 'dir'
 			fileName: 'aaa',
@@ -638,7 +667,7 @@ await (() =>
 
 	equal slurp(path), 'dummy\nABCDE'
 
-	listLike lEvents, [
+	objListLike lEvents, [
 		{kind: 'modify', path}
 		{kind: 'modify', path}
 		]
@@ -646,7 +675,7 @@ await (() =>
 
 DBG "allTokensInFile()"
 
-listLike Array.from(allTokensInFile('test/fs/tokens.txt')), [
+objListLike Array.from(allTokensInFile('test/fs/tokens.txt')), [
 	{kind: 'line',   str: 'if x==1'}
 	{kind: 'indent'}
 	{kind: 'line',   str: 'print "OK"'}
@@ -741,4 +770,25 @@ DBG "fileOpsTable()"
 		#{spaces(6)}def
 		--------------------------
 		"""
+	)()
+
+DBG "patchFirstLine(path, str, newstr)"
+
+(() =>
+	path1 := 'test/fs/file4.cielo'
+	path2 :='test/fs/file5.cielo'
+	patchFirstLine path1, '.cielo', '.civet'
+	patchFirstLine path2, '.cielo', '.civet'
+	truthy slurp(path1).includes 'file.civet'
+	falsy  slurp(path2).includes 'file.civet'
+	)()
+
+DBG "configFromFile(path)"
+
+(() =>
+	hConfig := configFromFile 'test/fs/file.config.ts'
+	truthy defined(hConfig)
+	truthy defined(hConfig.a)
+	falsy  defined(hConfig.x)
+	equal  hConfig.f(), 'hello'
 	)()

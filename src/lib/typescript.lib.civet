@@ -1,33 +1,128 @@
 # typescript.lib.civet
 
+import {existsSync} from '@std/fs'
+import {statSync} from 'node:fs'
 import {
-	CompilerOptions, createProgram, createSourceFile,
-	getPreEmitDiagnostics, createPrinter, EmitHint,
-	getLineAndCharacterOfPosition, flattenDiagnosticMessageText,
-	ScriptTarget, ModuleKind, SourceFile, Diagnostic,
-	Node, SyntaxKind, forEachChild, NewLineKind,
+	SourceFile, Node, ScriptTarget, SyntaxKind, ModuleKind,
+	NewLineKind, EmitHint, CompilerOptions, ModuleResolutionKind,
+	createSourceFile, createPrinter, createProgram, transpileModule,
+	getPreEmitDiagnostics, flattenDiagnosticMessageText,
+	getLineAndCharacterOfPosition, forEachChild,
 	} from "typescript"
+import {minify} from 'npm:uglify-js'
 
-import {
-	undef, defined, notdefined, assert, hash,
-	isString, isNumber, isBoolean, isPrimitive, isArray,
-	stringify,
-	} from './datatypes.lib.ts'
-import {
-	croak, pass, keys, hasKey, hasKeys, truncStr, OL, spaces,
-	NodeGenerator, getOptions, o,
-	} from './llutils.lib.ts'
-import {
-	DBG, LOG, WARN, ERR, DBGVALUE, LOGVALUE,
-	pushLogLevel, popLogLevel,
-	} from './logger.lib.ts'
-import {
-	isFile, fileExt, withExt, slurp, barf,
-	} from './fs.lib.ts'
-import {
-	execCmdSync,
-	} from './exec.lib.ts'
-import {hDefConfig} from './ts.config.ts'
+decoder := new TextDecoder("utf-8")
+
+# ---------------------------------------------------------------------------
+
+/**
+ * getCode(str) - return contents of file if str is a file path
+ *    else return str
+ */
+
+export getCode := (str: string): string =>
+
+	if ((str.indexOf('\n') == -1)
+			&& str.match(/\.[A-Za-z0-9]+$/)
+			&& existsSync(str)
+			&& statSync(str).isFile()
+			)
+		data := Deno.readFileSync(str)
+		return decoder.decode(data)
+	else
+		return str
+
+# ---------------------------------------------------------------------------
+
+export addFunctionNames := (code: string): string =>
+
+	# --- The names we add will look like: '__dummy99' where
+	#     '99' can be any sequence of digits
+	#     to make it trivial to remove them later
+
+	let id = 99
+	re := ///
+			function       # 'function' keyword
+			\s*            # optional whitespace
+			( \* ) ?       # optional '*'
+			\s*            # optional whitespace
+			\(
+			///g
+	replaceFunc := (match: string, ast: string?) =>
+		n := id
+		id += 1
+		return (
+			  (ast == undefined)
+			? "function __dummy#{n.toString()}("
+			: "function* __dummy#{n.toString()}("
+			)
+	return code.replaceAll(re, replaceFunc)
+
+# ---------------------------------------------------------------------------
+
+export removeFunctionNames := (code: string): string =>
+
+	return code.replaceAll(/__dummy\d+/g, '')
+
+# ---------------------------------------------------------------------------
+
+export normalizeCode := (
+		code: string,
+		ext: string = '.js'
+		): string =>
+
+	switch ext
+		'.js'
+
+			# --- Due to a bug in JavaScript, we have to make sure
+			#     that all function names (even in generators)
+			#     have a name, which we must remove after minimization
+
+			newCode := addFunctionNames(code)
+
+			# --- Remove extra whitespace
+			#     Remove extra parens from '(str)=>return'
+			#     Remove comments
+			hOptions := {
+				annotations: false
+				mangle: false
+				compress: undefined
+				keep_fargs: true
+				keep_fnames: true
+				warnings: true
+				}
+			hResult := minify newCode, hOptions
+			console.log hResult
+			if hResult.error
+				throw new Error(hResult.error.message)
+			else if hResult.code
+				return removeFunctionNames(hResult.code)
+			else
+				throw new Error("Unknown error in normalizeCode()")
+		else
+			return code.trim().replaceAll(/\s+/g, ' ')
+
+# ---------------------------------------------------------------------------
+
+export normalizeExpr := (
+		code: string,
+		ext: string = '.js'
+		): string =>
+
+	str := normalizeCode(code, ext)
+	len := str.length
+	if (str[len-1] == ';')
+		return str.substring(0, len-1)
+	else
+		return str
+
+# ---------------------------------------------------------------------------
+
+export truncStr := (str: string, len: number) =>
+
+	if (str.length <= len)
+		return str
+	return str.substring(0, len-3) + '...'
 
 # ---------------------------------------------------------------------------
 
@@ -35,29 +130,48 @@ import {hDefConfig} from './ts.config.ts'
  * ts2ast() - convert TypeScript code to an AST
  */
 
-export ts2ast := (tsCode: string): SourceFile =>
+export ts2ast := (str: string): SourceFile =>
 
-	return createSourceFile("x.ts", tsCode, ScriptTarget.Latest)
+	tsCode := getCode str
+	return createSourceFile("temp.ts", tsCode, ScriptTarget.Latest)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * ts2js() - convert TypeScript code to JavaScript code
+ */
+
+export ts2js := (str: string): string =>
+
+	tsCode := getCode str
+	hOptions := {
+		compilerOptions: {
+			module: ModuleKind.ES2022
+			}
+		}
+	return transpileModule(tsCode, hOptions).outputText.trim()
 
 # ---------------------------------------------------------------------------
 
 export ast2ts := (node: SourceFile): string =>
 
 	printer := createPrinter {newLine: NewLineKind.LineFeed}
-	result := printer.printNode EmitHint.Unspecified, node, node
-	return result
+	return printer.printNode EmitHint.Unspecified, node, node
+
+# ---------------------------------------------------------------------------
+
+export ast2js := (node: SourceFile): string =>
+
+	return ts2js(ast2ts(node))
 
 # ---------------------------------------------------------------------------
 
 export typeCheckFiles := (
-	lFileNames: string | string[],
-	hOptions: CompilerOptions = hDefConfig
-	): string[] =>
+		lFileNames: string | string[],
+		hOptions: CompilerOptions = hDefConfig
+		): string[] =>
 
-	DBGVALUE 'lFileNames', lFileNames
-	DBGVALUE 'hOptions', hOptions
-
-	if isString(lFileNames)
+	if (typeof lFileNames == 'string')
 		lFileNames = [lFileNames]
 	program := createProgram(lFileNames, hOptions)
 	emitResult := program.emit()
@@ -78,7 +192,7 @@ export typeCheckFile = typeCheckFiles   # --- synonym
 
 # ---------------------------------------------------------------------------
 
-export pprintNode := (
+pprintNode := (
 		source: SourceFile,
 		node: Node,
 		depth: number
@@ -86,7 +200,7 @@ export pprintNode := (
 
 	kind := SyntaxKind[node.kind]
 	text := node.getText(source).replaceAll('\n', '\\n')
-	pre := spaces(3 * depth)
+	pre := ' '.repeat(3 * depth)
 	return "#{pre}#{kind} - '#{truncStr(text, 32)}'"
 
 # ---------------------------------------------------------------------------
@@ -102,3 +216,88 @@ export pprintAST := (source: SourceFile, pprint=pprintNode): string =>
 
 	traverse source
 	return lLines.join('\n')
+
+# ---------------------------------------------------------------------------
+
+hDefConfig: CompilerOptions := {
+	"allowJs": false,
+	"allowUmdGlobalAccess": false,
+	"allowUnreachableCode": false,
+	"allowUnusedLabels": false,
+	"alwaysStrict": true,
+	"assumeChangesOnlyAffectDirectDependencies": false,
+	"checkJs": false,
+	"composite": false,
+	"declaration": false,
+	"declarationDir": undefined,
+	"declarationMap": false,
+	"emitBOM": false,
+	"emitDeclarationOnly": false,
+	"exactOptionalPropertyTypes": false,
+	"experimentalDecorators": false,
+	"forceConsistentCasingInFileNames": true,
+	"generateCpuProfile": null,
+	"generateTrace": null,
+	"ignoreDeprecations": "5.0",
+	"importHelpers": false,
+	"inlineSourceMap": false,
+	"inlineSources": false,
+	"isolatedModules": false,
+#	"jsx": "react-jsx",
+#	"jsxFactory": "React.createElement",
+#	"jsxFragmentFactory": "React.Fragment",
+#	"jsxImportSource": "react",
+	"lib": [
+		"esnext",
+		"dom",
+		"dom.iterable"
+	],
+	"mapRoot": undefined,
+	"maxNodeModuleJsDepth": 0,
+	"module": ModuleKind.ESNext,
+	"moduleDetection": undefined,
+	"moduleResolution": ModuleResolutionKind.NodeNext,
+	"newLine": NewLineKind.LineFeed,
+	"noEmit": true,
+	"noEmitHelpers": false,
+	"noEmitOnError": false,
+	"noErrorTruncation": false,
+	"noFallthroughCasesInSwitch": true,
+	"noImplicitAny": true,
+	"noImplicitOverride": true,
+	"noImplicitReturns": true,
+	"noImplicitThis": true,
+	"noPropertyAccessFromIndexSignature": true,
+	"noUncheckedIndexedAccess": true,
+	"noUnusedLocals": true,
+	"noUnusedParameters": true,
+	"outDir": undefined,
+	"outFile": undefined,
+	"paths": {},
+	"preserveConstEnums": false,
+	"preserveSymlinks": false,
+	"preserveValueImports": false,
+	"reactNamespace": "React",
+	"removeComments": false,
+	"resolveJsonModule": true,
+	"rootDir": undefined,
+	"rootDirs": [],
+	"skipDefaultLibCheck": false,
+	"skipLibCheck": false,
+	"sourceMap": false,
+	"sourceRoot": undefined,
+	"strict": true,
+	"strictBindCallApply": true,
+	"strictFunctionTypes": true,
+	"strictNullChecks": true,
+	"strictPropertyInitialization": true,
+	"stripInternal": false,
+	"suppressExcessPropertyErrors": false,
+	"suppressImplicitAnyIndexErrors": false,
+	"target": ScriptTarget.ES2022,
+	"traceResolution": false,
+	"tsBuildInfoFile": undefined,
+	"typeRoots": [],
+	"useDefineForClassFields": true,
+	"useUnknownInCatchVariables": true
+	}

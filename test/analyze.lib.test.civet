@@ -10,7 +10,7 @@ import {
 	mergeAnalyses, dumpSymbols,
 	} from '../src/lib/analyze.lib.ts'
 import {
-	equal, like, succeeds, fails, truthy, falsy, listLike,
+	equal, like, succeeds, fails, truthy, falsy, objListLike,
 	isType, notType,
 	} from '../src/lib/unit-test.lib.ts'
 
@@ -38,7 +38,7 @@ setup := (): void =>
 				export interface hashof<T> {
 				export enum LogCmd {
 				export class FileEventHandler
-				export assert: AssertFunc := (
+				export assert: TAssertFunc := (
 				export isArrayOfStrings := (x: any): x is string[] =>
 				export getV8Stack = (): stackFrame[] =>
 
@@ -182,38 +182,19 @@ DBG "mergeAnalyses(lExports, lTestlabels)"
 	lExports: symbolDesc[] := []
 	lTestLabels: testDesc[] := []
 	equal mergeAnalyses(lExports, lTestLabels), []
-	listLike mergeAnalyses(
+	objListLike mergeAnalyses(
 		[
-			{
-				name: 'func'
-				kind: 'function'
-				}
-			{
-				name: 'func2'
-				kind: 'function'
-				}
+			{name: 'func',  kind: 'function'}
+			{name: 'func2', kind: 'function'}
 			]
 		[
-			{
-				name: 'func2'
-				kind: 'function'
-				numTests: 3
-				}
+			{name: 'func2', kind: 'function', numTests: 3}
 			]
-		), [
-			{
-				name: 'func'
-				kind: 'function'
-				numTests: 0
-				status: 'missing'
-				}
-			{
-				name: 'func2'
-				kind: 'function'
-				numTests: 3
-				status: 'ok'
-				}
-		]
+		),
+		[
+			{name: 'func',  kind: 'function', numTests: 0, status: 'missing'}
+			{name: 'func2', kind: 'function', numTests: 3, status: 'ok'}
+			]
 
 	)()
 

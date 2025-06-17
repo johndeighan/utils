@@ -1,0 +1,47 @@
+import {assertEquals, assertObjectMatch} from 'jsr:@std/assert'
+
+// --------------
+
+# export interface hash
+# 	[key: string]: any
+
+type THashCompareFunc = (a: Object, b: Object) => number
+type TToStringFunc = (a: any) => string
+
+export listLike := (
+		value: string[],
+		expected: string[]
+		): void
+export listLike := (
+		value: Object[],
+		expected: Object[],
+		strFunc: TToStringFunc
+		): void
+export listLike := (
+		value: string[] | Object[]
+		expected: string[] | Object[]
+		strFunc: TToStringFunc? = undef
+		): void =>
+
+	name := getTestName()
+	DBG "listLike ?, #{JSON.stringify(expected)} (#{name})"
+
+	len := value.length
+	Deno.test "#{name}/len", () => assertEquals len, expected.length
+
+	if (len > 0)
+		if (typeof value[0] == 'string')
+			Deno.test name, assertEquals(value.toSorted(), expected.toSorted())
+		else
+			if defined(strFunc)
+				compareFunc: THashCompareFunc := (a: Object, b: Object) =>
+					str1 := strFunc(a)
+					str2 := strFunc(b)
+					return (str1 < str2) ? -1 : (str1 > str2) ? 1 : 0
+				Deno.test name, assertEquals(value.toSorted(compareFunc), expected.toSorted(compareFunc))
+			else
+				for i of [0..len-1]
+					Deno.test "#{name}/#{i}", () =>
+						assertObjectMatch value[i], expected[i]
+	return
+

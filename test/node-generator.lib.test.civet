@@ -1,0 +1,76 @@
+# node-generator.lib.test.civet
+
+import {
+	isArray, isHash,
+	} from '../src/lib/datatypes.lib.ts'
+import {
+	TNodeInfo, NodeGenerator,
+	} from '../src/lib/node-generator.lib.ts'
+import {DBG, DBGVALUE} from '../src/lib/logger.lib.ts'
+import {getCmdArgs} from '../src/lib/utils.lib.ts'
+import {
+	equal, truthy, falsy, isType, notType,
+	} from '../src/lib/unit-test.lib.ts'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+DBG "type TNodeInfo"
+
+isType  'TNodeInfo', {node: 42, level: 1}
+notType 'TNodeInfo', {node: 42, level: 'abc'}
+
+DBG "class NodeGenerator"
+
+(() =>
+	hStudents := {
+		name: 'John'
+		gender: 'male'
+		address: {
+			street: '1749 Main St.'
+			city: 'Blacksburg'
+			state: 'VA'
+			}
+		friends: ['John', 'Julie']
+		}
+	gen := new NodeGenerator()
+	lParts := Array.from(gen.allNodes(hStudents))
+
+	truthy isHash(lParts[0].node)
+	equal lParts[0].level, 0
+
+	truthy isHash(lParts[1].node)
+	equal lParts[1].level, 1
+
+	truthy isArray(lParts[2].node)
+	equal lParts[2].level, 1
+
+	)()
+
+(() =>
+	hAST := {
+		type: 'Block'
+		expressions: [
+			'abc',
+			{
+				type: 'Declaration',
+				parent: null
+				},
+			]
+		}
+	# @ts-ignore
+	hAST.expressions[1].parent = hAST
+
+	gen := new NodeGenerator()
+	lParts := Array.from(gen.allNodes(hAST))
+
+	truthy isHash(lParts[0].node)
+	equal lParts[0].level, 0
+
+	truthy isArray(lParts[1].node)
+	equal lParts[1].level, 1
+
+	truthy isHash(lParts[2].node)
+	equal lParts[2].level, 2
+	)()

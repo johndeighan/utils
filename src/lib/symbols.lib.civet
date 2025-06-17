@@ -10,8 +10,8 @@ import {
 import {LOG, DBG, DBGVALUE} from './logger.lib.ts'
 import {resetOneIndent} from './indent.lib.ts'
 import {
-	Token, TTokenGenerator, allTokensInBlock,
-	} from './tokens.lib.ts'
+	TPLLToken, TTokenGenerator, allTokensInBlock,
+	} from './pll.lib.ts'
 import {isFile, slurp} from './fs.lib.ts'
 
 /**

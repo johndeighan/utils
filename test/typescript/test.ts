@@ -1,2 +1,1 @@
-"use strict";
-const x = 42
+const str: string = 'abc'

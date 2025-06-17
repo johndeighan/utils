@@ -2,7 +2,7 @@
 
 import {
 	undef, defined, notdefined,
-	curLogLevel, DBG,
+	getLogLevel, DBG,
 	wsSplit, words, normalizeStr, spaces, tabs,
 	blockToArray, toArray, arrayToBlock, toBlock,
 	removeLines, escapeStr, escapeBlock,
@@ -14,7 +14,7 @@ import {
 	equal, like, succeeds, fails, truthy, falsy,
 	} from '../src/lib/unit-test.lib.ts'
 
-hArgs := getCmdArgs()
+getCmdArgs()
 
 # ---------------------------------------------------------------------------
 
@@ -88,19 +88,19 @@ equal getCmdArgs(undef, ['-D']), {
 	D: true
 	}
 
-equal curLogLevel(), 'debug'
+equal getLogLevel(), 'debug'
 
 equal getCmdArgs(undef, ['-P']), {
 	_: []
 	P: true
 	}
-equal curLogLevel(), 'profile'
+equal getLogLevel(), 'profile'
 
 equal getCmdArgs(undef, ['-I']), {
 	_: []
 	I: true
 	}
-equal curLogLevel(), 'info'
+equal getLogLevel(), 'info'
 
 # -------------------------------------------------------------
 # --- getCmdArgs() with hDesc

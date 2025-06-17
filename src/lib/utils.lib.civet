@@ -6,7 +6,12 @@
 # utils.lib.civet
 
 import {
-	undef, defined, notdefined,
+	ts2ast, ts2js, ast2ts, ast2js, typeCheckFiles, pprintAST
+	getCode, normalizeCode, truncStr,
+	} from './typescript.lib.ts'
+import {
+	TFilterFunc, TStringifier, TStringParser, TAssertFunc,
+	deepEqual, hashLike, undef, defined, notdefined,
 	isString, char, integer, isChar, isNonEmptyString,
 	isBoolean, isNumber, isInteger,
 	isPrimitive, isNonPrimitive,
@@ -14,14 +19,19 @@ import {
 	isHash, isFunction, isObject, isRegExp,
 	isEmpty, nonEmpty, assert,
 	jsType, isSymbol, symbolName, functionName, functionDef,
+	classDef, regexpDef,
 	hash, hashof, array, arrayof,
-	regexp, voidFunc, nonEmptyString, stringify,
+	regexp, voidFunc, nonEmptyString,
 	isClass, className, isPromise, isClassInstance, isIterable,
+	TObjCompareFunc, TObjLikeFunc, TToStringFunc,
 	} from './datatypes.lib.ts'
 import {
-	pass, deeplyEquals, truncStr, OL, ML,
-	getOptions, croak, throwsError,
-	strToHash, o, removeEmptyKeys, keys,
+	TNodeInfo, NodeGenerator,
+	} from './node-generator.lib.ts'
+import {
+	pass, stringify, OL, ML,
+	getOptions, getOneOption, croak, throwsError,
+	strToHash, o, s, t, removeEmptyKeys, keys,
 	hasKey, hasKeys, missingKeys, merge, hit,
 	spaces, tabs, rtrim, countChars,
 	blockToArray, allLinesInBlock,
@@ -29,14 +39,16 @@ import {
 	arrayToBlock, toBlock,
 	escapeStr, unescapeStr, escapeBlock,
 	relpath, wsSplit, words, addDefaults,
-	sinceLoad, sinceLoadStr, sleep,
+	sinceLoad, sinceLoadStr, sleep, sleepSync,
 	getNExtra, rpad, lpad, centered,
 	TAlignment, isAlignment, alignString, zpad,
-	allMatches, NodeGenerator, TNodeInfo, range, Fetcher,
+	allMatches, range,
+	Fetcher, require, assertSameStr, interpolate,
 	} from './llutils.lib.ts'
 import {
+	TLogLevel, isLogLevel,
 	setLogLevel, pushLogLevel, popLogLevel,
-	curLogLevel, clearLog, getLog, getFullLog,
+	getLogLevel, getLog,
 	INDENT, UNDENT,
 	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
 	} from './logger.lib.ts'
@@ -46,21 +58,22 @@ import {
 	indented, undented,
 	} from './indent.lib.ts'
 import {
-	Token, allTokensIn, allTokensInBlock, tokenTable, TTokenGenerator,
-	} from './tokens.lib.ts'
+	TPLLToken, tkEOF, allTokensIn, allTokensInBlock, tokenTable, TTokenGenerator,
+	} from './pll.lib.ts'
 import {
 	toNice, fromNice, getPrimitive,
 	} from './nice.lib.ts'
 import {
 	isFile, isDir, fileExt, withExt,
 	rmFile, rmDir, TPathType, getPathType, getStats,
-	isStub, TPathInfo, parsePath, slurp, barf,
+	isStub, TPathInfo, parsePath, slurp, barf, barfTempFile,
 	allFilesMatching, allLinesIn, watchFile, watchFiles, FileEventHandler,
 	normalizePath, mkpath, pathToURL, newerDestFileExists,
 	pathSubDirs, clearDir, mkDir, mkDirsForFile, lStatFields,
 	myself, removeFilesMatching, removeFilesExcept,
 	TWatcherCallbackFunc, TFsChangeType, TFsCallbackFunc, setDirTree,
 	TFileOp, fileOpsTable, allTokensInFile,
+	patchFirstLine, configFromFile,
 	} from './fs.lib.ts'
 import {
 	loadSymbols, sourceLib, libsAndSymbols, getNeededImportStmts,
@@ -71,99 +84,101 @@ import {
 	TExecResult, typeCheck,
 	} from './exec.lib.ts'
 import {
-	testerFunc, compilerFunc, postProcessor,
-	isCompilerFunc, isPostProcessor,
-	TCompilerInfo, isCompilerInfo,
-	TCompilerConfig, isConfigHash,
-	hDefaultConfig,
-	userConfigPath, hCompilerConfig, loadCompilerConfig,
+	TTesterFunc, TCompilerFunc, TPostProcessor,
+	TCompilerInfo,
+	TCompilerConfig,
+	userConfigPath, getCompilerConfig,
 	installCmd, uninstallCmd, getCompilerInfo, getPostProcessor,
-	TCompileStatus, TCompileResult, compileFile,
+	TCompileStatus, TCompileResult, TUnitTestResult, compileFile,
 	getCompilerGlobPattern, allCompilableFiles,
 	runUnitTestsFor, runAllUnitTests,
+	isCompilerInfo, isCompilerConfig,
 	} from './compile.lib.ts'
 import {
-	ts2ast, pprintAST,
-	} from './typescript.lib.ts'
-import {
-	civet2ts, civet2tsFile, civet2ast,
+	civet2ts, civet2tsFile, civet2jsFile, civet2ast,
 	} from './civet.lib.ts'
 
 export {
-	undef, defined, notdefined,
+	ts2ast, ts2js, ast2ts, ast2js, typeCheckFiles, pprintAST
+	getCode, normalizeCode, truncStr,
+
+	deepEqual, hashLike, undef, defined, notdefined,
 	isString, isChar, isNonEmptyString,
 	isBoolean, isNumber, isInteger,
 	isPrimitive, isNonPrimitive
 	isArray, isArrayOfIntegers, isArrayOfStrings,
 	isHash, isFunction, isObject, isRegExp,
-	isEmpty, nonEmpty, assert, stringify,
+	isEmpty, nonEmpty, assert, assertSameStr,
+	interpolate, stringify,
 	jsType, isSymbol, symbolName, functionName, functionDef,
+	classDef, regexpDef,
 	isClass, className, isPromise, isClassInstance, isIterable,
 
-	pass, deeplyEquals, truncStr, OL, ML,
-	getOptions, croak, throwsError,
-	strToHash, o, removeEmptyKeys, keys,
+	pass, OL, ML,
+	getOptions, getOneOption, croak, throwsError,
+	strToHash, o, s, t, removeEmptyKeys, keys,
 	hasKey, hasKeys, missingKeys, merge, hit,
 	spaces, tabs, rtrim, countChars,
 	blockToArray, allLinesInBlock, toArray,
 	arrayToBlock, toBlock,
 	escapeStr, unescapeStr, escapeBlock,
 	relpath, wsSplit, words, addDefaults,
-	sinceLoad, sinceLoadStr, sleep,
+	sinceLoad, sinceLoadStr, sleep, sleepSync,
 	getNExtra, rpad, lpad, centered,
 	isAlignment, alignString, zpad,
-	allMatches, NodeGenerator, range, Fetcher,
+	allMatches, NodeGenerator, range,
+	Fetcher, require,
 
 	TextTable,
 
 	isFile, isDir, fileExt, withExt,
 	rmFile, rmDir, getPathType, getStats,
-	parsePath, slurp, barf, isStub,
+	parsePath, slurp, barf, barfTempFile, isStub,
 	allFilesMatching, allLinesIn, watchFile, watchFiles, FileEventHandler,
 	normalizePath, mkpath, pathToURL, newerDestFileExists, setDirTree,
 	fileOpsTable, allTokensInFile,
+	patchFirstLine, configFromFile, isCompilerInfo, isCompilerConfig,
 	pathSubDirs, clearDir, mkDir, mkDirsForFile, lStatFields,
 	myself, removeFilesMatching, removeFilesExcept,
 
 	loadSymbols, sourceLib, libsAndSymbols, getNeededImportStmts,
 
 	setLogLevel, pushLogLevel, popLogLevel,
-	curLogLevel, clearLog, getLog, getFullLog,
+	getLogLevel, getLog,
 	INDENT, UNDENT,
 	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
 
 	oneIndent, resetOneIndent, indentLevel, splitLine,
 	indented, undented,
 
-	allTokensIn, allTokensInBlock, tokenTable,
+	tkEOF, allTokensIn, allTokensInBlock, tokenTable,
 
 	toNice, fromNice, getPrimitive,
 
 	execCmd, execCmdSync, cmdSucceeds,
 	mkstr, getCmdLine, getProcOpt, typeCheck,
 
-	isCompilerFunc, isPostProcessor,
-	isCompilerInfo, isConfigHash,
-	hDefaultConfig,
-	userConfigPath, hCompilerConfig, loadCompilerConfig,
+	userConfigPath, getCompilerConfig,
 	installCmd, uninstallCmd, getCompilerInfo, getPostProcessor,
 	compileFile,
 	getCompilerGlobPattern, allCompilableFiles,
 	runUnitTestsFor, runAllUnitTests, isBlockSpec,
-	civet2ts, civet2tsFile, ts2ast, civet2ast, pprintAST,
+	civet2ts, civet2tsFile, civet2jsFile, civet2ast,
 	}
 
 export type {
+	TFilterFunc, TStringifier, TStringParser, TAssertFunc,
 	hash, hashof, array, arrayof, regexp, char, integer,
+	TObjCompareFunc, TObjLikeFunc, TToStringFunc,
 	voidFunc, nonEmptyString,
 	TExecResult, TBlockSpec, TPathType, TPathInfo,
 	TWatcherCallbackFunc, TFsChangeType, TFsCallbackFunc, TFileOp,
-	Token, TTokenGenerator, TAlignment, TNodeInfo,
+	TPLLToken, TTokenGenerator, TAlignment, TNodeInfo,
 
-	testerFunc, compilerFunc, postProcessor,
+	TTesterFunc, TCompilerFunc, TPostProcessor,
 	TCompilerInfo, TCompilerConfig,
 
-	TCompileStatus, TCompileResult,
+	TCompileStatus, TCompileResult, TUnitTestResult,
 	}
 
 # ---------------------------------------------------------------------------
@@ -204,15 +219,17 @@ export removeLines := (
 
 # ---------------------------------------------------------------------------
 
-hKeyToLogger: hash := {
-	I: 'info'
+hKeyToLogLevel: hashof<TLogLevel> := {
 	P: 'profile'
 	D: 'debug'
-	Q: 'quiet'
+	I: 'info'
+	W: 'warn'
+	E: 'error'
 	S: 'silent'
+	N: 'none'
 	}
 
-export logLevelFromArgs := (lArgs: string[]): string? =>
+export logLevelFromArgs := (lArgs: string[]): TLogLevel? =>
 
 	for str of lArgs
 		lMatches := str.match(///^
@@ -220,15 +237,13 @@ export logLevelFromArgs := (lArgs: string[]): string? =>
 			([A-Za-z0-9_-]*)
 			(=)?
 			///)
-		if (lMatches == null)
-			pass()
-		else
+		if defined(lMatches)
 			keyStr := lMatches[1]
 			hasEq := lMatches[2]
 			if isEmpty(hasEq)
-				for key of keys(hKeyToLogger)
+				for key of keys(hKeyToLogLevel)
 					if keyStr.includes(key)
-						return hKeyToLogger[key]
+						return hKeyToLogLevel[key]
 	return undef
 
 # ---------------------------------------------------------------------------
@@ -304,7 +319,7 @@ export getCmdArgs := (
 	if doSetLogger && defined(hDesc)
 		# --- Make sure hDesc does NOT include any of:
 		#        P, D, Q, I, S
-		for key of keys(hKeyToLogger)
+		for key of keys(hKeyToLogLevel)
 			assert notdefined(hDesc[key]),
 					"invalid key #{OL(key)} set in hDesc"
 		logLevel := logLevelFromArgs(lArgs)
@@ -336,7 +351,7 @@ export getCmdArgs := (
 				"dup key #{name}, hResult = #{OL(hResult)}"
 
 		if doSetLogger
-			logger := hKeyToLogger[name]
+			logger := hKeyToLogLevel[name]
 			if defined(logger)
 				hResult[name] = true
 				setLogLevel logger

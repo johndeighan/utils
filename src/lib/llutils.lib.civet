@@ -1,15 +1,16 @@
 # llutils.lib.civet
 
+import {createRequire} from "node:module"
 import {sprintf} from "@std/fmt/printf"
 import {relative} from '@std/path'
 
+import {truncStr} from './typescript.lib.ts'
 import {
-	undef, defined, notdefined, assert,
+	undef, defined, notdefined, assert, char, deepEqual,
 	isHash, isArray, isNonEmptyString, isArrayOfStrings,
-	isEmpty, nonEmpty, isString, isObject,
+	isEmpty, nonEmpty, isString, isObject, isInteger,
 	integer, hash, hashof, array, arrayof, voidFunc,
-	FilterFunc, stringify,
-	isNonPrimitive,
+	TFilterFunc, isNonPrimitive, functionDef,
 	} from './datatypes.lib.ts'
 
 /**
@@ -19,14 +20,25 @@ import {
 llutilsLoadTime: integer := Date.now()
 
 # ---------------------------------------------------------------------------
+# --- Should be called like:
+#        require := getImportSync(import.meta.url)
 
-export sinceLoad := (datetime: integer=Date.now()) =>
+export getImportSync := (url: string): Function =>
 
-	return (datetime - llutilsLoadTime)
+	return createRequire(url)
 
 # ---------------------------------------------------------------------------
 
-export sinceLoadStr := (datetime: integer?=undef) =>
+export sinceLoad := (datetime: Date | integer = Date.now()) =>
+
+	if (datetime instanceof Date)
+		return datetime.valueOf() - llutilsLoadTime
+	else
+		return datetime - llutilsLoadTime
+
+# ---------------------------------------------------------------------------
+
+export sinceLoadStr := (datetime: (Date | integer)? = undef) =>
 
 	return sprintf("%6d", sinceLoad(datetime))
 
@@ -65,38 +77,69 @@ export pass := (): void =>    # do nothing
 
 # ---------------------------------------------------------------------------
 
-export deeplyEquals := (a: any, b: any): boolean =>
+/**
+ * stringify any value, so that if we take the resultStr, we can
+ *    let x = <resultStr>
+ * to retrieve the original value (if no trunc option is passed in)
+ */
 
-	if (a == b)
-		return true
+export stringify := (
+	x: any,
+	hOptions: hash={}
+	level: number=0
+	): string =>
 
-	if (typeof a != 'object') || (a == null) || (typeof b != 'object') || (b == null)
-		return false
+	{oneLine, compress, trunc} := getOptions hOptions, {
+		oneLine: false
+		compress: true
+		trunc: undef
+		}
 
-	keysA := Object.keys(a)
-	keysB := Object.keys(b)
+	typeStr := typeof x
+	result := switch typeStr
+		when 'undefined'
+			'undefined'
+		when 'object'
+			if (x == null)
+				'null'
+			else if Array.isArray(x)
+				lParts := stringify(item, hOptions, level+1) for item of x
+				if oneLine
+					'[' + lParts.join(', ') + ']'
+				else
+					'[\n' + lParts.join(',\n') + '\n]'
+			else
+				lParts := for key,val in x
+					"#{key}: #{stringify(val, hOptions, level+1)}"
+				if oneLine
+					'{' + lParts.join(', ') + '}'
+				else
+					'{\n' + lParts.join(',\n') + '\n}'
+		when 'boolean'
+			x ? 'true' : 'false'
+		when 'number'
+			x.toString()
+		when 'bigint'
+			x.toString() + 'n'
+		when 'string'
+			"\"#{escapeStr(x, o'style=C')}\""
+		when 'symbol'
+			if defined(x.description)
+				"Symbol(\"#{x.description}\")"
+			else
+				"Symbol()"
+		when 'function'
+			functionDef(x)
 
-	if (keysA.length != keysB.length)
-		return false
-
-	for (key of keysA)
-		if not b.hasOwnProperty(key) || not deeplyEquals(a[key], b[key])
-			return false
-	return true
-
-# ---------------------------------------------------------------------------
-
-export truncStr := (str: string, len: number) =>
-
-	if (str.length <= len)
-		return str
-	return str.substring(0, len-3) + '...'
+	if defined(trunc)
+		return truncStr(result, trunc)
+	else
+		return result
 
 # ---------------------------------------------------------------------------
 
 /**
  * JSON stringifies x on one line
- * but displays both undefined and null as 'undef'
  */
 
 export OL := (x: any): string =>
@@ -115,7 +158,7 @@ export OL := (x: any): string =>
 		return x.toString().replaceAll('\n', ' ')
 	else
 		str := JSON.stringify(x, (k,v) => defined(v) ? v : '__undef__')
-		return str.replaceAll('"__undef__"', 'undef')
+		return str.replaceAll('"__undef__"', 'undefined')
 
 # ---------------------------------------------------------------------------
 
@@ -130,7 +173,7 @@ export ML := (x: any): string =>
 	else
 		str := JSON.stringify(x, (k,v) => defined(v) ? v : '__undef__', 3)
 		if defined(str)
-			return str.replaceAll('"__undef__"', 'undef')
+			return str.replaceAll('"__undef__"', 'undefined')
 		else
 			console.log x
 			return "JSON.stringify returned undef!!!"
@@ -191,6 +234,35 @@ export o := (lStrings: TemplateStringsArray): hash =>
 # ---------------------------------------------------------------------------
 
 /**
+ * s - convert leading tabs to spaces
+ */
+
+export s := (lStrings: TemplateStringsArray): string =>
+
+	console.log "calling function s"
+	replacer := (match: string): string =>
+		console.log "match = <#{escapeStr(match)}>"
+		result := '   '.repeat(match.length)
+		console.log "result = <#{escapeStr(result)}>"
+		return result
+	return lStrings[0].replaceAll(/^\t+/mg, replacer)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * t - convert leading spaces to tabs
+ */
+
+export t := (lStrings: TemplateStringsArray): string =>
+
+	replacer := (match: string): string =>
+		level := Math.floor(match.length / 3)
+		return '\t'.repeat(level)
+	return lStrings[0].replaceAll(/^\x20+/mg, replacer)
+
+# ---------------------------------------------------------------------------
+
+/**
  * Adds any keys in hDefaults that are missing in hOptions
  * to hOptions with their given values
  */
@@ -219,6 +291,12 @@ export addDefaults := (hOptions: hash, hDefaults: hash): hash =>
 export getOptions := (hOptions: hash={}, hDefaults: hash={}): hash =>
 
 	return addDefaults hOptions, hDefaults
+
+# ---------------------------------------------------------------------------
+
+export getOneOption := (hOptions: hash={}, name: string, defVal: any) =>
+
+	return hOptions[name] || defVal
 
 # ---------------------------------------------------------------------------
 
@@ -312,6 +390,15 @@ export hit := (pct: number = 50): boolean =>
 export sleep := (sec: number): void =>
 
 	await new Promise((r) => setTimeout(r, 1000 * sec))
+	return
+
+# ---------------------------------------------------------------------------
+
+export sleepSync := (sec: number): void =>
+
+	start := Date.now()
+	end := Date.now() + 1000*sec
+	while (Date.now() < end)
 	return
 
 # ---------------------------------------------------------------------------
@@ -777,47 +864,6 @@ export allMatches := (str: string, re: RegExp): Generator<string[], void, void> 
 	return
 
 # ---------------------------------------------------------------------------
-# GENERATOR
-
-export type TNodeInfo = {
-	node: any
-	level: integer
-	}
-
-export class NodeGenerator
-
-	filter
-	setYielded = new WeakSet<any>()
-
-	constructor(@filter: FilterFunc = isNonPrimitive)
-
-	allNodes(
-			obj: any
-			objLevel: integer = 0
-			): Generator<TNodeInfo, void, void>
-
-		if @setYielded.has(obj)
-			return
-		if @filter(obj)
-			yield {
-				node: obj,
-				level: objLevel
-				}
-			@setYielded.add obj
-		if isArray(obj)
-			for item of obj
-				for {node, level} of @allNodes(item, objLevel+1)
-					yield {node, level}
-					@setYielded.add node
-		else if isHash(obj)
-			for key of Object.keys(obj)
-				value := obj[key]
-				for {node, level} of @allNodes(value, objLevel+1)
-					yield {node, level}
-					@setYielded.add node
-		return
-
-# ---------------------------------------------------------------------------
 
 /**
  * A generator that yields integers starting with 0 and
@@ -841,39 +887,82 @@ export class Fetcher<T>
 	iter: Iterator<T>
 	buffer: T? = undef
 
-	constructor(iter: Iterator<T>)
-		@iter = iter
+	constructor(@iter: Iterator<T>, @eofValue: T)
 
-	peek(): T?
+	peek(): T
 		if defined(@buffer)
 			return @buffer
 		else
 			{value, done} := @iter.next()
 			if done
-				return undef
+				return @eofValue
 			else
 				@buffer = value
 				return value
 
-	get(): T?
+	get(expected: T?=undef): T
+		let result: T = @eofValue
 		if defined(@buffer)
-			save := @buffer
+			result = @buffer
 			@buffer = undef
-			return save
 		else
 			{value, done} := @iter.next()
-			if done
-				return undef
-			else
-				return value
+			result = done ? @eofValue : value
+		if defined(expected)
+			assert deepEqual(result, expected),
+					"#{OL(expected)} expected"
+		return result
+
+	skip(expected: T?=undef): void
+		@get(expected)
+		return
 
 	atEnd(): boolean
 		if defined(@buffer)
 			return false
 		else
 			{value, done} := @iter.next()
-			if done
+			if done || (value == @eofValue)
 				return true
 			else
 				@buffer = value
 				return false
+
+# ---------------------------------------------------------------------------
+
+export assertSameStr := (
+		str1: string,
+		str2: string
+		): void =>
+
+	if (str1 != str2)
+		console.log centered("Strings Differ:", 64, '-')
+		console.log centered("string 1", 64, '-')
+		console.log str1
+		console.log centered("string 2", 64, '-')
+		console.log str2
+		console.log '-'.repeat(64)
+
+	assert (str1 == str2), "strings differ"
+	return
+
+# ---------------------------------------------------------------------------
+
+export interpolate := (
+		str: string
+		hReplace: hashof<string>   # --- { <tag>: <replacement>, ... }
+		): string =>
+
+	for key of Object.keys(hReplace)
+		assert (key[0] == '$'), "all keys must start with '$'"
+	re := ///
+		\$
+		(?:[A-Za-z][A-Za-z0-9]*)
+		///g
+	return str.replaceAll(re, (match: string) =>
+		return hReplace[match] || match
+		)
+
+# ---------------------------------------------------------------------------
+
+export require := getImportSync(import.meta.url)

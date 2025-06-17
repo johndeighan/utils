@@ -8,7 +8,9 @@
  *    succeeds
  *    matches
  *    like
- *    listLike
+ *    codeLike
+ *    strListLike
+ *    objListLike
  *    includes
  *    includesAll
  *
@@ -22,12 +24,14 @@ import {
 	assertStringIncludes, assertMatch, assertArrayIncludes,
 	} from '@std/assert'
 
+import {normalizeCode} from './typescript.lib.ts'
 import {
 	undef, defined, notdefined, isEmpty, nonEmpty,
 	array, arrayof, isArray, isHash, isString, hash,
-	stringify, hashof, isIterable,
+	hashof, isIterable, deepEqual, hashLike,
+	TObjCompareFunc, TObjLikeFunc, TToStringFunc,
 	} from './datatypes.lib.ts'
-import {pass, OL, keys} from './llutils.lib.ts'
+import {pass, stringify, OL, keys} from './llutils.lib.ts'
 import {sourceLib, getNeededImportStmts} from './symbols.lib.ts'
 import {typeCheck} from './exec.lib.ts'
 import {
@@ -71,7 +75,7 @@ getTestName := (): string =>
 export equal := (value: any, expected: any) : void =>
 
 	name := getTestName()
-	DBG "equal ?, #{JSON.stringify(expected)} (#{name})"
+	DBG "equal ?, #{stringify(expected)} (#{name})"
 	Deno.test name, () => assertEquals(value, expected)
 	return
 
@@ -94,7 +98,7 @@ export equal := (value: any, expected: any) : void =>
 export truthy := (value: any): void =>
 
 	name := getTestName()
-	DBG "truthy #{JSON.stringify(value)} (#{name})"
+	DBG "truthy #{stringify(value)} (#{name})"
 	Deno.test name, () => assert value
 	return
 
@@ -117,7 +121,7 @@ export truthy := (value: any): void =>
 export falsy := (value: any): void =>
 
 	name := getTestName()
-	DBG "falsy #{JSON.stringify(value)} (#{name})"
+	DBG "falsy #{stringify(value)} (#{name})"
 	Deno.test name, () => assert (not value)
 	return
 
@@ -178,7 +182,9 @@ export succeeds := (func: () => void): void =>
 		try
 			func()
 		catch err
-			throw new Error("Test Failure - func throws!!!")
+			# @ts-ignore
+			msg := err.message
+			throw new Error("FAIL - func throws (#{msg})")
 	return
 
 # ---------------------------------------------------------------------------
@@ -186,7 +192,7 @@ export succeeds := (func: () => void): void =>
 export iterEqual := (iter: Iterable<any>, expected: any[]) =>
 
 	name := getTestName()
-	DBG "iterEqual ?, #{JSON.stringify(expected)} (#{name})"
+	DBG "iterEqual ?, #{stringify(expected)} (#{name})"
 	Deno.test name, () => assertEquals Array.from(iter), expected
 	return
 
@@ -195,7 +201,7 @@ export iterEqual := (iter: Iterable<any>, expected: any[]) =>
 export iterLike := (iter: Iterable<hash>, expected: hash[]) =>
 
 	name := getTestName()
-	DBG "iterEqual ?, #{JSON.stringify(expected)} (#{name})"
+	DBG "iterEqual ?, #{stringify(expected)} (#{name})"
 
 	lItems := Array.from(iter)
 	len := lItems.length
@@ -233,7 +239,7 @@ export matches := (value: any, expected: any) =>
 
 	assert isString(value), "Not a string: #{value}"
 	name := getTestName()
-	DBG "matches ?, #{JSON.stringify(expected)} (#{name})"
+	DBG "matches ?, #{stringify(expected)} (#{name})"
 	if isString(expected)
 		Deno.test name, () => assertStringIncludes value, expected
 	else if (expected instanceof RegExp)
@@ -264,7 +270,7 @@ export matches := (value: any, expected: any) =>
 export like := (value: hash?, expected: hash): void =>
 
 	name := getTestName()
-	DBG "like ?, #{JSON.stringify(expected)} (#{name})"
+	DBG "like ?, #{stringify(expected)} (#{name})"
 	if notdefined(value)
 		Deno.test name, () => assertEquals value, undef
 	else
@@ -273,15 +279,50 @@ export like := (value: hash?, expected: hash): void =>
 
 # ---------------------------------------------------------------------------
 
+export codeLike := (value: string, expected: string): void =>
+
+	name := getTestName()
+	DBG "codeLike ?, #{stringify(expected)} (#{name})"
+	Deno.test name, () =>
+		assertEquals normalizeCode(value), normalizeCode(expected)
+	return
+
+# ---------------------------------------------------------------------------
+
+export strListLike := (
+		value: string[]
+		expected: string[]
+		): void =>
+
+	name := getTestName()
+	DBG "strListLike ?, #{stringify(expected, {trunc: 64})}"
+
+	len := value.length
+	Deno.test "#{name}/len", () => assertEquals len, expected.length
+
+	if (len == 0)
+		return
+
+	lValues := value.toSorted()
+	lExpected := expected.toSorted()
+	for i of [0..len-1]
+		val := lValues[i]
+		exp := lExpected[i]
+		# @ts-ignore
+		Deno.test "#{name}/#{i}", () => assertEquals(val, exp)
+	return
+
+# ---------------------------------------------------------------------------
+
 /**
- * In a unit test, tests a value, which must be an array or object,
- * matches another array or object. For objects, the value must
- * have all the properties in the expected value, but extra
- * properties are allowed. For arrays, the value must have
- * at least the length of the expected array, and each item in
- * the value array must be an object that has at least all of the
- * properties that the object in the expected array at the
- * same position has.
+ * In a unit test, tests if each Object in an array matches
+ * each object in another array. The 2 arrays must be of the
+ * same length. If a function is passed as the 3rd parameter,
+ * then each array is first sorted by using the function to
+ * convert each object to a string, then sorting the array
+ * using those strings.
+ * A matching function can also be provided as the 4th argument.
+ * By default, the function hashLike (from llutils.lib) is used.
  * Reports line number of the test.
  *
  * @param {array | object} value - any JavaScript value
@@ -301,19 +342,51 @@ export like := (value: hash?, expected: hash): void =>
  * This test will pass.
  */
 
-export listLike := (
+export objListLike := (
 		value: hash[]
 		expected: hash[]
+		strFunc: TToStringFunc? = undef     # used for sorting if defined
+		likeFunc: TObjLikeFunc = hashLike   # used for comparison
 		): void =>
 
 	name := getTestName()
-	DBG "listLike ?, #{JSON.stringify(expected)} (#{name})"
+	DBG "objListLike ?, #{stringify(expected, {trunc: 64})}"
+	DBG "strFunc is #{OL(strFunc)}"
 
 	len := value.length
 	Deno.test "#{name}/len", () => assertEquals len, expected.length
+
+	if (len == 0)
+		return
+
+	# --- create the arrays to actually be compared
+	let lVals: hash[] = value
+
+	if defined(strFunc)
+		compareFunc: TObjCompareFunc := (a: hash, b: hash) =>
+			str1 := strFunc(a)
+			str2 := strFunc(b)
+			return (str1 < str2) ? -1 : (str1 > str2) ? 1 : 0
+		lVals = value.toSorted(compareFunc)
+
+	nVals := lVals.length
+	DBG "lVals is array of length #{nVals}"
+
+	let lExp: hash[] = value
+	if defined(strFunc)
+		DBG "strFunc defined"
+		compareFunc: TObjCompareFunc := (a: hash, b: hash) =>
+			str1 := strFunc(a)
+			str2 := strFunc(b)
+			return (str1 < str2) ? -1 : (str1 > str2) ? 1 : 0
+		lExp = expected.toSorted(compareFunc)
+
+	nExp := lExp.length
+	DBG "lExp is array of length #{nExp}"
+
 	for i of [0..len-1]
 		# @ts-ignore
-		Deno.test "#{name}/#{i}", () => assertObjectMatch value[i], expected[i]
+		Deno.test "#{name}/#{i}", () => assert likeFunc(lVals[i], lExp[i])
 	return
 
 # ---------------------------------------------------------------------------
@@ -341,7 +414,7 @@ export includes := (
 
 	assert Array.isArray(value), "not an array: #{value}"
 	name := getTestName()
-	DBG "includes ?, #{JSON.stringify(expected)} (#{name})"
+	DBG "includes ?, #{stringify(expected)} (#{name})"
 	Deno.test name, () => assertArrayIncludes(value, [expected])
 	return
 
@@ -371,7 +444,7 @@ export includesAll := (
 	assert Array.isArray(value), "not an array: #{value}"
 	assert Array.isArray(expected), "not an array: #{expected}"
 	name := getTestName()
-	DBG "includesAll ?, #{JSON.stringify(expected)} (#{name})"
+	DBG "includesAll ?, #{stringify(expected)} (#{name})"
 	Deno.test name, () => assertArrayIncludes(value, expected)
 	return
 
@@ -453,6 +526,8 @@ export getTsCode := (
 
 	DBGVALUE 'typeStr', typeStr
 	DBGVALUE 'valueStr', valueStr
+	assert defined(typeStr), "typeStr is undef"
+	assert defined(valueStr), "valueStr is undef"
 	result := splitFuncStr(valueStr)
 	if defined(result)
 		[lParms, body] := result
@@ -476,9 +551,7 @@ export checkType := (
 
 	DBG "CALL checkType():", INDENT
 
-	# --- stringify() handles functions
-
-	valueStr := stringify(value, {strict: true})
+	valueStr := stringify(value)
 
 	tsCode := getTsCode typeStr, valueStr
 	DBGVALUE 'tsCode', tsCode
@@ -529,11 +602,18 @@ export checkType := (
 export isType := (
 		typeStr: string
 		value: any
+		isOfType: Function?=undef
 		): void =>
 
 	name := getTestName()
-	lDiagnostics := checkType(value, typeStr, true)
-	Deno.test name, () => assert isEmpty(lDiagnostics)
+	if defined(isOfType)
+		DBG "Using type guard"
+		Deno.test name, () => assert isOfType(value)
+	else
+		DBG INDENT
+		lDiagnostics := checkType(value, typeStr, true)
+		DBG UNDENT
+		Deno.test name, () => assert isEmpty(lDiagnostics)
 	return
 
 # ---------------------------------------------------------------------------
@@ -561,9 +641,16 @@ export isType := (
 export notType := (
 		typeStr: string
 		value: any
+		isOfType: Function?=undef
 		) =>
 
 	name := getTestName()
-	lDiagnostics := checkType(value, typeStr, false)
-	Deno.test name, () => assert nonEmpty(lDiagnostics)
+	if defined(isOfType)
+		DBG "Using type guard"
+		Deno.test name, () => assert not isOfType(value)
+	else
+		DBG INDENT
+		lDiagnostics := checkType(value, typeStr, false)
+		DBG UNDENT
+		Deno.test name, () => assert nonEmpty(lDiagnostics)
 	return
