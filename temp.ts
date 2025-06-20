@@ -27,16 +27,16 @@ class Fetcher<T> {
 			(()=>{if (this.buffer === undefined) {
 				const {value, done} = this.iter.next()
 				if (done) {
-					this.eofValue
+					return this.eofValue
 				}
 				else {
-					value
+					return value
 				}
 			}
 			else {
 				const save: T = this.buffer
 				this.buffer = undefined
-				save
+				return save
 			}})()
 			)
 		return result

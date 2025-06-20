@@ -118,6 +118,33 @@
 
 		// --------------------------------------------------------------------
 
+		"build:parser": "
+			   echo compile: parser
+			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
+			&& echo check: parser
+			&& deno check -q src/lib/parser.lib.ts
+			",
+
+		"buildandtest:parser": "
+			   echo compile: parser
+			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
+			&& echo check: parser
+			&& deno check -q src/lib/parser.lib.ts
+			&& civet --inline-map -o .ts -c test/parser.lib.test.civet
+			&& civet --inline-map -o .ts -c test/parser/keppel.grammar.civet
+			&& echo test: parser
+			&& deno test -qA --reporter dot test/parser.lib.test.ts -- -D
+			",
+
+		"test:parser": "
+			   civet --inline-map -o .ts -c test/parser.lib.test.civet
+			&& civet --inline-map -o .ts -c test/parser/keppel.grammar.civet
+			&& echo test: parser
+			&& deno test -A test/parser.lib.test.ts -- -D
+			",
+
+		// --------------------------------------------------------------------
+
 		"build:indent": "
 			   echo compile: indent
 			&& civet --inline-map -o .ts -c src/lib/indent.lib.civet

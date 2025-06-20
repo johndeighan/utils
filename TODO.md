@@ -1,5 +1,10 @@
 to do
 
+parser test should test some very simple grammars
+before testing the keppel grammar
+
+work on parser.lib.civet (use parser_org.lib.civet as reference)
+
 task buildandtest:nice FAILS!
 
 Work on fromNice() - parse lists and hashes

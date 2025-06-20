@@ -2,12 +2,12 @@
 
 import {
 	undef, defined, notdefined, assert,
-	hash, hashof, nonEmpty,
+	hash, hashof, isEmpty, nonEmpty,
 	} from './datatypes.lib.ts'
 import {
 	pass, OL, ML, croak, o, getOptions, hasKey, keys,
 	} from './llutils.lib.ts'
-import {LOG, DBG, DBGVALUE} from './logger.lib.ts'
+import {LOG, DBG, DBGVALUE, ERR} from './logger.lib.ts'
 import {resetOneIndent} from './indent.lib.ts'
 import {
 	TPLLToken, TTokenGenerator, allTokensInBlock,
@@ -38,6 +38,8 @@ export loadSymbols := (
 		hOptions: hash={}
 		): hashof<string> =>
 
+	DBG "in loadSymbols()"
+
 	# --- Check if libraries actually exist
 	{checkFiles} := getOptions hOptions, {
 		checkFiles: false
@@ -53,18 +55,21 @@ export loadSymbols := (
 			for str of line.split(/\s+/)
 				yield {kind: 'symbol', str}
 		else
+			ERR "level = #{level}"
 			croak "level = #{level}"
 		return
 
 	hSymbols: hashof<string> := {}  # --- {<symbol>: <lib>, ...}
 	let curLib: string? = undef
 	for {kind, str} of allTokensInBlock(strSymbols, symGen)
+		DBG "TOKEN: #{kind}"
 		switch kind
 			when 'indent'
 				level += 1
 			when 'undent'
 				level -= 1
 			when 'lib'
+				DBG "Set curLib to #{OL(str)}"
 				curLib = str
 			when 'symbol', 'guard'
 				assert defined(str), "undefined str!"
@@ -89,6 +94,9 @@ export sourceLib := (
 		h: hashof<string>=hSymbols
 		): string =>
 
+	if (h == hSymbols) && isEmpty(hSymbols)
+		contents := slurp('src/.symbols')
+		hSymbols = loadSymbols(contents, o"checkFiles")
 	return h[symbol]
 
 # ---------------------------------------------------------------------------
@@ -96,6 +104,10 @@ export sourceLib := (
 export libsAndSymbols := (
 		lSymbols: string[]
 		): hashof<string[]> =>
+
+	if isEmpty(hSymbols) && isFile('src/.symbols')
+		contents := slurp('src/.symbols')
+		hSymbols = loadSymbols(contents, o"checkFiles")
 
 	hLibs: hashof<string[]> := {}
 	for sym of lSymbols
@@ -129,6 +141,6 @@ export getNeededImportStmts := (
 
 # ---------------------------------------------------------------------------
 
-if isFile('src/.symbols')
-	contents := slurp('src/.symbols')
-	hSymbols = loadSymbols(contents, o"checkFiles")
+# if isFile('src/.symbols')
+# 	contents := slurp('src/.symbols')
+# 	hSymbols = loadSymbols(contents, o"checkFiles")

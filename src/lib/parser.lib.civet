@@ -1,0 +1,252 @@
+# parser.lib.civet
+
+type TPosition = {
+	pos: number
+	line: number
+	column: number
+	}
+
+export type TState = {
+	text: string
+	ignore: any[]
+	stack: any[]
+	sp: number
+	lastPos: TPosition
+	pos: number
+	}
+
+export type TRule = ($: TState) => TState
+type TLaxRule = (string | RegExp | TRule)   # --- can convet to TRule
+type TReducer<T> = (lMatches: T[], $: TState, $next: TState) => T?
+
+# ---------------------------------------------------------------------------
+
+export function getState(
+		text: string
+		pos: number = 0
+		): TState
+
+	return {
+		text
+		ignore: []
+		stack: []
+		sp: 0
+		lastPos: {pos: 0, line: 1, column: 1}
+		pos
+		}
+
+# ---------------------------------------------------------------------------
+
+locAt := (
+		text: string,
+		newPos: number,
+		{pos, line, column}: TPosition
+		): TPosition =>
+
+	while (pos < newPos)
+		ch := text[pos++]
+		if (ch == '\n')
+			column = 1
+			line++
+		else
+			column++
+	return {pos, line, column}
+
+# ---------------------------------------------------------------------------
+
+markSeen := ($: TState): void =>
+
+	if ($.pos > $.lastPos.pos)
+		Object.assign($.lastPos, locAt($.text, $.pos, $.lastPos))
+	return
+
+# ---------------------------------------------------------------------------
+
+export RegexMatcher := (re: RegExp) => ($: TState): TState =>
+
+	markSeen($)
+
+	lMatches := re.exec($.text.substring($.pos))
+	if (not lMatches)
+		return $
+
+	# --- Token is matched
+	#     push all captures to the stack and return the match
+	$next := {
+		...$,
+		pos: $.pos + lMatches[0].length,
+		}
+
+	for str,i of lMatches
+		if (i > 0)
+			$.stack[$next.sp++] = str
+
+	return $next
+
+# ---------------------------------------------------------------------------
+
+export StringMatcher := (str: string) => ($: TState) =>
+
+	markSeen($)
+
+	if ($.text.startsWith(str, $.pos))
+		return {
+			...$,
+			pos: $.pos + str.length
+			}
+	else
+		return $
+
+# ---------------------------------------------------------------------------
+
+export function Use(rule: TLaxRule): TRule
+
+	if (typeof(rule) == 'function')
+		return rule
+	if (rule instanceof RegExp)
+		return RegexMatcher(rule)
+	if (typeof(rule) == 'string')
+		return StringMatcher(rule)
+	throw new Error('Invalid rule')
+
+# ---------------------------------------------------------------------------
+
+export function Ignore(laxToIgnore: TLaxRule, laxRule: TLaxRule): TRule
+
+	rule := Use(laxRule)
+	toIgnore := Use(laxToIgnore)
+	return ($: TState) =>
+		$cur := toIgnore($)
+		$.ignore.push(toIgnore)
+		$next := rule($cur)
+		$.ignore.pop()
+
+		return ($next == $cur) ? $ : toIgnore($next)
+
+# ---------------------------------------------------------------------------
+
+skipIgnored := ($: TState) =>
+
+	if ($.ignore.length == 0)
+		return $
+
+	toIgnore := $.ignore[$.ignore.length - 1]
+	return toIgnore ? toIgnore($) : $
+
+# ---------------------------------------------------------------------------
+# --- Match a sequence of rules left to right
+
+export function All(...lLaxRules: TLaxRule[]): TRule
+
+	lRules := lLaxRules.map(Use)
+
+	return ($: TState) =>
+		let $cur = $
+		for (let i = 0; i < lRules.length; i++)
+			$before := (i > 0) ? skipIgnored($cur) : $cur
+
+			$after := lRules[i]($before)
+			if ($after == $before)
+				# --- if one rule fails: fail all
+				return $
+
+			if ($after.pos > $before.pos) || ($after.sp > $before.sp)
+				# --- Prevent adding whitespace if matched
+				#     an optional rule last.
+				#     Consequently All() will fail if
+				#     all the lRules don't make any progress
+				#     and don't put anything on stack
+				$cur = $after
+		return $cur
+
+# ---------------------------------------------------------------------------
+# --- Match any of the rules with left-to-right preference
+
+export function Any(...lLaxRules: TLaxRule[]): TRule
+
+	lRules := lLaxRules.map(Use)
+	return ($: TState) =>
+		for (let i=0; i < lRules.length; i++)
+			$next := (lRules[i])($)
+			if ($next != $)
+				return $next
+		return $
+
+# ---------------------------------------------------------------------------
+# --- Match a rule 1 or more times
+
+export function Plus(laxRule: TLaxRule): TRule
+
+	rule := Use(laxRule)
+	return ($: TState) =>
+		while (true)
+			$cur := skipIgnored($)
+			$next := rule($cur)
+			if ($next == $cur)
+				return $
+			$ = $next
+
+# ---------------------------------------------------------------------------
+# --- Match a rule optionally
+
+export function Optional(laxRule: TLaxRule): TRule
+
+	rule := Use(laxRule)
+	return ($: TState) =>
+		$next := rule($)
+		if ($next != $)
+			return $next
+
+		# --- Otherwise return a shallow copy
+		#     of the state to still indicate a match
+		return {...$}
+
+# ---------------------------------------------------------------------------
+
+export function Star(laxRule: TLaxRule): TRule
+
+	return Optional(Plus(laxRule))
+
+# ---------------------------------------------------------------------------
+
+export function Node<T>(laxRule: TLaxRule, reducer: TReducer<T>): TRule
+
+	rule := Use(laxRule)
+	return ($: TState) =>
+		$next := rule($)
+		if ($next == $)
+			return $
+
+		# --- We have a match
+		node := reducer($.stack.slice($.sp, $next.sp), $, $next)
+		$next.sp = $.sp;
+		if (node != null)
+			$.stack[$next.sp++] = node
+
+		return $next
+
+# ---------------------------------------------------------------------------
+# --- Returns a function that:
+#        1. accepts a string
+#        2. returns a T
+
+type TStringMapper<T> = (str: string) => T
+
+export function getParser<T>(
+		Grammar: TRule,
+		pos = 0,
+		partial = false
+		): TStringMapper<T>
+
+	return (text: string) =>
+		$ := getState(text, pos)
+		$next := Grammar($)
+
+		if ($ == $next) || (not partial && ($next.pos < text.length))
+			# --- No match or haven't consumed the whole input
+			{line, column, pos} := $.lastPos
+			throw new Error("""
+				Unexpected token at #{line}:#{column}
+				Remainder: #{text.slice(pos)}
+				""")
+		return $.stack[0]

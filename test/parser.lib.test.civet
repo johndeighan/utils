@@ -1,0 +1,131 @@
+# parser.lib.test.civet
+
+import {
+	hash, getCmdArgs, DBG,
+	} from '../src/lib/utils.lib.ts'
+import {
+	KeppelGrammar,
+	} from './parser/keppel.grammar.ts'
+import {
+	TState, getState, StringMatcher, RegexMatcher,
+	getParser, Node,
+	} from '../src/lib/parser.lib.ts'
+import {
+	equal, same, like, succeeds, fails, truthy, falsy,
+	matches, isType, notType, objListLike,
+	} from '../src/lib/unit-test.lib.ts'
+
+getCmdArgs()
+htmlParse := getParser<hash>(KeppelGrammar)
+
+# ---------------------------------------------------------------------------
+# --- test getState()
+
+equal getState('abc'), {
+	text: 'abc'
+	ignore: []
+	stack: []
+	sp: 0
+	lastPos: {pos: 0, line: 1, column: 1}
+	pos: 0
+	}
+
+equal getState('abc', 2), {
+	text: 'abc'
+	ignore: []
+	stack: []
+	sp: 0
+	lastPos: {pos: 0, line: 1, column: 1}
+	pos: 2
+	}
+
+# ---------------------------------------------------------------------------
+# --- test StringMatcher()
+
+(() =>
+	rule := StringMatcher('abc')
+	like rule(getState('abcdef')), {pos: 3}
+	fails () => rule(getState('abcdef', 3))
+	)()
+
+(() =>
+	rule := StringMatcher('def')
+	like rule(getState('abcdef')), {pos: 0}
+	like rule(getState('abcdef', 3)), {pos: 6}
+
+	# --- On failure to match, should return the same TState
+	$ := getState('abcdef')
+	same rule($), $
+	)()
+
+# ---------------------------------------------------------------------------
+# --- test RegexMatcher()
+
+(() =>
+	rule := RegexMatcher(/^[\.\#]\s/)
+	like rule(getState('. abc')), {pos: 2}
+	fails () => rule(getState('. abc', 1))
+	)()
+
+(() =>
+	rule := RegexMatcher(/^[\.\#]\s/)
+	like rule(getState('abc . def')), {pos: 0}
+	like rule(getState('abc . def', 4)), {pos: 6}
+
+	# --- On failure to match, should return the same TState
+	$ := getState('abc . abc')
+	same rule($), $
+	)()
+
+# ---------------------------------------------------------------------------
+# --- test Node<T>
+
+(() =>
+	reducer := (
+			lMatches: string[]
+			$: TState
+			$next: TState
+			): string =>
+		return 'X'
+
+	# --- This rule will attempt to match the string 'abc'
+	#     when it matches, the reducer is called, and
+	#     what it returns is put on the stack
+	rule := Node<string>('abc', reducer)
+
+	$ := getState('abcdef')
+	equal rule($), {
+	   "text": "abcdef",
+	   "ignore": [],
+	   "stack": ['X'],
+	   "sp": 1,
+	   "lastPos": {
+	      "pos": 0,
+	      "line": 1,
+	      "column": 1
+			},
+		"pos": 3
+		}
+	)()
+
+# ---------------------------------------------------------------------------
+
+equal htmlParse('p'), {
+	type: 'element'
+	tag: 'p'
+	}
+
+keppelStr99 := """
+	body [    // I am a comment
+	  div #navbar .navbar.navbar-inverse.navbar-fixed-top [
+		 div.navbar-inner [
+			a(href="#", test="My test").brand ['Awesome']
+			ul.nav [
+			  li[ a(href="#") ['Item 1'] ]
+			  li[ a(href="#") ['Item 2'] ]
+			]
+		 ]
+	  ]
+	]
+	// I am a comment in the end of input
+	"""

@@ -26,7 +26,7 @@ export type TPLLToken = {
 
 export tkEOF := {kind: 'eof', str: ''}
 export tkIndent := {kind: 'indent', str: ''}
-export tkUndent := {kind: 'indent', str: ''}
+export tkUndent := {kind: 'undent', str: ''}
 
 # ---------------------------------------------------------------------------
 

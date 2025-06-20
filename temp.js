@@ -53,16 +53,16 @@ var Fetcher = /** @class */ (function () {
             if (_this.buffer === undefined) {
                 var _a = _this.iter.next(), value = _a.value, done = _a.done;
                 if (done) {
-                    _this.eofValue;
+                    return _this.eofValue;
                 }
                 else {
-                    value;
+                    return value;
                 }
             }
             else {
                 var save = _this.buffer;
                 _this.buffer = undefined;
-                save;
+                return save;
             }
         })());
         return result;

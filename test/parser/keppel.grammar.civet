@@ -1,0 +1,116 @@
+# keppel.grammar.civet
+
+import {
+	TRule, TState,
+	Ignore, All, Any, Plus, Optional, Node,
+	} from '../../src/lib/parser.lib.ts'
+import {hash} from '../../src/lib/datatypes.lib.ts'
+
+# ---------------------------------------------------------------------------
+
+reIdent: RegExp := /^([a-zA-Z][a-zA-Z0-9_-]*)/
+
+QString: TRule := Any(
+	/^'([^']*)'/
+	/^"([^"]*)"/
+	)
+
+Attr := Node<hash>(
+	All(
+		reIdent,
+		'=',
+		QString
+		),
+	(lMatches: hash[]) =>
+		[name, value] := lMatches
+		return {name, value}
+	)
+
+Attributes := Node<hash>(
+	All(
+		'(',
+		Attr,
+		Optional(Plus(All(',', Attr))),
+		')'
+		),
+	(lMatches: hash[]) =>
+		return {attributes: lMatches}
+	)
+
+Id := Node<hash>(
+	All(
+		'#',
+		reIdent
+		),
+	(lMatches: hash[]) =>
+		return {lMatches[0]}
+	)
+
+Classes := Node<hash>(
+	Plus(All(
+		'.',
+		reIdent
+		)),
+	(lMatches: hash[]) =>
+		return {classes: lMatches}
+	)
+
+Header := Node<hash>(
+	All(
+		reIdent,
+		Optional(Attributes),
+		Optional(Id),
+		Optional(Classes)
+		),
+	(lMatches: hash[]) =>
+		[name, ...lOthers] := lMatches
+		return Object.assign {tag: name}, lOthers...
+	)
+
+ThisGrammar := ($: TState) => Keppel($)
+
+Body := Node<hash>(
+	All(
+		'[',
+		ThisGrammar,
+		']'
+		),
+	(lMatches: hash[]) =>
+		return {lMatches[0]}
+	)
+
+Element: TRule := Node<hash>(
+	All(
+		Header,
+		Optional(Body)
+		),
+	(lMatches: hash[]) =>
+		[header, body] := lMatches
+		return Object.assign({type: 'element', ...header}, body || {})
+	)
+
+FreeText := Node<hash>(
+	QString,
+	(lMatches: hash[]) =>
+		console.log "Free Text:"
+		console.log lMatches
+		console.log "-----"
+		return {
+			type: 'free text',
+			value: lMatches[0]
+			}
+	);
+
+Keppel := Node<hash>(
+	Plus(Any(Element, FreeText)),
+	(lMatches: hash[]) =>
+		console.log "STACK:"
+		console.log lMatches
+		console.log '------'
+		return lMatches[0]
+	)
+
+# --- Ignore line comments and all whitespace
+reIgnore: RegExp := /^\s+|^\/\/[^\r\n]*\n/
+
+export KeppelGrammar := Ignore(reIgnore, ThisGrammar)

@@ -366,7 +366,7 @@ export isArrayOfStrings := (x: any): x is string[] =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,regexp)
  */
 
-export type regexp = object
+export type regexp = RegExp
 
 /**
  * Test if something is a regular expression

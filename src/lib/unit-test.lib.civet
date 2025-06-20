@@ -2,6 +2,7 @@
  * unit-test - provides functions for use in unit tests
  * available tests:
  *    equal
+ *    same
  *    truthy
  *    falsy
  *    fails
@@ -20,7 +21,8 @@
 # unit-test.lib.civet
 
 import {
-	assert, assertEquals, assertNotEquals, assertObjectMatch,
+	assert, assertEquals, assertStrictEquals, assertNotEquals,
+	assertObjectMatch,
 	assertStringIncludes, assertMatch, assertArrayIncludes,
 	} from '@std/assert'
 
@@ -77,6 +79,15 @@ export equal := (value: any, expected: any) : void =>
 	name := getTestName()
 	DBG "equal ?, #{stringify(expected)} (#{name})"
 	Deno.test name, () => assertEquals(value, expected)
+	return
+
+# ---------------------------------------------------------------------------
+
+export same := (value: any, expected: any) : void =>
+
+	name := getTestName()
+	DBG "same ?, #{stringify(expected)} (#{name})"
+	Deno.test name, () => assertStrictEquals(value, expected)
 	return
 
 # ---------------------------------------------------------------------------
