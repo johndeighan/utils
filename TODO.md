@@ -1,5 +1,8 @@
 to do
 
+TRY: cls && task build:parser && task temp
+still won't parse
+
 parser test should test some very simple grammars
 before testing the keppel grammar
 

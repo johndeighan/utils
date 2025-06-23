@@ -8,8 +8,8 @@ import {
 	} from './llutils.lib.ts'
 import {getLogLevel} from './log-levels.lib.ts'
 
-let indent: number = 0
-prefix := () => spaces(3).repeat(indent)
+export let logIndent: number = 0
+prefix := () => spaces(3).repeat(logIndent)
 
 # --- Everything returned by a formatter is also
 #     appended to this string
@@ -75,15 +75,15 @@ export getFormatter := (str: string, dest: string) =>
 
 export indentLog := (): void =>
 
-	indent += 1
+	logIndent += 1
 	return
 
 # ---------------------------------------------------------------------------
 
 export undentLog := (): void =>
 
-	if (indent > 0)
-		indent -= 1
+	if (logIndent > 0)
+		logIndent -= 1
 	return
 
 # ---------------------------------------------------------------------------

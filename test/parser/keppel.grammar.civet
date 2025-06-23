@@ -1,67 +1,67 @@
 # keppel.grammar.civet
 
+import {hash} from '../../src/lib/datatypes.lib.ts'
 import {
 	TRule, TState,
 	Ignore, All, Any, Plus, Optional, Node,
 	} from '../../src/lib/parser.lib.ts'
-import {hash} from '../../src/lib/datatypes.lib.ts'
 
 # ---------------------------------------------------------------------------
 
 reIdent: RegExp := /^([a-zA-Z][a-zA-Z0-9_-]*)/
 
-QString: TRule := Any(
+QString: TRule := Any [
 	/^'([^']*)'/
 	/^"([^"]*)"/
-	)
+	]
 
 Attr := Node<hash>(
-	All(
+	[
 		reIdent,
 		'=',
 		QString
-		),
+		],
 	(lMatches: hash[]) =>
 		[name, value] := lMatches
 		return {name, value}
 	)
 
 Attributes := Node<hash>(
-	All(
+	[
 		'(',
 		Attr,
-		Optional(Plus(All(',', Attr))),
+		Optional(Plus(All([',', Attr]))),
 		')'
-		),
+		],
 	(lMatches: hash[]) =>
 		return {attributes: lMatches}
 	)
 
 Id := Node<hash>(
-	All(
+	[
 		'#',
 		reIdent
-		),
+		],
 	(lMatches: hash[]) =>
 		return {lMatches[0]}
 	)
 
 Classes := Node<hash>(
-	Plus(All(
+	Plus([
 		'.',
 		reIdent
-		)),
+		]),
 	(lMatches: hash[]) =>
 		return {classes: lMatches}
 	)
 
 Header := Node<hash>(
-	All(
+	[
 		reIdent,
 		Optional(Attributes),
 		Optional(Id),
 		Optional(Classes)
-		),
+		],
 	(lMatches: hash[]) =>
 		[name, ...lOthers] := lMatches
 		return Object.assign {tag: name}, lOthers...
@@ -70,20 +70,20 @@ Header := Node<hash>(
 ThisGrammar := ($: TState) => Keppel($)
 
 Body := Node<hash>(
-	All(
+	[
 		'[',
 		ThisGrammar,
 		']'
-		),
+		],
 	(lMatches: hash[]) =>
 		return {lMatches[0]}
 	)
 
 Element: TRule := Node<hash>(
-	All(
+	[
 		Header,
 		Optional(Body)
-		),
+		],
 	(lMatches: hash[]) =>
 		[header, body] := lMatches
 		return Object.assign({type: 'element', ...header}, body || {})
@@ -102,7 +102,7 @@ FreeText := Node<hash>(
 	);
 
 Keppel := Node<hash>(
-	Plus(Any(Element, FreeText)),
+	Plus(Any([Element, FreeText])),
 	(lMatches: hash[]) =>
 		console.log "STACK:"
 		console.log lMatches

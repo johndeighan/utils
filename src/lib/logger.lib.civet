@@ -21,11 +21,12 @@ import {
 	} from './log-levels.lib.ts'
 import {
 	getFormatter, indentLog, undentLog,
-	getConsoleLog, clearConsoleLog,
+	getConsoleLog, clearConsoleLog, logIndent,
 	} from './log-formatter.lib.ts'
 
 export {
-	getLogLevel, isLogLevel, setLogLevel, pushLogLevel, popLogLevel,
+	getLogLevel, isLogLevel, setLogLevel,
+	pushLogLevel, popLogLevel,
 	}
 export type {TLogLevel}
 

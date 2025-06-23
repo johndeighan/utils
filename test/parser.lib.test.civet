@@ -1,14 +1,15 @@
 # parser.lib.test.civet
 
 import {
-	hash, getCmdArgs, DBG,
+	hash, getCmdArgs, DBG, o,
 	} from '../src/lib/utils.lib.ts'
 import {
 	KeppelGrammar,
 	} from './parser/keppel.grammar.ts'
 import {
-	TState, getState, StringMatcher, RegexMatcher,
-	getParser, Node,
+	TState, getNewState, StringMatcher, RegexMatcher,
+	All, Any, Plus, Optional, Star,
+	getParser, Node, getLineAndColumn,
 	} from '../src/lib/parser.lib.ts'
 import {
 	equal, same, like, succeeds, fails, truthy, falsy,
@@ -19,23 +20,29 @@ getCmdArgs()
 htmlParse := getParser<hash>(KeppelGrammar)
 
 # ---------------------------------------------------------------------------
-# --- test getState()
+# --- test getLineAndColumn()
 
-equal getState('abc'), {
+equal getLineAndColumn('abc\ndef\nghi', 5), [2, 2]
+equal getLineAndColumn('abcd\nefgh\nijkl', 5), [2, 1]
+
+# ---------------------------------------------------------------------------
+# --- test getNewState()
+
+equal getNewState('abc'), {
 	text: 'abc'
 	ignore: []
 	stack: []
 	sp: 0
-	lastPos: {pos: 0, line: 1, column: 1}
+	lastPos: 0
 	pos: 0
 	}
 
-equal getState('abc', 2), {
+equal getNewState('abc', 2), {
 	text: 'abc'
 	ignore: []
 	stack: []
 	sp: 0
-	lastPos: {pos: 0, line: 1, column: 1}
+	lastPos: 0
 	pos: 2
 	}
 
@@ -44,17 +51,17 @@ equal getState('abc', 2), {
 
 (() =>
 	rule := StringMatcher('abc')
-	like rule(getState('abcdef')), {pos: 3}
-	fails () => rule(getState('abcdef', 3))
+	like rule(getNewState('abcdef')), {pos: 3}
+	fails () => rule(getNewState('abcdef', 3))
 	)()
 
 (() =>
 	rule := StringMatcher('def')
-	like rule(getState('abcdef')), {pos: 0}
-	like rule(getState('abcdef', 3)), {pos: 6}
+	like rule(getNewState('abcdef')), {pos: 0}
+	like rule(getNewState('abcdef', 3)), {pos: 6}
 
 	# --- On failure to match, should return the same TState
-	$ := getState('abcdef')
+	$ := getNewState('abcdef')
 	same rule($), $
 	)()
 
@@ -63,17 +70,17 @@ equal getState('abc', 2), {
 
 (() =>
 	rule := RegexMatcher(/^[\.\#]\s/)
-	like rule(getState('. abc')), {pos: 2}
-	fails () => rule(getState('. abc', 1))
+	like rule(getNewState('. abc')), {pos: 2}
+	fails () => rule(getNewState('. abc', 1))
 	)()
 
 (() =>
 	rule := RegexMatcher(/^[\.\#]\s/)
-	like rule(getState('abc . def')), {pos: 0}
-	like rule(getState('abc . def', 4)), {pos: 6}
+	like rule(getNewState('abc . def')), {pos: 0}
+	like rule(getNewState('abc . def', 4)), {pos: 6}
 
 	# --- On failure to match, should return the same TState
-	$ := getState('abc . abc')
+	$ := getNewState('abc . abc')
 	same rule($), $
 	)()
 
@@ -93,39 +100,116 @@ equal getState('abc', 2), {
 	#     what it returns is put on the stack
 	rule := Node<string>('abc', reducer)
 
-	$ := getState('abcdef')
+	$ := getNewState('abcdef')
 	equal rule($), {
 	   "text": "abcdef",
 	   "ignore": [],
 	   "stack": ['X'],
 	   "sp": 1,
-	   "lastPos": {
-	      "pos": 0,
-	      "line": 1,
-	      "column": 1
-			},
+	   "lastPos": 0
 		"pos": 3
 		}
 	)()
 
 # ---------------------------------------------------------------------------
+# Build and test some very simple rules
 
-equal htmlParse('p'), {
-	type: 'element'
-	tag: 'p'
-	}
+ident := ///^( [a-zA-Z_$] [a-zA-Z0-9_$]* ) ///
+number := ///^
+	(
+		(?:
+			[0-9]+ \.? [0-9]* | \. [0-9]+
+			)
+		(?:
+			[eE] [-+]? [0-9]+
+			)?
+		)\b
+	///
+op := /[+\-*\/]/
 
-keppelStr99 := """
-	body [    // I am a comment
-	  div #navbar .navbar.navbar-inverse.navbar-fixed-top [
-		 div.navbar-inner [
-			a(href="#", test="My test").brand ['Awesome']
-			ul.nav [
-			  li[ a(href="#") ['Item 1'] ]
-			  li[ a(href="#") ['Item 2'] ]
-			]
-		 ]
-	  ]
+# --- Define the grammer productions
+
+value := [ident, number] |> Any
+stmt := Any [
+	[ident, '=', value]
+	[value, op, value]
 	]
-	// I am a comment in the end of input
-	"""
+program := [stmt, [';', stmt] |> Star]
+
+(() =>
+	parse := getParser(ident)
+	succeeds () => parse 'abc'
+	succeeds () => parse ' abc'  # --- whitespace skipped
+	fails    () => parse '1abc'
+	fails    () => parse 'abc def'
+	succeeds () => getParser(ident, o'partial') 'abc def'
+	)()
+
+(() =>
+	parse := getParser(op)
+	succeeds () => parse '+'
+	succeeds () => parse '  -  '
+	succeeds () => parse '*'
+	succeeds () => parse '  /  '
+	fails    () => parse '!'
+	)()
+
+(() =>
+	parse := getParser(value)
+	succeeds () => parse 'n'
+	succeeds () => parse '  n  '
+	succeeds () => parse '42'
+	succeeds () => parse '  42  '
+	fails    () => parse '!'
+	)()
+
+(() =>
+	parse := getParser(stmt)
+	succeeds () => parse 'n = 42'
+	succeeds () => parse '  n=42  '
+	succeeds () => parse 'a=b'
+	succeeds () => parse '  a = b  '
+	fails    () => parse '!'
+	)()
+
+(() =>
+	parse := getParser(number)
+	succeeds () => parse '42'
+	succeeds () => parse '  42  '
+	succeeds () => parse '3.14'
+	succeeds () => parse '  3.14  '
+	succeeds () => parse '3.14e5'
+	succeeds () => parse '  3.14E5  '
+	fails    () => parse '!'
+	)()
+
+(() =>
+	parse := getParser(program)
+	succeeds () => parse 'x = 42; y = 33; x*y'
+	succeeds () => parse """
+		x = 42;
+		y = 33;
+		x * y
+		"""
+	)()
+# ---------------------------------------------------------------------------
+
+# equal htmlParse('p'), {
+# 	type: 'element'
+# 	tag: 'p'
+# 	}
+#
+# keppelStr99 := """
+# 	body [    // I am a comment
+# 	  div #navbar .navbar.navbar-inverse.navbar-fixed-top [
+# 		 div.navbar-inner [
+# 			a(href="#", test="My test").brand ['Awesome']
+# 			ul.nav [
+# 			  li[ a(href="#") ['Item 1'] ]
+# 			  li[ a(href="#") ['Item 2'] ]
+# 			]
+# 		 ]
+# 	  ]
+# 	]
+# 	// I am a comment in the end of input
+# 	"""

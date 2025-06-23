@@ -410,7 +410,8 @@ export sleepSync := (sec: number): void =>
 
 export spaces := (n: number): string =>
 
-	return " ".repeat(n)
+
+	return (n <= 0) ? '' : ' '.repeat(n)
 
 # ---------------------------------------------------------------------------
 
@@ -421,7 +422,7 @@ export spaces := (n: number): string =>
 
 export tabs := (n: number): string =>
 
-	return "\t".repeat(n)
+	return (n <= 0) ? '' : '\t'.repeat(n)
 
 # ---------------------------------------------------------------------------
 
@@ -608,13 +609,17 @@ export escapeStr := (
 		): string =>
 
 	{
-		style, hReplace, block, offset, poschar
+		style, hReplace, block, offset, poschar,
+		beginchar, endchar
 		} := getOptions hOptions, {
 			style: 'debug'
 			hReplace: undef
 			block: false
 			offset: undef
+			range: undef      # --- can be [int, int]
 			poschar: '┊'
+			beginchar: '⟨'
+			endchar: '⟩'
 			}
 
 	let hRealReplace: hash = {}
@@ -631,10 +636,21 @@ export escapeStr := (
 		else
 			hRealReplace = hDebugReplace
 
+	[beginPos, endPos] := (
+		if defined(range) && isArray(range)
+			range
+		else
+			[undef, undef]
+		)
+
 	lParts: string[] := []
 	for ch,i of str
 		if (i == offset)
 			lParts.push poschar
+		else if (i == beginPos)
+			lParts.push beginchar
+		else if (i == endPos)
+			lParts.push endchar
 		lParts.push (hRealReplace[ch] || ch)
 	if (offset == str.length)
 		lParts.push poschar

@@ -1,6 +1,5 @@
 # fs.lib.civet
 
-import {sprintf} from "@std/fmt/printf"
 import {debounce} from '@std/async/debounce'
 import {
 	existsSync, emptyDirSync, ensureDirSync,
