@@ -2,6 +2,7 @@ to do
 
 TRY: cls && task build:parser && task temp
 still won't parse
+(NOTE: We're on branch issue1)
 
 parser test should test some very simple grammars
 before testing the keppel grammar

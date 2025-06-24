@@ -2,7 +2,8 @@
 
 import {sprintf} from "@std/fmt/printf"
 import {
-	undef, defined, notdefined, hash,
+	undef, defined, notdefined,
+	array, hash, isEmpty, nonEmpty,
 	} from './datatypes.lib.ts'
 import {
 	getOptions, escapeStr, spaces,
@@ -18,34 +19,28 @@ import {
 export type TState = {
 	text: string
 	ignore: any[]
-	lMatches?: string[]
-	stack: any[]
-	sp: number
-	lastPos: number
+	lMatches: string[]
+	stack?: any[]
 	pos: number
+	nolog?: boolean
 	}
 
 export type TRule = ($: TState) => TState
 
 # --- Anything that can be converted to a TRule
-type TLaxRule = (string | RegExp | TRule | TLaxRule[])
-
-type TReducer<T> = (lMatches: T[], $: TState, $next: TState) => T?
-type TCallback = ($: TState, $next: TState) => void
+type TLaxRule = (string | RegExp | TRule)
 
 # ---------------------------------------------------------------------------
 
-export function getNewState(
+export getNewState := (
 		text: string
 		pos: number = 0
-		): TState
+		): TState =>
 
 	return {
 		text
 		ignore: []
-		stack: []
-		sp: 0
-		lastPos: 0
+		lMatches: []
 		pos
 		}
 
@@ -59,6 +54,8 @@ DBGMATCH := (
 		$next: TState
 		): void =>
 
+	if $.nolog
+		return
 	str := escapeStr($.text.substring($.pos, $next.pos))
 	buf := spaces(nbuf - str.length - 1 - 3*logIndent)
 	DBG "[+#{sprintf('%3d', $.pos)}] #{str}#{buf}#{desc}"
@@ -71,9 +68,25 @@ DBGNOMATCH := (
 		$: TState
 		): void =>
 
+	if $.nolog
+		return
 	buf := spaces(nbuf - 3*logIndent)
 	DBG "[-#{sprintf('%3d', $.pos)}]#{buf}#{desc}"
 	return
+
+# ---------------------------------------------------------------------------
+
+skipIgnored := ($: TState): TState =>
+
+	if isEmpty($.ignore)
+		return $
+	else
+		$.ignore.push (x: TState): TState => return x
+#		$.nolog = true
+		result := $.ignore.at(-1)($)
+#		$.nolog = false
+		$.ignore.pop()
+		return result
 
 # ---------------------------------------------------------------------------
 
@@ -81,9 +94,8 @@ export RegexMatcher := (re: RegExp): TRule =>
 
 	return ($: TState): TState =>
 
-		$.lastPos = $.pos
-
-		lMatches := re.exec($.text.substring($.pos))
+		$cur := skipIgnored($)
+		lMatches := re.exec($cur.text.substring($.pos))
 		if (not lMatches)
 			DBGNOMATCH re.toString(), $
 			return $
@@ -92,7 +104,7 @@ export RegexMatcher := (re: RegExp): TRule =>
 		#     return the next state
 		numChars := lMatches[0].length
 		$next := {
-			...$,
+			...$cur,
 			pos: $.pos + numChars,
 			}
 		$.lMatches = lMatches
@@ -105,11 +117,11 @@ export StringMatcher := (str: string): TRule =>
 
 	return ($: TState): TState =>
 
-		$.lastPos = $.pos
-		if ($.text.startsWith(str, $.pos))
+		$cur := skipIgnored($)
+		if ($cur.text.startsWith(str, $cur.pos))
 			$next := {
-				...$,
-				pos: $.pos + str.length
+				...$cur,
+				pos: $cur.pos + str.length
 				}
 			DBGMATCH "'#{escapeStr(str)}'", $, $next
 			return $next
@@ -121,9 +133,6 @@ export StringMatcher := (str: string): TRule =>
 
 export function getRule(rule: TLaxRule): TRule
 
-	if Array.isArray(rule)
-		lRules := rule.map(getRule)
-		return StrictAll(lRules)
 	if (typeof(rule) == 'function')
 		return rule
 	if (rule instanceof RegExp)
@@ -134,110 +143,119 @@ export function getRule(rule: TLaxRule): TRule
 
 # ---------------------------------------------------------------------------
 
-skipIgnored := ($: TState): TState =>
+unpackList := (lArgs: array): [string, TRule[]] =>
 
-	return ($.ignore.length == 0) ? $ : $.ignore.at(-1)($)
+	if (typeof lArgs[0] == 'string')
+		return [lArgs[0], lArgs[1].map(getRule)]
+	else
+		return ['', lArgs[0].map(getRule)]
+
+# ---------------------------------------------------------------------------
+
+unpackOne := (lArgs: array): [string, TRule] =>
+
+	if (typeof lArgs[0] == 'string')
+		return [lArgs[0], getRule(lArgs[1])]
+	else
+		return ['', getRule(lArgs[0])]
 
 # ---------------------------------------------------------------------------
 # --- Match a sequence of rules left to right
 
-export function All(
-		lLaxRules: TLaxRule[]
-		hOptions: hash = {}
-		): TRule
+export function All(...lArgs: array): TRule
 
-	lRules := lLaxRules.map getRule
-	return StrictAll(lRules, hOptions)
-
-# ---------------------------------------------------------------------------
-
-export function StrictAll(
-		lRules: TRule[]
-		hOptions: hash = {}
-		): TRule
-
-	{name} := getOptions hOptions, {
-		name: undef
-		}
+	[name, lRules] := unpackList(lArgs)
 	return ($) =>
-		DBG "Try: #{(name || 'All')}", INDENT
-		let $cur = $
+		DBG "#{name} &", INDENT
+		$org := $   # save to use as return value on failure
+		$ = Object.assign({}, $org)
 		for rule,i of lRules
-			$before := (i > 0) ? skipIgnored($cur) : $cur
-			$after := rule($before)
-			if ($after == $before)
-				# --- if one rule fails: fail all
+			DBG "-----"
+			$next := rule($)
+			if ($next == $)
 				DBG 'FAIL', UNDENT
-				return $
+				return $org
+			$ = $next
 
-#			if ($after.pos > $before.pos)
-#				# --- All() should fail if all rules match,
-#				#     but no progress is made
-			$cur = $after
-			DBG ".....#{i}"
-		DBG UNDENT
-		return $cur
+		DBG 'OK', UNDENT
+		return $
 
 # ---------------------------------------------------------------------------
-# --- Match any of the rules
-#     with left-to-right preference
+# --- Match any of the rules, check left to right
 
-export function Any(
-		lLaxRules: TLaxRule[]
-		hOptions: hash = {}
-		): TRule
+export function Any(...lArgs: array): TRule
 
-	lRules := lLaxRules.map getRule
-	{name} := getOptions hOptions, {
-		name: undef
-		}
+	[name, lRules] := unpackList(lArgs)
 	return ($) =>
-		DBG "Try: #{(name || 'Any')}", INDENT
+		DBG "#{name} |", INDENT
 		for rule,i of lRules
+			DBG "-----"
 			$next := rule($)
 			if ($next != $)
-				DBG UNDENT
+				DBG 'OK', UNDENT
 				return $next
-			DBG ".....#{i}"
-		DBG UNDENT
+		DBG 'FAIL', UNDENT
 		return $
 
 # ---------------------------------------------------------------------------
 # --- Match a rule 1 or more times
 
-export function Plus(laxRule: TLaxRule): TRule
+export function Plus(...lArgs: array): TRule
 
-	rule := getRule laxRule
+	[name, rule] := unpackOne(lArgs)
 	return ($) =>
-		while (true)
-			$cur := skipIgnored($)
-			$next := rule($cur)
-			if ($next == $cur)
-				return $
+		DBG "#{name} +", INDENT
+		$first := rule($)
+		if ($first == $)
+			DBG "FAIL", UNDENT
+			return $     # --- no match
+		$ = $first
+		loop
+			$next := rule($)
+			if ($next == $)
+				DBG "OK", UNDENT
+				return $next
 			$ = $next
 
 # ---------------------------------------------------------------------------
 # --- Match a rule optionally
 
-export function Optional(laxRule: TLaxRule): TRule
+export function Optional(...lArgs: array): TRule
 
-	rule := getRule laxRule
+	[name, rule] := unpackOne(lArgs)
 	return ($) =>
+		DBG "#{name} ?", INDENT
 		$next := rule($)
 		if ($next != $)
+			DBG "OK - matched", UNDENT
 			return $next
+		else
+			# --- Otherwise return a shallow copy
+			#     of the state to still indicate success
+			DBG "OK - not matched", UNDENT
+			return Object.assign({}, $)
 
-		# --- Otherwise return a shallow copy
-		#     of the state to still indicate a match
-		return {...$}
+# ---------------------------------------------------------------------------
+
+export function Star(...lArgs: array): TRule
+
+	[name, rule] := unpackOne(lArgs)
+	return ($) =>
+		DBG "#{name} *", INDENT
+		$ = Object.assign({}, $);
+		loop
+			$next := rule($)
+			if ($next == $)
+				DBG "OK", UNDENT
+				return $next
+			$ = $next
 
 # ---------------------------------------------------------------------------
 
-export function Star(laxRule: TLaxRule): TRule
-
-	return Optional(Plus(laxRule))
-
-# ---------------------------------------------------------------------------
+type TReducer<T> = (
+	$: TState
+	$next: TState
+	) => T?
 
 export function Node<T>(
 		laxRule: TLaxRule,
@@ -251,10 +269,12 @@ export function Node<T>(
 			return $
 
 		# --- We have a match
-		node := reducer($.stack.slice($.sp, $next.sp), $, $next)
-		$next.sp = $.sp
-		if (node != null)
-			$.stack[$next.sp++] = node
+		node := reducer($, $next)
+		if defined(node)
+			if $next.stack
+				$next.stack.push node
+			else
+				$next.stack = [node]
 		return $next
 
 # ---------------------------------------------------------------------------
@@ -282,10 +302,6 @@ export getLineAndColumn := (text: string, pos: number) =>
 
 # ---------------------------------------------------------------------------
 
-type TStringMapper<T> = (str: string) => T
-
-# ---------------------------------------------------------------------------
-
 export function Ignore(
 		laxToIgnore: TLaxRule,
 		laxRule: TLaxRule
@@ -303,35 +319,42 @@ export function Ignore(
 # ---------------------------------------------------------------------------
 # --- Returns a function that:
 #        1. accepts a string
-#        2. returns a T
+#        2. returns void
+
+type TParser = (str: string) => void
 
 export function getParser<T>(
 		laxRule: TLaxRule
 		hOptions: hash = {}
-		): TStringMapper<T>
+		): TParser
 
 	{pos, partial, reSkip} := getOptions hOptions, {
 		pos: 0
 		partial: false
 		reSkip: /^\s+/
 		}
-	rule := defined(reSkip) ? Ignore(reSkip, laxRule) : getRule laxRule
+	rule := getRule laxRule
 
-	return (text: string): T =>
-		$ := getNewState(text, pos)
+	return (text: string): T? =>
+		$ := {
+			text
+			ignore: defined(reSkip) ? [RegexMatcher(reSkip)] : []
+			lMatches: []
+			pos: 0
+			}
 		$next := rule($)
 
 		if ($ == $next)
 			[line, column] := getLineAndColumn(text, $.pos)
 			throw new SyntaxError("""
-				No match at pos #{$.lastPos}
+				No match at pos #{$.pos}
 				Remainder: #{escapeStr(text.slice($.pos))}
 				""")
 		if not partial && ($next.pos < text.length)
 			# --- Not all input consumed
 			[line, column] := getLineAndColumn(text, $.pos)
 			throw new SyntaxError("""
-				Stopped at pos #{$.lastPos}
+				Stopped at pos #{$.pos}
 				Remainder: #{escapeStr(text.slice($.pos))}
 				""")
-		return $.stack[0]
+		return $next.stack ? $next.stack[0] : undef

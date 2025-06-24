@@ -121,6 +121,7 @@
 		"build:parser": "
 			   echo compile: parser
 			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
+			&& civet --inline-map -o .ts -c test/parser/keppel.grammar.civet
 			&& echo check: parser
 			&& deno check -q src/lib/parser.lib.ts
 			",

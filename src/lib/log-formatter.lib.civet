@@ -41,15 +41,6 @@ levelStr := (level: number): string =>
 		else return 'UNKNOWN'
 
 # ---------------------------------------------------------------------------
-
-msgStr := (msg: string): string =>
-
-	if msg.startsWith('=====') || msg.startsWith('-----')
-		return msg
-	else
-		return prefix() + msg
-
-# ---------------------------------------------------------------------------
 # --- str may contain:
 #        $ts  - num milliseconds since start
 #        $tt  - num milliseconds since last formatting
@@ -65,7 +56,7 @@ export getFormatter := (str: string, dest: string) =>
 			'$ts':  sinceLoadStr(datetime)
 			'$tt':  sinceLoadStr(datetime)
 			'$ll':  levelStr(level)
-			'$msg': msgStr(msg)
+			'$msg': prefix() + msg
 			})
 		if (dest == 'console')
 			lConsoleLog.push result

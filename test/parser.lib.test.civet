@@ -9,7 +9,7 @@ import {
 import {
 	TState, getNewState, StringMatcher, RegexMatcher,
 	All, Any, Plus, Optional, Star,
-	getParser, Node, getLineAndColumn,
+	getParser, getLineAndColumn,
 	} from '../src/lib/parser.lib.ts'
 import {
 	equal, same, like, succeeds, fails, truthy, falsy,
@@ -89,7 +89,6 @@ equal getNewState('abc', 2), {
 
 (() =>
 	reducer := (
-			lMatches: string[]
 			$: TState
 			$next: TState
 			): string =>

@@ -1,6 +1,8 @@
 # keppel.grammar.civet
 
-import {hash} from '../../src/lib/datatypes.lib.ts'
+import {
+	undef, hash, assert,
+	} from '../../src/lib/datatypes.lib.ts'
 import {
 	TRule, TState,
 	Ignore, All, Any, Plus, Optional, Node,
@@ -16,98 +18,101 @@ QString: TRule := Any [
 	]
 
 Attr := Node<hash>(
-	[
+	All('Attr', [
 		reIdent,
 		'=',
 		QString
-		],
-	(lMatches: hash[]) =>
-		[name, value] := lMatches
+		]),
+	($, $next) =>
+		[name, value] := $next.lMatches
 		return {name, value}
 	)
 
 Attributes := Node<hash>(
-	[
+	All('Attributes', [
 		'(',
 		Attr,
-		Optional(Plus(All([',', Attr]))),
+		Optional(Plus(All('MoreAttr', [',', Attr]))),
 		')'
-		],
-	(lMatches: hash[]) =>
-		return {attributes: lMatches}
+		]),
+	($, $next) =>
+		return {attributes: $next.lMatches}
 	)
 
 Id := Node<hash>(
-	[
+	All('Id', [
 		'#',
 		reIdent
-		],
-	(lMatches: hash[]) =>
-		return {lMatches[0]}
+		]),
+	($, $next) =>
+		return {$next.lMatches[0]}
 	)
 
 Classes := Node<hash>(
-	Plus([
+	Plus(All([
 		'.',
 		reIdent
-		]),
-	(lMatches: hash[]) =>
-		return {classes: lMatches}
+		])),
+	($, $next) =>
+		return {classes: $next.lMatches}
 	)
 
 Header := Node<hash>(
-	[
+	All('Header', [
 		reIdent,
 		Optional(Attributes),
 		Optional(Id),
 		Optional(Classes)
-		],
-	(lMatches: hash[]) =>
-		[name, ...lOthers] := lMatches
+		]),
+	($, $next) =>
+		[name, ...lOthers] := $next.lMatches
 		return Object.assign {tag: name}, lOthers...
 	)
 
 ThisGrammar := ($: TState) => Keppel($)
 
 Body := Node<hash>(
-	[
+	All('Body', [
 		'[',
 		ThisGrammar,
 		']'
-		],
-	(lMatches: hash[]) =>
-		return {lMatches[0]}
+		]),
+	($, $next) =>
+		return {$next.lMatches[0]}
 	)
 
 Element: TRule := Node<hash>(
-	[
+	All('Element', [
 		Header,
 		Optional(Body)
-		],
-	(lMatches: hash[]) =>
-		[header, body] := lMatches
-		return Object.assign({type: 'element', ...header}, body || {})
+		]),
+	($, $next) =>
+		[header, body] := $next.stack || []
+		if (typeof header == 'object')
+			return Object.assign({type: 'element', ...header}, body || {})
+		else
+			return undef
 	)
 
 FreeText := Node<hash>(
 	QString,
-	(lMatches: hash[]) =>
+	($, $next) =>
 		console.log "Free Text:"
-		console.log lMatches
+		console.log $next.lMatches
 		console.log "-----"
 		return {
 			type: 'free text',
-			value: lMatches[0]
+			value: $next.lMatches[0]
 			}
 	);
 
 Keppel := Node<hash>(
 	Plus(Any([Element, FreeText])),
-	(lMatches: hash[]) =>
+	($, $next) =>
 		console.log "STACK:"
-		console.log lMatches
+		console.log $next.stack
 		console.log '------'
-		return lMatches[0]
+		return $next.stack[0] || {}
 	)
 
 # --- Ignore line comments and all whitespace
