@@ -9,7 +9,10 @@ import {
 	} from '@std/log'
 
 import {
-	undef, defined, notdefined, hash, isString,
+	getPrefix,
+	} from './unicode.lib.ts'
+import {
+	undef, defined, notdefined, hash, isString, nonEmpty,
 	} from './datatypes.lib.ts'
 import {
 	spaces, o, sinceLoadStr, getOptions, OL, ML, pass, croak,
@@ -27,6 +30,8 @@ import {
 export {
 	getLogLevel, isLogLevel, setLogLevel,
 	pushLogLevel, popLogLevel,
+	indentLog, undentLog,
+	clearConsoleLog, getConsoleLog,
 	}
 export type {TLogLevel}
 
@@ -173,12 +178,13 @@ output := (level: TLogLevel, lItems: any[]): void =>
 				undentLog()
 			else
 				str := isString(item) ? item : ML(item)
-				switch level
-					when 'debug': logger.debug str
-					when 'info':  logger.info str
-					when 'warn':  logger.warn str
-					when 'error': logger.error str
-					else pass()
+				if nonEmpty(str)
+					switch level
+						when 'debug': logger.debug str
+						when 'info':  logger.info str
+						when 'warn':  logger.warn str
+						when 'error': logger.error str
+						else pass()
 
 	return
 
@@ -217,3 +223,50 @@ export DBGVALUE := (label: string, value: any): void =>
 export removeLogFile := (): void =>
 
 	Deno.removeSync logFileName
+	return
+
+# ---------------------------------------------------------------------------
+
+export type TFormatter<T> = (desc: string, item: T?) => string
+
+export class TreeLogger<T>
+
+	# --- data fields
+	indentLevel: number = 0
+	logLevel: TLogLevel = 'debug'
+	formatter: TFormatter<T>
+
+	# --- methods
+	constructor(
+			@formatter = (desc: string, item: T?) => desc
+			logLevel: string = 'debug'
+			)
+		if isLogLevel(logLevel)
+			@logLevel = logLevel
+
+	start(desc: string, item: T?=undef): void
+		str := @formatter(desc, item)
+		pre := getPrefix(@indentLevel, 'plain')
+		output @logLevel, [pre + str]
+		@indentLevel += 1
+		return
+
+	log(desc: string, item: T?=undef): void
+		str := @formatter(desc, item)
+		pre := getPrefix(@indentLevel, 'plain')
+		output @logLevel,  [pre + str]
+		return
+
+	succeed(desc: string, item: T?=undef): void
+		str := @formatter(desc, item)
+		pre := getPrefix(@indentLevel, 'withArrow')
+		output @logLevel,  [pre + str]
+		@indentLevel -= 1
+		return
+
+	fail(desc: string, item: T?=undef): void
+		str := @formatter(desc, item)
+		pre := getPrefix(@indentLevel, 'withArrow')
+		output @logLevel,  [pre + str]
+		@indentLevel -= 1
+		return

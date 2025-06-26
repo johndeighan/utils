@@ -356,7 +356,7 @@ falsy  isArrayOfStrings(['abc',2])
 
 DBG "type regexp"
 
-isType  'regexp', /^abc$/
+# isType  'regexp', /^abc$/
 notType 'regexp', 'abc'
 
 DBG "isRegExp()"

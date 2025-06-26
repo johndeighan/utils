@@ -9,7 +9,7 @@ import {
 import {getLogLevel} from './log-levels.lib.ts'
 
 export let logIndent: number = 0
-prefix := () => spaces(3).repeat(logIndent)
+getPrefix := () => spaces(3).repeat(logIndent)
 
 # --- Everything returned by a formatter is also
 #     appended to this string
@@ -56,7 +56,7 @@ export getFormatter := (str: string, dest: string) =>
 			'$ts':  sinceLoadStr(datetime)
 			'$tt':  sinceLoadStr(datetime)
 			'$ll':  levelStr(level)
-			'$msg': prefix() + msg
+			'$msg': getPrefix() + msg
 			})
 		if (dest == 'console')
 			lConsoleLog.push result

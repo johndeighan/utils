@@ -1,8 +1,8 @@
 to do
 
-TRY: cls && task build:parser && task temp
-still won't parse
-(NOTE: We're on branch issue1)
+if a parse fails, we don't get the last good position
+
+use getPrefix() from unicode.lib.civet in log-formatter
 
 parser test should test some very simple grammars
 before testing the keppel grammar

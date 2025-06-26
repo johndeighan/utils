@@ -1,57 +1,9 @@
 "use strict";
-class Fetcher<T> {
+// temp.civet
 
-	iter: Iterator<T>
-	buffer: (T | undefined) = undefined
-
-	eofValue: T;constructor(iter1: Iterator<T>, eofValue: T){this.iter = iter1;this.eofValue = eofValue;}
-
-	peek(): T {
-		if (this.buffer === undefined) {
-			const {value, done} = this.iter.next()
-			if (done) {
-				return this.eofValue
-			}
-			else {
-				this.buffer = value
-				return value
-			}
-		}
-		else {
-			return this.buffer
-		}
-	}
-
-	get(): T {
-		const result: T = (
-			(()=>{if (this.buffer === undefined) {
-				const {value, done} = this.iter.next()
-				if (done) {
-					return this.eofValue
-				}
-				else {
-					return value
-				}
-			}
-			else {
-				const save: T = this.buffer
-				this.buffer = undefined
-				return save
-			}})()
-			)
-		return result
-	}
+const lFruit: string[] = ['apple','pear','peach']
+for (const fruit of lFruit) {
+	console.log(fruit)
 }
 
-const range = function*(n: number): Generator<number, void, void> {
-	let i = 0
-	while (i < n) {
-		yield i
-		i += 1
-	}
-	return
-}
-
-const fetcher = new Fetcher<number>(range(3), -1)
-
-console.log(fetcher.get())
+//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidGVtcC5jaXZldC50c3giLCJzb3VyY2VzIjpbInRlbXAuY2l2ZXQiXSwibWFwcGluZ3MiOiI7QUFBQSxhQUFZO0FBQ1osQUFBQTtBQUNBLEFBQWdCLE1BQWhCLE1BQU0sQ0FBQyxDQUFDLE1BQU0sQ0FBQyxDQUFDLENBQUMsQ0FBRSxDQUFDLENBQUMsT0FBTyxDQUFDLE1BQU0sQ0FBQyxPQUFPLENBQUM7QUFDNUMsQUFBQSxBQUFBLEdBQUcsQ0FBQyxDQUFBLE1BQUEsS0FBSyxDQUFDLEVBQUUsQ0FBQyxNQUFNLENBQUEsQ0FBQSxDQUFBO0FBQ25CLEFBQUEsQ0FBQyxPQUFPLENBQUMsR0FBRyxDQUFBLEFBQUMsS0FBSyxDO0FBQUEsQ0FBQTtBQUNsQiIsIm5hbWVzIjpbXSwic291cmNlc0NvbnRlbnQiOlsiIyB0ZW1wLmNpdmV0XG5cbmxGcnVpdDogc3RyaW5nW10gOj0gWydhcHBsZScsJ3BlYXInLCdwZWFjaCddXG5mb3IgZnJ1aXQgb2YgbEZydWl0XG5cdGNvbnNvbGUubG9nIGZydWl0XG4iXX0=

@@ -1,43 +1,5 @@
-class Fetcher<T>
+# temp.civet
 
-	iter: Iterator<T>
-	buffer: T? = undefined
-
-	constructor(@iter: Iterator<T>, @eofValue: T)
-
-	peek(): T
-		if (@buffer == undefined)
-			{value, done} := @iter.next()
-			if done
-				return @eofValue
-			else
-				@buffer = value
-				return value
-		else
-			return @buffer
-
-	get(): T
-		result: T := (
-			if (@buffer == undefined)
-				{value, done} := @iter.next()
-				if done
-					@eofValue
-				else
-					value
-			else
-				save: T := @buffer
-				@buffer = undefined
-				save
-			)
-		return result
-
-range := (n: number): Generator<number, void, void> ->
-	let i = 0
-	while (i < n)
-		yield i
-		i += 1
-	return
-
-fetcher := new Fetcher<number>(range(3), -1)
-
-console.log fetcher.get()
+lFruit: string[] := ['apple','pear','peach']
+for fruit of lFruit
+	console.log fruit

@@ -18,6 +18,31 @@
 
 		// --------------------------------------------------------------------
 
+		"build:unicode": "
+			   echo compile: unicode
+			&& civet --inline-map -o .ts -c src/lib/unicode.lib.civet
+			&& echo check: unicode
+			&& deno check -q src/lib/unicode.lib.ts
+			",
+
+		"buildandtest:unicode": "
+			   echo compile: unicode
+			&& civet --inline-map -o .ts -c src/lib/unicode.lib.civet
+			&& echo check: unicode
+			&& deno check -q src/lib/unicode.lib.ts
+			&& civet --inline-map -o .ts -c test/unicode.lib.test.civet
+			&& echo test: unicode
+			&& deno test -qA --reporter dot test/unicode.lib.test.ts -- -D
+			",
+
+		"test:unicode": "
+			   civet --inline-map -o .ts -c test/unicode.lib.test.civet
+			&& echo test: unicode
+			&& deno test -A test/unicode.lib.test.ts -- -D
+			",
+
+		// --------------------------------------------------------------------
+
 		"build:typescript": "
 			   echo compile: typescript
 			&& civet --inline-map -o .ts -c src/lib/typescript.lib.civet
@@ -118,34 +143,6 @@
 
 		// --------------------------------------------------------------------
 
-		"build:parser": "
-			   echo compile: parser
-			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
-			&& civet --inline-map -o .ts -c test/parser/keppel.grammar.civet
-			&& echo check: parser
-			&& deno check -q src/lib/parser.lib.ts
-			",
-
-		"buildandtest:parser": "
-			   echo compile: parser
-			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
-			&& echo check: parser
-			&& deno check -q src/lib/parser.lib.ts
-			&& civet --inline-map -o .ts -c test/parser.lib.test.civet
-			&& civet --inline-map -o .ts -c test/parser/keppel.grammar.civet
-			&& echo test: parser
-			&& deno test -qA --reporter dot test/parser.lib.test.ts -- -D
-			",
-
-		"test:parser": "
-			   civet --inline-map -o .ts -c test/parser.lib.test.civet
-			&& civet --inline-map -o .ts -c test/parser/keppel.grammar.civet
-			&& echo test: parser
-			&& deno test -A test/parser.lib.test.ts -- -D
-			",
-
-		// --------------------------------------------------------------------
-
 		"build:indent": "
 			   echo compile: indent
 			&& civet --inline-map -o .ts -c src/lib/indent.lib.civet
@@ -242,6 +239,31 @@
 			   civet --inline-map -o .ts -c test/logger.lib.test.civet
 			&& echo test: logger
 			&& deno test -A test/logger.lib.test.ts -- -D
+			",
+
+		// --------------------------------------------------------------------
+
+		"build:parser": "
+			   echo compile: parser
+			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
+			&& echo check: parser
+			&& deno check -q src/lib/parser.lib.ts
+			",
+
+		"buildandtest:parser": "
+			   echo compile: parser
+			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
+			&& echo check: parser
+			&& deno check -q src/lib/parser.lib.ts
+			&& civet --inline-map -o .ts -c test/parser.lib.test.civet
+			&& echo test: parser
+			&& deno test -qA --reporter dot test/parser.lib.test.ts -- -D
+			",
+
+		"test:parser": "
+			   civet --inline-map -o .ts -c test/parser.lib.test.civet
+			&& echo test: parser
+			&& deno test -A test/parser.lib.test.ts -- -D
 			",
 
 		// --------------------------------------------------------------------
@@ -573,7 +595,8 @@
 		// --------------------------------------------------------------------
 
 		"build:all": "
-				deno task build:typescript
+				deno task build:unicode
+			&& deno task build:typescript
 			&& deno task build:datatypes
 			&& deno task build:node-generator
 			&& deno task build:llutils
@@ -581,6 +604,7 @@
 			&& deno task build:log-levels
 			&& deno task build:log-formatter
 			&& deno task build:logger
+			&& deno task build:parser
 			&& deno task build:text-table
 			&& deno task build:pll
 			&& deno task build:nice
@@ -598,6 +622,10 @@
 
 		"test:all": "
 			   clear
+			&& civet --inline-map -o .ts -c test/unicode.lib.test.civet
+			&& echo test: unicode
+			&& deno test -qA --reporter dot test/unicode.lib.test.ts -- -D
+
 			&& civet --inline-map -o .ts -c test/typescript.lib.test.civet
 			&& echo test: typescript
 			&& deno test -qA --reporter dot test/typescript.lib.test.ts -- -D
@@ -629,6 +657,10 @@
 			&& civet --inline-map -o .ts -c test/logger.lib.test.civet
 			&& echo test: logger
 			&& deno test -qA --reporter dot test/logger.lib.test.ts -- -D
+
+			&& civet --inline-map -o .ts -c test/parser.lib.test.civet
+			&& echo test: parser
+			&& deno test -qA --reporter dot test/parser.lib.test.ts -- -D
 
 			&& civet --inline-map -o .ts -c test/text-table.lib.test.civet
 			&& echo test: text-table
@@ -701,7 +733,7 @@
 
 		"debug": "
 			   clear
-			&& civet --inline-map -o .ts -c test/temp.civet
+			&& civet -o .ts --inline-map -c test/temp.civet
 			&& deno check -q test/temp.ts
 			&& deno run -A --inspect-brk test/temp.ts
 			",
@@ -713,11 +745,25 @@
 			&& deno run -A test/temp2.ts
 			",
 
+		"debug2": "
+			   clear
+			&& civet --inline-map -o .ts -c test/temp2.civet
+			&& deno check -q test/temp2.ts
+			&& deno run -A --inspect-brk test/temp2.ts
+			",
+
 		"temp3": "
 			   clear
 			&& civet -o .ts -c test/temp3.civet
 			&& deno check -q test/temp3.ts
 			&& deno run -A test/temp3.ts
+			",
+
+		"debug3": "
+			   clear
+			&& civet --inline-map -o .ts -c test/temp3.civet
+			&& deno check -q test/temp3.ts
+			&& deno run -A --inspect-brk test/temp3.ts
 			",
 
 		"templib": "
@@ -742,7 +788,7 @@
 			",
 
 		"docs:all": "
-			deno doc --html --name=@jdeighan/utils src/lib/typescript.lib.ts src/lib/datatypes.lib.ts src/lib/node-generator.lib.ts src/lib/llutils.lib.ts src/lib/indent.lib.ts src/lib/logger.lib.ts src/lib/text-table.lib.ts src/lib/pll.lib.ts src/lib/nice.lib.ts src/lib/fs.lib.ts src/lib/symbols.lib.ts src/lib/exec.lib.ts src/lib/cielo.lib.ts src/lib/compile.lib.ts src/lib/utils.lib.ts src/lib/analyze.lib.ts src/lib/v8-stack.lib.ts src/lib/unit-test.lib.ts
+			deno doc --html --name=@jdeighan/utils src/lib/typescript.lib.ts src/lib/datatypes.lib.ts src/lib/node-generator.lib.ts src/lib/llutils.lib.ts src/lib/indent.lib.ts src/lib/logger.lib.ts src/lib/parser.lib.ts src/lib/text-table.lib.ts src/lib/pll.lib.ts src/lib/nice.lib.ts src/lib/fs.lib.ts src/lib/symbols.lib.ts src/lib/exec.lib.ts src/lib/cielo.lib.ts src/lib/compile.lib.ts src/lib/utils.lib.ts src/lib/analyze.lib.ts src/lib/v8-stack.lib.ts src/lib/unit-test.lib.ts
 			",
 
 		"build:compilecmd": "

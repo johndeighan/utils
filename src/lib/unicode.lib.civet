@@ -1,0 +1,67 @@
+# unicode.lib.civet
+
+# ---------------------------------------------------------------------------
+
+export uni := {
+	vbar: '│'       # unicode 2502
+	hbar: '─'       # unicode 2500
+	corner: '└'     # unicode 2514
+	tee: '├'        # unicode 251C
+	arrowhead: '>'
+	backarrow: '<'
+	space: ' '
+	dot: '.'
+	lI18N: '◄'      # unicode 25C4
+	rI18N: '►'      # unicode 25BA
+	}
+
+export pre := {
+	fourSpaces: uni.space  + uni.space     + uni.space     + uni.space
+	oneIndent:  uni.vbar   + uni.space     + uni.space     + uni.space
+	arrow:      uni.corner + uni.hbar      + uni.arrowhead + uni.space
+	flat:       uni.tee    + uni.hbar      + uni.hbar      + uni.space
+	resume:     uni.tee    + uni.hbar      + uni.arrowhead + uni.space
+	yieldSym:   uni.tee    + uni.backarrow + uni.hbar      + uni.space
+	}
+
+# ---------------------------------------------------------------------------
+# --- options (level = 2):
+#        plain         '│   │   '
+#        withArrow     '│   └─> '
+#        withResume    '│   ├─> '
+#        withFlat      '│   ├── '
+#        withYield     '│   ├<─ '
+#        noLastVbar    '│       '
+#        none
+
+export getPrefix = (level: number, option='none') =>
+
+	switch option
+		when 'plain'
+			return pre.oneIndent.repeat(level)
+		when 'withArrow'
+			if (level == 0)
+				return pre.arrow
+			else
+				return pre.oneIndent.repeat(level-1) + pre.arrow
+		when 'withResume'
+			if (level == 0)
+				return pre.resume
+			else
+				return pre.oneIndent.repeat(level-1) + pre.resume
+		when 'withFlat'
+			if (level == 0)
+				return pre.flat
+			else
+				return pre.oneIndent.repeat(level-1) + pre.flat
+		when 'withYield'
+			if (level == 0)
+				return pre.yieldSym
+			else
+				return pre.oneIndent.repeat(level-1) + pre.yieldSym
+		when 'noLastVbar'
+			if (level == 0)
+				throw new Error("getPrefix(): noLastVbar but level is 0")
+			return pre.oneIndent.repeat(level-1) + pre.fourSpaces
+		else
+			return pre.fourSpaces.repeat(level)
