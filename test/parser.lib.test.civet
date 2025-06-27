@@ -7,7 +7,7 @@ import {
 # 	KeppelGrammar,
 # 	} from './parser/keppel.grammar.ts'
 import {
-	TState, getNewState, StringMatcher, RegexMatcher,
+	State, StringMatcher, RegexMatcher,
 	All, Any, Plus, Optional, Star,
 	getParser, getLineAndColumn, Node,
 	} from '../src/lib/parser.lib.ts'
@@ -26,14 +26,14 @@ equal getLineAndColumn('abc\ndef\nghi', 5), [2, 2]
 equal getLineAndColumn('abcd\nefgh\nijkl', 5), [2, 1]
 
 # ---------------------------------------------------------------------------
-# --- test getNewState()
+# --- test class State
 
-equal getNewState('abc'), {
+like new State('abc'), {
 	text: 'abc'
 	pos: 0
 	}
 
-equal getNewState('abc', 2), {
+like new State('abc', 2), {
 	text: 'abc'
 	pos: 2
 	}
@@ -43,17 +43,17 @@ equal getNewState('abc', 2), {
 
 (() =>
 	rule := StringMatcher('abc')
-	like rule(getNewState('abcdef')), {pos: 3}
-	fails () => rule(getNewState('abcdef', 3))
+	like rule(new State('abcdef')), {pos: 3}
+	fails () => rule(new State('abcdef', 3))
 	)()
 
 (() =>
 	rule := StringMatcher('def')
-	like rule(getNewState('abcdef')), {pos: 0}
-	like rule(getNewState('abcdef', 3)), {pos: 6}
+	like rule(new State('abcdef')), {pos: 0}
+	like rule(new State('abcdef', 3)), {pos: 6}
 
 	# --- On failure to match, should return undef
-	$ := getNewState('abcdef')
+	$ := new State('abcdef')
 	equal rule($), undef
 	)()
 
@@ -62,17 +62,17 @@ equal getNewState('abc', 2), {
 
 (() =>
 	rule := RegexMatcher(/^[\.\#]\s/)
-	like rule(getNewState('. abc')), {pos: 2}
-	fails () => rule(getNewState('. abc', 1))
+	like rule(new State('. abc')), {pos: 2}
+	fails () => rule(new State('. abc', 1))
 	)()
 
 (() =>
 	rule := RegexMatcher(/^[\.\#]\s/)
-	like rule(getNewState('abc . def')), {pos: 0}
-	like rule(getNewState('abc . def', 4)), {pos: 6}
+	like rule(new State('abc . def')), {pos: 0}
+	like rule(new State('abc . def', 4)), {pos: 6}
 
 	# --- On failure to match, should return undef
-	$ := getNewState('abc . abc')
+	$ := new State('abc . abc')
 	equal rule($), undef
 	)()
 
@@ -81,8 +81,8 @@ equal getNewState('abc', 2), {
 
 (() =>
 	reducer := (
-			$: TState
-			$next: TState
+			$: State
+			$next: State
 			): string =>
 		return 'X'
 
@@ -91,8 +91,8 @@ equal getNewState('abc', 2), {
 	#     what it returns is put on the stack
 	rule := Node<string>('abc', reducer)
 
-	$ := getNewState('abcdef')
-	equal rule($), {
+	$ := new State('abcdef')
+	like rule($), {
 	   "text": "abcdef",
 	   "stack": ['X'],
 		"pos": 3

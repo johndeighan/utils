@@ -4,7 +4,7 @@ import {sprintf} from "@std/fmt/printf"
 
 import {
 	undef, defined, notdefined,
-	array, hash, isEmpty, nonEmpty,
+	char, array, hash, isEmpty, nonEmpty,
 	} from './datatypes.lib.ts'
 import {
 	getOptions, escapeStr, spaces,
@@ -18,18 +18,30 @@ import {
 
 # ---------------------------------------------------------------------------
 
-export type TState = {
-	text: string
-	pos: number
+export class State
+	text: string = ''
+	pos: number = 0
 
 	# --- optional fields
 	skipRule?: TRule
 	lMatches?: string[]
 	stack?: any[]
-	logr?: TreeLogger<[TState,TState]>
-	}
+	logr?: TreeLogger<[State, State]>
 
-export isFinished := ($: TState): boolean =>
+	constructor(
+			src: string | State
+			n: number = 0
+			hProps: Object = {}
+			)
+		if (typeof src == 'string')
+			@text = src
+			@pos = n
+			Object.assign(@, hProps)
+		else
+			Object.assign(@, src)
+			@.pos += n
+
+export isFinished := ($: State): boolean =>
 	{text, pos, skipRule} := $
 	if (pos == text.length)
 		return true
@@ -44,58 +56,56 @@ export isFinished := ($: TState): boolean =>
 	else
 		return false
 
-export type TRule = ($: TState) => TState?
+export type TRuleFunc = ($: State) => State?
+export type TCallback = (lMatches: string[]) => void
+export type TRule = TRuleFunc & {
+	type: string
+	label?: string
+	lCallbacks?: TCallback[]
+	}
 
 # --- Anything that can be converted to a TRule
 type TLaxRule = (string | RegExp | TRule)
 
 # ---------------------------------------------------------------------------
 
-export getNewState := (
-		text: string
-		pos: number = 0
-		): TState =>
-
-	return {
-		text
-		pos
-		}
-
-# ---------------------------------------------------------------------------
-
 nbuf := 24
+digs := 1
 
 DBGMATCH := (
 		desc: string    # Describe what we're trying to match
-		$: TState
-		$next: TState
+		$: State
+		$next: State
 		): void =>
 
 	str := escapeStr($.text.substring($.pos, $next.pos))
 	buf := spaces(nbuf - str.length - 1 - 3*logIndent)
-	DBG "[+#{sprintf('%3d', $.pos)}] #{str}#{buf}#{desc}"
+	i := sprintf("%#{digs}d", $.pos)
+	DBG "[#{i} +] #{str}#{buf}#{desc}"
 	return
 
 # ---------------------------------------------------------------------------
 
 DBGNOMATCH := (
 		desc: string    # Describe what we're trying to match
-		$: TState
+		$: State
 		): void =>
 
 	buf := spaces(nbuf - 3*logIndent)
-	DBG "[-#{sprintf('%3d', $.pos)}]#{buf}#{desc}"
+	i := sprintf("%#{digs}d", $.pos)
+	DBG "[#{i} -]#{buf}#{desc}"
 	return
 
 # ---------------------------------------------------------------------------
 # --- returns $ if no skip rule OR rule doesn't match
 
-skipIgnored := ($: TState): TState =>
+skipIgnored := ($: State): State =>
 
 	# --- Will always return a defined value
 	{skipRule} := $
 	if notdefined(skipRule)
 		return $
+
 	# --- make sure skip is only tried once
 	delete($.skipRule)
 	$next := skipRule($)
@@ -109,7 +119,7 @@ skipIgnored := ($: TState): TState =>
 
 export RegexMatcher := (re: RegExp): TRule =>
 
-	return ($: TState): TState? =>
+	func := ($: State): State? =>
 
 		$cur := skipIgnored($)
 		lMatches := re.exec($cur.text.substring($cur.pos))
@@ -118,40 +128,47 @@ export RegexMatcher := (re: RegExp): TRule =>
 			# --- Token is matched, add matches to state,
 			#     return the next state
 			numChars := lMatches[0].length
-			$next := {
-				...$cur,
-				pos: $cur.pos + numChars,
-				}
+#			$next := {
+#				...$cur,
+#				pos: $cur.pos + numChars,
+#				}
+			$next := new State($cur, numChars)
 			$.lMatches = lMatches
 			DBGMATCH re.toString(), $cur, $next
 			return $next
 		else
 			DBGNOMATCH re.toString(), $cur
 			return undef
+	func.type = 'r'
+	return func
 
 # ---------------------------------------------------------------------------
 
 export StringMatcher := (str: string): TRule =>
 
-	return ($: TState): TState? =>
+	func := ($: State): State? =>
 
 		$cur := skipIgnored($)
 		if ($cur.text.startsWith(str, $cur.pos))
-			$next := {
-				...$cur,
-				pos: $cur.pos + str.length
-				}
+			$next := new State($cur, str.length)
+#			$next := {
+#				...$cur,
+#				pos: $cur.pos + str.length
+#				}
 			DBGMATCH "'#{escapeStr(str)}'", $cur, $next
 			return $next
 		else
 			DBGNOMATCH "'#{escapeStr(str)}'", $cur
 			return undef
+	func.type = 'f'
+	return func
 
 # ---------------------------------------------------------------------------
 
 export function getRule(rule: TLaxRule): TRule
 
 	if (typeof(rule) == 'function')
+		rule.type = 'f'
 		return rule
 	if (rule instanceof RegExp)
 		return RegexMatcher(rule)
@@ -160,13 +177,29 @@ export function getRule(rule: TLaxRule): TRule
 	throw new Error("Invalid rule: #{rule}")
 
 # ---------------------------------------------------------------------------
+
+export ruleLabel := (rule: TRule, ch: char?=undef): string =>
+
+	if defined(ch)
+		return (rule.label || 'X') + ch
+	else
+		return rule.label || 'X'
+
+# ---------------------------------------------------------------------------
+
+export ruleSetLabel := (lRules: TRule[], ch: char): string =>
+
+	return lRules.map((r) => ruleLabel(r)).join(" #{ch} ")
+
+# ---------------------------------------------------------------------------
 # --- Match a sequence of rules left to right
 
 export function All(lLaxRules: TLaxRule[]): TRule
 
 	lRules := lLaxRules.map(getRule)
-	return ($) =>
-		DBG "&", INDENT
+	label := lRules.map((r) => r.label || 'X').join(' ')
+	func := ($: State) =>
+		DBG label, INDENT
 		for rule,i of lRules
 			DBG "-----"
 			$next := rule($)
@@ -177,6 +210,8 @@ export function All(lLaxRules: TLaxRule[]): TRule
 
 		DBG 'OK', UNDENT
 		return $
+	func.type = '&'
+	return func
 
 # ---------------------------------------------------------------------------
 # --- Match any of the rules, check left to right
@@ -184,8 +219,9 @@ export function All(lLaxRules: TLaxRule[]): TRule
 export function Any(lLaxRules: TLaxRule[]): TRule
 
 	lRules := lLaxRules.map(getRule)
-	return ($) =>
-		DBG "|", INDENT
+	label := lRules.map((r) => r.label || 'X').join(' | ')
+	func := ($: State) =>
+		DBG label, INDENT
 		for rule,i of lRules
 			DBG "-----"
 			$next := rule($)
@@ -194,6 +230,8 @@ export function Any(lLaxRules: TLaxRule[]): TRule
 				return $next
 		DBG 'FAIL', UNDENT
 		return undef
+	func.type = '|'
+	return func
 
 # ---------------------------------------------------------------------------
 # --- Match a rule 1 or more times
@@ -201,7 +239,7 @@ export function Any(lLaxRules: TLaxRule[]): TRule
 export function Plus(laxRule: TLaxRule): TRule
 
 	rule := getRule(laxRule)
-	return ($) =>
+	func := ($: State) =>
 		DBG "+", INDENT
 		$first := rule($)
 		if notdefined($first)
@@ -214,6 +252,8 @@ export function Plus(laxRule: TLaxRule): TRule
 				DBG "OK", UNDENT
 				return $next
 			$ = $next
+	func.type = '+'
+	return func
 
 # ---------------------------------------------------------------------------
 # --- Match a rule optionally
@@ -221,7 +261,7 @@ export function Plus(laxRule: TLaxRule): TRule
 export function Optional(laxRule: TLaxRule): TRule
 
 	rule := getRule(laxRule)
-	return ($) =>
+	func := ($: State) =>
 		DBG "?", INDENT
 		$next := rule($)
 		if defined($next)
@@ -231,13 +271,15 @@ export function Optional(laxRule: TLaxRule): TRule
 			# --- Still succeed since it was optional
 			DBG "OK - not matched", UNDENT
 			return $
+	func.type = '?'
+	return func
 
 # ---------------------------------------------------------------------------
 
 export function Star(laxRule: TLaxRule): TRule
 
 	rule := getRule(laxRule)
-	return ($) =>
+	func := ($: State) =>
 		DBG "*", INDENT
 		loop
 			$next := rule($)
@@ -245,12 +287,14 @@ export function Star(laxRule: TLaxRule): TRule
 				DBG "OK", UNDENT
 				return $
 			$ = $next
+	func.type = '*'
+	return func
 
 # ---------------------------------------------------------------------------
 
 type TReducer<T> = (
-	$: TState
-	$next: TState
+	$: State
+	$next: State
 	) => T?
 
 export function Node<T>(
@@ -259,7 +303,7 @@ export function Node<T>(
 		): TRule
 
 	rule := getRule laxRule
-	return ($) =>
+	func := ($: State) =>
 		$next := rule($)
 		if notdefined($next)
 			return $
@@ -272,6 +316,8 @@ export function Node<T>(
 			else
 				$next.stack = [node]
 		return $next
+	func.type = 'N'
+	return func
 
 # ---------------------------------------------------------------------------
 
@@ -318,12 +364,8 @@ export function getParser<T>(
 	return (text: string): T? =>
 		DBG "parse #{escapeStr(text)}"
 		skipRule := defined(reSkip) ? RegexMatcher(reSkip) : undef
-		debugger
-		$ := {
-			text
-			pos: 0
-			skipRule
-			}
+
+		$ := new State(text, 0, {skipRule})
 
 		$next := rule($)
 

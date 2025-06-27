@@ -1,5 +1,8 @@
 to do
 
+run "task temp" - labels should appear correctly. Top-level rule is a
+Node rule, maybe that's the problem.
+
 if a parse fails, we don't get the last good position
 
 use getPrefix() from unicode.lib.civet in log-formatter

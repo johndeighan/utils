@@ -1,9 +1,34 @@
-"use strict";
-// temp.civet
+class State {
+	text: string = ''
+	pos: number = 0
 
-const lFruit: string[] = ['apple','pear','peach']
-for (const fruit of lFruit) {
-	console.log(fruit)
+// 	constructor(
+// 			text: string,
+// 			pos: number,
+// 			hProps: Object
+// 			)
+// 	constructor(
+// 			state: State,
+// 			advanceBy: number
+// 			)
+	constructor(
+			src: string | State,
+			n: number = 0,
+			hProps: Object = {}
+			) {
+		if (typeof src === 'string') {
+			this.text = src
+			this.pos = n
+			Object.assign(this, hProps)
+		}
+		else {
+			Object.assign(this, src)
+			this.pos += n
+		}
+	}
 }
 
-//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoidGVtcC5jaXZldC50c3giLCJzb3VyY2VzIjpbInRlbXAuY2l2ZXQiXSwibWFwcGluZ3MiOiI7QUFBQSxhQUFZO0FBQ1osQUFBQTtBQUNBLEFBQWdCLE1BQWhCLE1BQU0sQ0FBQyxDQUFDLE1BQU0sQ0FBQyxDQUFDLENBQUMsQ0FBRSxDQUFDLENBQUMsT0FBTyxDQUFDLE1BQU0sQ0FBQyxPQUFPLENBQUM7QUFDNUMsQUFBQSxBQUFBLEdBQUcsQ0FBQyxDQUFBLE1BQUEsS0FBSyxDQUFDLEVBQUUsQ0FBQyxNQUFNLENBQUEsQ0FBQSxDQUFBO0FBQ25CLEFBQUEsQ0FBQyxPQUFPLENBQUMsR0FBRyxDQUFBLEFBQUMsS0FBSyxDO0FBQUEsQ0FBQTtBQUNsQiIsIm5hbWVzIjpbXSwic291cmNlc0NvbnRlbnQiOlsiIyB0ZW1wLmNpdmV0XG5cbmxGcnVpdDogc3RyaW5nW10gOj0gWydhcHBsZScsJ3BlYXInLCdwZWFjaCddXG5mb3IgZnJ1aXQgb2YgbEZydWl0XG5cdGNvbnNvbGUubG9nIGZydWl0XG4iXX0=
+let state1 = new State('abcde', 1);
+console.log(state1);
+let state2 = new State(state1, 2);
+console.log(state2);
