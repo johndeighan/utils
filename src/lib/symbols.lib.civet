@@ -29,14 +29,22 @@ import {isFile, slurp} from './fs.lib.ts'
  */
 
 # --- not exported!
-let hSymbols: hashof<string> = {}     # --- {<sym>: <lib>, ...}
+
+# --- {<sym>: <lib>, ...}
+symbolsPath := 'src/.symbols'
+
+# --- holds symbols in symbolsPath,
+#     but only loaded when needed
+#     and only if file exists
+symbolMap := new Map<string,string>()
 
 # ---------------------------------------------------------------------------
 
 export loadSymbols := (
-		strSymbols: string
+		block: string
+		aMap = new Map<string,string>()
 		hOptions: hash={}
-		): hashof<string> =>
+		): Map<string,string> =>
 
 	DBG "in loadSymbols()"
 
@@ -59,9 +67,8 @@ export loadSymbols := (
 			croak "level = #{level}"
 		return
 
-	hSymbols: hashof<string> := {}  # --- {<symbol>: <lib>, ...}
 	let curLib: string? = undef
-	for {kind, str} of allTokensInBlock(strSymbols, symGen)
+	for {kind, str} of allTokensInBlock(block, symGen)
 		DBG "TOKEN: #{kind}"
 		switch kind
 			when 'indent'
@@ -79,25 +86,25 @@ export loadSymbols := (
 					curLib = str
 				else if defined(curLib)
 					DBG "ADD #{str} from #{curLib}"
-					hSymbols[str] = curLib
+					aMap.set str, curLib
 				else
 					croak "curLib empty at level > 0"
 			else
 				croak "Unknown kind: #{kind}"
 	resetOneIndent()
-	return hSymbols
+	return aMap
 
 # ---------------------------------------------------------------------------
 
 export sourceLib := (
 		symbol: string
-		h: hashof<string>=hSymbols
-		): string =>
+		m: Map<string,string> = symbolMap  # use global symbolMap by default
+		): string? =>
 
-	if (h == hSymbols) && isEmpty(hSymbols)
-		contents := slurp('src/.symbols')
-		hSymbols = loadSymbols(contents, o"checkFiles")
-	return h[symbol]
+	if (m == symbolMap) && (symbolMap.size == 0)
+		contents := slurp(symbolsPath)
+		loadSymbols(contents, symbolMap, o"checkFiles")
+	return m.get(symbol)
 
 # ---------------------------------------------------------------------------
 
@@ -105,9 +112,9 @@ export libsAndSymbols := (
 		lSymbols: string[]
 		): hashof<string[]> =>
 
-	if isEmpty(hSymbols) && isFile('src/.symbols')
-		contents := slurp('src/.symbols')
-		hSymbols = loadSymbols(contents, o"checkFiles")
+	if (symbolMap.size == 0) && isFile(symbolsPath)
+		contents := slurp(symbolsPath)
+		loadSymbols(contents, symbolMap, o'checkFiles')
 
 	hLibs: hashof<string[]> := {}
 	for sym of lSymbols
@@ -138,9 +145,3 @@ export getNeededImportStmts := (
 		else
 			"import {#{strSyms}} from './#{lib}';"
 	return lStmts
-
-# ---------------------------------------------------------------------------
-
-# if isFile('src/.symbols')
-# 	contents := slurp('src/.symbols')
-# 	hSymbols = loadSymbols(contents, o"checkFiles")

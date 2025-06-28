@@ -43,18 +43,18 @@ like new State('abc', 2), {
 
 (() =>
 	rule := StringMatcher('abc')
-	like rule(new State('abcdef')), {pos: 3}
-	fails () => rule(new State('abcdef', 3))
+	like rule.next(new State('abcdef')), {pos: 3}
+	fails () => rule.next(new State('abcdef', 3))
 	)()
 
 (() =>
 	rule := StringMatcher('def')
-	like rule(new State('abcdef')), {pos: 0}
-	like rule(new State('abcdef', 3)), {pos: 6}
+	like rule.next(new State('abcdef')), {pos: 0}
+	like rule.next(new State('abcdef', 3)), {pos: 6}
 
 	# --- On failure to match, should return undef
 	$ := new State('abcdef')
-	equal rule($), undef
+	equal rule.next($), undef
 	)()
 
 # ---------------------------------------------------------------------------
@@ -62,18 +62,18 @@ like new State('abc', 2), {
 
 (() =>
 	rule := RegexMatcher(/^[\.\#]\s/)
-	like rule(new State('. abc')), {pos: 2}
-	fails () => rule(new State('. abc', 1))
+	like rule.next(new State('. abc')), {pos: 2}
+	fails () => rule.next(new State('. abc', 1))
 	)()
 
 (() =>
 	rule := RegexMatcher(/^[\.\#]\s/)
-	like rule(new State('abc . def')), {pos: 0}
-	like rule(new State('abc . def', 4)), {pos: 6}
+	like rule.next(new State('abc . def')), {pos: 0}
+	like rule.next(new State('abc . def', 4)), {pos: 6}
 
 	# --- On failure to match, should return undef
 	$ := new State('abc . abc')
-	equal rule($), undef
+	equal rule.next($), undef
 	)()
 
 # ---------------------------------------------------------------------------
@@ -92,7 +92,7 @@ like new State('abc', 2), {
 	rule := Node<string>('abc', reducer)
 
 	$ := new State('abcdef')
-	like rule($), {
+	like rule.next($), {
 	   "text": "abcdef",
 	   "stack": ['X'],
 		"pos": 3

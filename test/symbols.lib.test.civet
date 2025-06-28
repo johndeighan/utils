@@ -8,30 +8,35 @@ import {
 	equal, succeeds,
 	} from '../src/lib/unit-test.lib.ts'
 
-hSymbols := loadSymbols("""
-	datatypes.lib.ts
-		undef defined
-	indent.lib.ts
-		splitLine
-	""")
 
 # ---------------------------------------------------------------------------
 
 DBG "loadSymbols()"
 
-equal hSymbols, {
-	undef: 'datatypes.lib.ts'
-	defined: 'datatypes.lib.ts'
-	splitLine: 'indent.lib.ts'
-	}
+(() =>
+	myMap := loadSymbols("""
+		datatypes.lib.ts
+			undef defined
+		indent.lib.ts
+			splitLine
+		""")
+
+	equal sourceLib('undef', myMap), 'datatypes.lib.ts'
+	equal sourceLib('defined', myMap), 'datatypes.lib.ts'
+	equal sourceLib('splitLine', myMap), 'indent.lib.ts'
+	equal sourceLib('dummy', myMap), undef
+	)()
 
 DBG "sourceLib()"
 
-equal sourceLib('x', {x: 'temp.ts', y: 'dummy.ts'}), 'temp.ts'
+(() =>
+	myMap := new Map([['x', 'temp.ts'],['y', 'dummy.ts']])
+	equal sourceLib('x', myMap), 'temp.ts'
+	equal sourceLib('y', myMap), 'dummy.ts'
+	)()
+
 equal sourceLib('defined'), 'src/lib/datatypes.lib.ts'
-equal sourceLib('defined', hSymbols), 'datatypes.lib.ts'
 equal sourceLib('isArray'), 'src/lib/datatypes.lib.ts'
-equal sourceLib('isArray', hSymbols), undef
 
 equal sourceLib('array'), 'src/lib/datatypes.lib.ts'
 equal sourceLib('hash'), 'src/lib/datatypes.lib.ts'

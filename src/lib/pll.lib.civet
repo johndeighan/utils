@@ -101,6 +101,6 @@ export tokenTable := (
 	table.labels ['kind', 'str']
 	table.sep()
 	for tok of lTokens
-		table.data [tok.kind, "'" + tok.str + "'"]
+		table.data [tok.kind, tok.str]
 	table.fullsep '='
 	return table.asString()

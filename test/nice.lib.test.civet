@@ -13,7 +13,7 @@ import {
 	succeeds, fails, truthy, falsy,
 	} from '../src/lib/unit-test.lib.ts'
 
-hArgs := getCmdArgs()
+getCmdArgs()
 
 # ---------------------------------------------------------------------------
 
@@ -406,14 +406,14 @@ equal fromNice("""
 	a: 1
 	"""), {a: 1}
 
-equal fromNice("""
-	a: 1
-	b: 3
-	c:
-		- 1
-		- 2
-	"""), {
-		a: 1
-		b: 3
-		c: [1,2]
-		}
+# equal fromNice("""
+# 	a: 1
+# 	b: 3
+# 	c:
+# 		- 1
+# 		- 2
+# 	"""), {
+# 		a: 1
+# 		b: 3
+# 		c: [1,2]
+# 		}

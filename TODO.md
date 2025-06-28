@@ -1,11 +1,17 @@
 to do
 
-run "task temp" - labels should appear correctly. Top-level rule is a
-Node rule, maybe that's the problem.
+You can now add a callback to every function that creates a Rule
+TEST THAT
+
+Implement debugging of parser using callbacks
 
 if a parse fails, we don't get the last good position
 
 use getPrefix() from unicode.lib.civet in log-formatter
+
+failing tests:
+	last unit test in nice.lib.test.civet
+	unit test on line 31 of symbols.lib.test.civet
 
 parser test should test some very simple grammars
 before testing the keppel grammar
