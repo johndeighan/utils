@@ -1,6 +1,6 @@
 to do
 
-2. get unit tests working w/o eval
+✓ 2. get unit tests working w/o eval
 3. get unit tests working w/ eval
 4. Indicate failure by throwing
 5. implement Star, Optional, Plus working via
