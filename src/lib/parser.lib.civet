@@ -3,35 +3,17 @@
 import {sprintf} from "@std/fmt/printf"
 
 import {
-	undef, defined, notdefined,
+	undef, defined, notdefined, isArray,
 	char, array, hash, isEmpty, nonEmpty,
 	} from './datatypes.lib.ts'
 import {
-	getOptions, escapeStr, spaces,
+	getOptions, escapeStr, spaces, randomLabel,
 	} from './llutils.lib.ts'
 import {logIndent} from './log-formatter.lib.ts'
 import {
 	getLogLevel, setLogLevel,
-	DBG, INDENT, UNDENT,
 	TFormatter, TreeLogger,
 	} from './logger.lib.ts'
-
-# ---------------------------------------------------------------------------
-# --- generator
-
-labelGen := (): Generator<string, void, void> ->
-
-	for ch of ['A'..'Z']
-		for ch2 of ['', 'A'..'Z']
-			yield ch + ch2
-	return
-
-# --- Create an iterator from the generator
-labels := labelGen()
-
-export randomLabel := (): string =>
-	label := labels.next()
-	return label.done ? 'ERR!' : label.value
 
 # ---------------------------------------------------------------------------
 
@@ -41,9 +23,6 @@ export class State
 
 	# --- optional fields
 	skipRule?: Rule
-	lMatches?: string[]
-	stack?: any[]
-	logr?: TreeLogger<[State, State]>
 
 	constructor(
 			src: string | State
@@ -74,14 +53,12 @@ export isFinished := ($: State): boolean =>
 		return false
 
 export type TRuleFunc = ($: State) => State?
-export type TCallback = () => void
 
-class Rule
+export class Rule
 	type: string
 	func: TRuleFunc
 	label: string = randomLabel()
 	lChildren: Rule[] = []
-	lCallbacks: TCallback[] = []
 
 	constructor(
 			type: string,
@@ -92,44 +69,11 @@ class Rule
 		@func = func
 		@lChildren = []
 
-	addCallback(cb: TCallback): Rule
-		@lCallbacks.push cb
-		return @
-
 	next($: State): State?
 		return @func($)
 
 # --- Anything that can be converted to a Rule
-type TLaxRule = (string | RegExp | Rule)
-
-# ---------------------------------------------------------------------------
-
-nbuf := 24
-digs := 1
-
-DBGMATCH := (
-		desc: string    # Describe what we're trying to match
-		$: State
-		$next: State
-		): void =>
-
-	str := escapeStr($.text.substring($.pos, $next.pos))
-	buf := spaces(nbuf - str.length - 1 - 3*logIndent)
-	i := sprintf("%#{digs}d", $.pos)
-	DBG "[#{i} +] #{str}#{buf}#{desc}"
-	return
-
-# ---------------------------------------------------------------------------
-
-DBGNOMATCH := (
-		desc: string    # Describe what we're trying to match
-		$: State
-		): void =>
-
-	buf := spaces(nbuf - 3*logIndent)
-	i := sprintf("%#{digs}d", $.pos)
-	DBG "[#{i} -]#{buf}#{desc}"
-	return
+type TLaxRule = (string | RegExp | Rule | TLaxRule[])
 
 # ---------------------------------------------------------------------------
 # --- returns $ if no skip rule OR rule doesn't match
@@ -152,63 +96,69 @@ skipIgnored := ($: State): State =>
 
 # ---------------------------------------------------------------------------
 
+export type TCallback = (rule: Rule, lMatches: string[]) => void
+
+# ---------------------------------------------------------------------------
+
 export RegexMatcher := (
 		re: RegExp
-		cb: TCallback? = undef
+		...lCallbacks: TCallback[]
 		): Rule =>
 
-	func := ($: State): State? =>
+	rule := new Rule('r', ($: State): State? =>
 
 		$cur := skipIgnored($)
 		lMatches := re.exec($cur.text.substring($cur.pos))
-		if defined(lMatches)
-
-			# --- Token is matched, add matches to state,
-			#     return the next state
-			numChars := lMatches[0].length
-			$next := new State($cur, numChars)
-			$.lMatches = lMatches
-			DBGMATCH re.toString(), $cur, $next
-			return $next
-		else
-			DBGNOMATCH re.toString(), $cur
+		if (lMatches == null)
 			return undef
-	newRule := new Rule('r', func)
-	return defined(cb) ? newRule.addCallback(cb) : newRule
+
+		# --- Token is matched, add matches to state,
+		#     return the next state
+		numChars := lMatches[0].length
+		$next := new State($cur, numChars)
+		for cb of lCallbacks
+			cb(rule, lMatches)
+		return $next
+		)
+	return rule
 
 # ---------------------------------------------------------------------------
 
 export StringMatcher := (
 		str: string
-		cb: TCallback? = undef
+		...lCallbacks: TCallback[]
 		): Rule =>
 
-	func := ($: State): State? =>
+	newRule := new Rule('s', ($: State): State? =>
 
 		$cur := skipIgnored($)
-		if ($cur.text.startsWith(str, $cur.pos))
-			$next := new State($cur, str.length)
-			DBGMATCH "'#{escapeStr(str)}'", $cur, $next
-			return $next
-		else
-			DBGNOMATCH "'#{escapeStr(str)}'", $cur
+		if not $cur.text.startsWith(str, $cur.pos)
 			return undef
-	newRule := new Rule('s', func)
-	return defined(cb) ? newRule.addCallback(cb) : newRule
+
+		$next := new State($cur, str.length)
+		for cb of lCallbacks
+			cb(newRule, [str])
+		return $next
+		)
+	return newRule
 
 # ---------------------------------------------------------------------------
 
 export function getRule(
 		laxRule: TLaxRule
-		cb: TCallback? = undef
+		...lCallbacks: TCallback[]
 		): Rule
 
 	if (laxRule instanceof Rule)
-		return defined(cb) ? laxRule.addCallback(cb) : laxRule
+		return laxRule
+	if isArray(laxRule)
+		lRules := for r of laxRule
+			getRule r
+		return All lRules
 	if (laxRule instanceof RegExp)
-		return RegexMatcher(laxRule, cb)
+		return RegexMatcher(laxRule, lCallbacks...)
 	if (typeof laxRule == 'string')
-		return StringMatcher(laxRule, cb)
+		return StringMatcher(laxRule, lCallbacks...)
 	throw new Error("Invalid rule: #{laxRule}")
 
 # ---------------------------------------------------------------------------
@@ -216,142 +166,115 @@ export function getRule(
 
 export function All(
 		lLaxRules: TLaxRule[]
-		cb: TCallback? = undef
+		...lCallbacks: TCallback[]
 		): Rule
 
 	lRules := for laxRule of lLaxRules
-		getRule laxRule
-	func := ($: State) =>
-		DBG 'All', INDENT
+		getRule laxRule, lCallbacks...
+
+	newRule := new Rule('&', ($: State) =>
 		for rule,i of lRules
-			DBG "-----"
 			$next := rule.next($)
 			if notdefined($next)
-				DBG 'FAIL', UNDENT
 				return undef
 			$ = $next
 
-		DBG 'OK', UNDENT
+		for cb of lCallbacks
+			cb(newRule, [])
 		return $
-	newRule := new Rule('&', func, lRules)
-	return defined(cb) ? newRule.addCallback(cb) : newRule
+		)
+
+	return newRule
 
 # ---------------------------------------------------------------------------
 # --- Match any of the rules, check left to right
 
 export function Any(
 		lLaxRules: TLaxRule[]
-		cb: TCallback? = undef
+		...lCallbacks: TCallback[]
 		): Rule
 
 	lRules := for laxRule of lLaxRules
 		getRule laxRule
-	func := ($: State) =>
-		DBG 'Any', INDENT
+
+	newRule := new Rule('|', ($: State) =>
 		for rule,i of lRules
-			DBG "-----"
 			$next := rule.next($)
 			if defined($next)
-				DBG 'OK', UNDENT
+				for cb of lCallbacks
+					cb(newRule, [])
 				return $next
-		DBG 'FAIL', UNDENT
 		return undef
-	newRule := new Rule('|', func, lRules)
-	return defined(cb) ? newRule.addCallback(cb) : newRule
+		)
+	return newRule
 
 # ---------------------------------------------------------------------------
 # --- Match a rule 1 or more times
 
 export function Plus(
 		laxRule: TLaxRule
-		cb: TCallback? = undef
+		...lCallbacks: TCallback[]
 		): Rule
 
 	rule := getRule(laxRule)
-	func := ($: State) =>
-		DBG "+", INDENT
+
+	newRule := new Rule('+', ($: State) =>
 		$first := rule.next($)
 		if notdefined($first)
-			DBG "FAIL", UNDENT
 			return undef
 		$ = $first
 		loop
 			$next := rule.next($)
 			if notdefined($next)
-				DBG "OK", UNDENT
+				for cb of lCallbacks
+					cb(newRule, [])
 				return $next
 			$ = $next
-	newRule := new Rule('+', func, [rule])
-	return defined(cb) ? newRule.addCallback(cb) : newRule
+		)
+	return newRule
 
 # ---------------------------------------------------------------------------
 # --- Match a rule optionally
 
 export function Optional(
 		laxRule: TLaxRule
-		cb: TCallback? = undef
+		...lCallbacks: TCallback[]
 		): Rule
 
 	rule := getRule(laxRule)
-	func := ($: State) =>
-		DBG "?", INDENT
+
+	newRule := new Rule('?', ($: State) =>
 		$next := rule.next($)
 		if defined($next)
-			DBG "OK - matched", UNDENT
+			for cb of lCallbacks
+				cb(newRule, [])
 			return $next
 		else
 			# --- Still succeed since it was optional
-			DBG "OK - not matched", UNDENT
 			return $
-	newRule := new Rule('?', func, [rule])
-	return defined(cb) ? newRule.addCallback(cb) : newRule
+		)
+
+	return newRule
 
 # ---------------------------------------------------------------------------
 
 export function Star(
 		laxRule: TLaxRule
-		cb: TCallback? = undef
+		...lCallbacks: TCallback[]
 		): Rule
 
 	rule := getRule(laxRule)
-	func := ($: State) =>
-		DBG "*", INDENT
+
+	newRule := new Rule('*', ($: State) =>
 		loop
 			$next := rule.next($)
 			if notdefined($next)
-				DBG "OK", UNDENT
+				for cb of lCallbacks
+					cb(newRule, [])
 				return $
 			$ = $next
-	newRule := new Rule('*', func, [rule])
-	return defined(cb) ? newRule.addCallback(cb) : newRule
-
-# ---------------------------------------------------------------------------
-
-type TReducer<T> = (
-	$: State
-	$next: State
-	) => T?
-
-export function Node<T>(
-		laxRule: TLaxRule,
-		reducer: TReducer<T>
-		): Rule
-
-	rule := getRule laxRule
-	func := ($: State) =>
-		$next := rule.next($)
-		if notdefined($next)
-			return $
-
-		# --- We have a match
-		node := reducer($, $next)
-		if defined(node)
-			if $next.stack
-				$next.stack.push node
-			else
-				$next.stack = [node]
-		return $next
-	return new Rule('N', func, [rule])
+		)
+	return newRule
 
 # ---------------------------------------------------------------------------
 
@@ -379,35 +302,31 @@ export getLineAndColumn := (text: string, pos: number) =>
 # ---------------------------------------------------------------------------
 # --- Returns a function that:
 #        1. accepts a string
-#        2. returns given type
+#        2. returns true or false
 
-type TParser<T> = (str: string) => T?
+type TParser = (str: string) => boolean
 
-export function getParser<T>(
+export function getParser(
 		laxRule: TLaxRule
 		hOptions: hash = {}
-		): TParser<T>
+		): TParser
 
-	{pos, partial, reSkip, callback} := getOptions hOptions, {
+	{pos, partial, reSkip} := getOptions hOptions, {
 		pos: 0
 		partial: false
 		reSkip: /^\s+/
-		callbacks: []
 		}
 	rule := getRule laxRule
 
-	return (text: string): T? =>
-		DBG "parse #{escapeStr(text)}"
+	return (text: string): boolean =>
 		skipRule := defined(reSkip) ? RegexMatcher(reSkip) : undef
 
 		$ := new State(text, 0, {skipRule})
 
 		$next := rule.next($)
-		for func of rule.lCallbacks
-			func()
 
 		if defined($next) && (isFinished($next) || partial)
-			return $next.stack ? $next.stack[0] : undef
+			return true
 		else
 			[line, column] := getLineAndColumn(text, $.pos)
 			throw new SyntaxError("""

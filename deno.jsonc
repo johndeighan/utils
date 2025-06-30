@@ -255,6 +255,7 @@
 			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
 			&& echo check: parser
 			&& deno check -q src/lib/parser.lib.ts
+			&& civet --inline-map -o .ts -c test/parser/expr.grammar.civet
 			&& civet --inline-map -o .ts -c test/parser.lib.test.civet
 			&& echo test: parser
 			&& deno test -qA --reporter dot test/parser.lib.test.ts -- -D
@@ -262,6 +263,7 @@
 
 		"test:parser": "
 			   civet --inline-map -o .ts -c test/parser.lib.test.civet
+			&& civet --inline-map -o .ts -c test/parser/expr.grammar.civet
 			&& echo test: parser
 			&& deno test -A test/parser.lib.test.ts -- -D
 			",
@@ -726,6 +728,8 @@
 
 		"temp": "
 			   clear
+			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
+			&& civet --inline-map -o .ts -c test/parser/expr.grammar.civet
 			&& civet --inline-map -o .ts -c test/temp.civet
 			&& deno check -q test/temp.ts
 			&& deno run -A test/temp.ts

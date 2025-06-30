@@ -980,5 +980,28 @@ export interpolate := (
 		)
 
 # ---------------------------------------------------------------------------
+# --- generate random labels
+
+labelGen := (): Generator<string, void, void> ->
+
+	for ch of ['A'..'Z']
+		yield ch
+	for ch of ['A'..'Z']
+		for ch2 of ['A'..'Z']
+			yield ch + ch2
+	for ch of ['A'..'Z']
+		for ch2 of ['A'..'Z']
+			for ch3 of ['A'..'Z']
+				yield ch + ch2 + ch3
+	return
+
+# --- Create an iterator from the generator
+labels := labelGen()
+
+export randomLabel := (): string =>
+	label := labels.next()
+	return label.done ? 'ERR!' : label.value
+
+# ---------------------------------------------------------------------------
 
 export require := getImportSync(import.meta.url)

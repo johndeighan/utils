@@ -1,7 +1,6 @@
 to do
 
-You can now add a callback to every function that creates a Rule
-TEST THAT
+Get unit tests for parser working
 
 Implement debugging of parser using callbacks
 
