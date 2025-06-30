@@ -1,10 +1,18 @@
 to do
 
-Get unit tests for parser working
+2. get unit tests working w/o eval
+3. get unit tests working w/ eval
+4. Indicate failure by throwing
+5. implement Star, Optional, Plus working via
+	function that accepts min/max
+6. add rule for X {sep X}
+7. get unit tests working w/ program
+8. replace re.toString()
+9. can't use function before definition
+	i.e. allow recursive def of rules
+10. use TreeLogger for debugging via callcacks
+11. indicate last good pos (by throwing error?)
 
-Implement debugging of parser using callbacks
-
-if a parse fails, we don't get the last good position
 
 use getPrefix() from unicode.lib.civet in log-formatter
 
