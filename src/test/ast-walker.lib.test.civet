@@ -1,0 +1,127 @@
+# ast-walker.lib.test.civet
+
+import {DBG} from 'logger'
+import {getCmdArgs} from 'utils'
+import {isArray, isHash} from 'datatypes'
+import {TNodeInfo, getAstWalker} from 'ast-walker'
+import {
+	equal, truthy, falsy, isType, notType,
+	} from 'unit-test'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+DBG "type TNodeInfo"
+
+isType  'TNodeInfo', {node: 42, level: 1}
+notType 'TNodeInfo', {node: 42, level: 'abc'}
+
+# ---------------------------------------------------------------------------
+
+DBG "getAstWalker()"
+
+(() =>
+	hStudents := {
+		name: 'John'
+		gender: 'male'
+		address: {
+			street: '1749 Main St.'
+			city: 'Blacksburg'
+			state: 'VA'
+			}
+		friends: ['John', 'Julie']
+		} as const
+
+	gen := getAstWalker(hStudents)
+	lParts := Array.from(gen())
+
+	truthy isHash(lParts[0].node)
+	equal lParts[0].level, 0
+
+	truthy isHash(lParts[1].node)
+	equal lParts[1].level, 1
+
+	truthy isArray(lParts[2].node)
+	equal lParts[2].level, 1
+	)()
+
+# --- Test ignoring parent pointers
+
+(() =>
+	hAST := {
+		type: 'Block'
+		expressions: [
+			'abc',
+			{
+				type: 'Declaration',
+				parent: null
+				},
+			]
+		}
+
+	# @ts-ignore
+	hAST.expressions[1].parent = hAST
+
+	gen := getAstWalker(hAST)
+	lParts := Array.from(gen())
+
+	equal lParts.length, 3
+
+	truthy isHash(lParts[0].node)
+	equal lParts[0].level, 0
+
+	truthy isArray(lParts[1].node)
+	equal lParts[1].level, 1
+
+	truthy isHash(lParts[2].node)
+	equal lParts[2].level, 2
+	)()
+
+# --- test filtering
+
+(() =>
+	hAST := {
+		type: 'Block'
+		section: {
+			a: 1
+			b: 2
+			}
+		others: {a: 1}
+		expressions: [
+			'abc',
+			{
+				type: 'Declaration',
+				parent: null
+				},
+			]
+		}
+
+	gen := getAstWalker(hAST, (x) => isHash(x))
+	lParts := Array.from(gen())
+
+	equal lParts.length, 4
+	)()
+
+(() =>
+	hAST := {
+		type: 'Block'
+		section: {
+			a: 1
+			b: 2
+			}
+		others: {a: 1}
+		expressions: [
+			'abc',
+			{
+				type: 'Declaration',
+				parent: null
+				},
+			]
+		}
+
+	gen := getAstWalker(hAST, (x) => isArray(x))
+	lParts := Array.from(gen())
+
+	equal lParts.length, 1
+	)()

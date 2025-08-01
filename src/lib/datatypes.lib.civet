@@ -1,10 +1,7 @@
 # datatypes.lib.civet
 
-import deepEqual from 'fast-deep-equal'
-
-import {
-	normalizeCode, normalizeExpr, truncStr,
-	} from './typescript.lib.ts'
+import {minify} from 'npm:uglify-js'
+import deepEqual from 'npm:fast-deep-equal'
 
 export {deepEqual}
 
@@ -21,9 +18,9 @@ export {deepEqual}
 
 export type voidFunc = () => void
 
-export type TFilterFunc = (item: any) => boolean
-export type TStringifier = (item: any) => string
-export type TStringParser = (str: string) => any
+export type TFilterFunc = (item: unknown) => boolean
+export type TStringifier = (item: unknown) => string
+export type TStringParser = (str: string) => unknown
 export type TAssertFunc = (cond: boolean, msg?: string) => void
 
 # ---------------------------------------------------------------------------
@@ -43,10 +40,15 @@ export undef := undefined
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,defined)
  */
 
-export function defined<T extends any>(x: T): x is NonNullable<T> {
+export type TObject = {
+	[key: string]: unknown
+	[sym: symbol]: unknown
+	}
+export type TDefined = NonNullable<unknown>
+
+export defined := (x: unknown): x is TDefined =>
 
 	return (x != undef) && (x != null)
-	}
 
 # ---------------------------------------------------------------------------
 
@@ -56,9 +58,19 @@ export function defined<T extends any>(x: T): x is NonNullable<T> {
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,notdefined)
  */
 
-export notdefined := (x: any): x is undefined =>
+export notdefined := (x: unknown): x is undefined =>
 
-	return (x == undefined) || (x == null)
+	return (x == undef) || (x == null)
+
+# ---------------------------------------------------------------------------
+
+/**
+ * throws an exception with the provided message
+ */
+
+export croak := (msg: string): never =>
+
+	throw new Error(msg)
 
 # ---------------------------------------------------------------------------
 
@@ -73,71 +85,73 @@ export assert: TAssertFunc := (
 		): asserts cond =>
 
 	if !cond
-		throw new Error(msg)
+		croak(msg)
 	return
 
 # ---------------------------------------------------------------------------
 # --- general JavaScript function to get the type of a value
 
-export jsType := (x: any): string =>
+export jsType := (x: unknown): string =>
 
-	typ := typeof x
-	switch typ
-		when 'undefined'
-			return 'undef'
-		when 'bigint'
-			return 'integer'
-		when 'boolean','string','symbol'
-			# --- get symbol name with symbolName(x)
-			return typ
-		when 'number'
-			return (
-				  Number.isNaN(x)    ? 'NaN'
-				: Number.isFinite(x) ? (Number.isInteger(x) ? 'integer' : 'number')
-				: ((x < 0) ? 'neginfinity' : 'infinity')
-				)
-		when 'function'
-			# --- If it's a function whose source code starts with
-			#     the "class" keyword, it's a class
-			str := x.toString()
-			if str.startsWith('class')
-				# --- get name with className(x)
-				#     get definition with classDef(x)
-				return 'class'
-			else
-				return 'function' # get name with functionName(x)
-		when 'object'
-			if (x == null)
-				return 'null'
-			if Array.isArray(x)
-				return 'array'
-			if (x instanceof String)
-				return 'string'
-			if (x instanceof Boolean)
-				return 'boolean'
-			if (x instanceof Number)
-				return Number.isInteger(x) ? 'integer' : 'number'
-			if (x instanceof RegExp)
-				# --- get definition with regexpDef(x)
-				return 'regexp'
-			className := x?.constructor?.name
-			if (className == 'Object')
-				return 'hash'
-			else
-				return 'instance'  # get class name with x.constructor.name
-	return 'unknown'
+	if (typeof x == 'undefined')
+		return 'undef'
+
+	if (typeof x == 'bigint')
+		return 'integer'
+
+	if (typeof x == 'number')
+		return (
+			  Number.isNaN(x)    ? 'NaN'
+			: Number.isFinite(x) ? (Number.isInteger(x) ? 'integer' : 'number')
+			: ((x < 0) ? 'neginfinity' : 'infinity')
+			)
+
+	if (typeof x == 'function')
+		# --- If it's a function whose source code starts with
+		#     the "class" keyword, it's a class
+		str := x.toString()
+		if str.startsWith('class')
+			# --- get name with className(x)
+			#     get definition with classDef(x)
+			return 'class'
+		else
+			return 'function' # get name with functionName(x)
+
+	if (typeof x == 'object')
+		if (x == null)
+			return 'null'
+		if Array.isArray(x)
+			return 'array'
+		if (x instanceof String)
+			return 'string'
+		if (x instanceof Boolean)
+			return 'boolean'
+		if (x instanceof Number)
+			return Number.isInteger(x) ? 'integer' : 'number'
+		if (x instanceof RegExp)
+			# --- get definition with regexpDef(x)
+			return 'regexp'
+		className := x?.constructor?.name
+		if (className == 'Object')
+			return 'hash'
+		else
+			return 'instance'  # get class name with x.constructor.name
+	else
+		return (typeof x)
 
 # ---------------------------------------------------------------------------
 
-export isSymbol := (x: any): boolean =>
+export isSymbol := (x: unknown): boolean =>
 
 	return (typeof x == 'symbol')
 
 # ---------------------------------------------------------------------------
 
-export symbolName := (x: any): string =>
+export symbolName := (x: unknown): string =>
 
-	return x.description || ''
+	if (typeof x == 'symbol')
+		return x.description || ''
+	throw new Error("Not a symbol")
 
 # ---------------------------------------------------------------------------
 
@@ -153,28 +167,33 @@ export functionDef := (x: Function): string =>
 
 # ---------------------------------------------------------------------------
 
-export classDef := (x: any): string =>
+export regexpDef := (x: unknown): string =>
 
-	return normalizeCode(x.toString())
-
-# ---------------------------------------------------------------------------
-
-export regexpDef := (x: any): string =>
-
-	return x.source
+	if (typeof x == 'object') && (x instanceof RegExp)
+		return x.source
+	croak "Not a RegExp"
+	return ''      # --- TypeScript bug
 
 # ---------------------------------------------------------------------------
 
-export className = (x: any): string? =>
+export classDef := (x: unknown): string =>
+
+	if (typeof x == 'function') && x.toString().startsWith('class')
+		return normalizeCode(x.toString())
+	croak "Not a class"
+	return ''      # --- TypeScript bug
+
+# ---------------------------------------------------------------------------
+
+export className = (x: unknown): string? =>
 	# --- item can be a class or an object
 
-	switch jsType(x)
-		when 'class'
-			return x.name || ''
-		when 'instance'
-			return x.constructor.name || ''
-		else
-			return ''
+	if (typeof x == 'function') && x.toString().startsWith('class')
+		return x.name || ''
+	if (typeof x == 'object') && (x != null)
+		return x.constructor.name || ''
+	croak "Not a class"
+	return ''      # --- TypeScript bug
 
 # ---------------------------------------------------------------------------
 
@@ -183,7 +202,7 @@ export className = (x: any): string? =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,array)
  */
 
-export type array = any[]
+export type array = unknown[]
 export type arrayof<T> = T[]
 
 /**
@@ -191,7 +210,7 @@ export type arrayof<T> = T[]
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isArray)
  */
 
-export isArray := (x: any): x is array =>
+export isArray := (x: unknown): x is array =>
 
 	return Array.isArray(x)
 
@@ -203,7 +222,7 @@ export isArray := (x: any): x is array =>
  */
 
 export interface hash
-	[key: string | symbol]: any
+	[key: string | symbol]: unknown
 
 export interface hashof<T>
 	[key: string | symbol]: T
@@ -215,7 +234,7 @@ export interface hashof<T>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isHash)
  */
 
-export isHash := (x: any): x is hash =>
+export isHash := (x: unknown): x is hash =>
 
 	return (jsType(x) == 'hash')
 
@@ -244,7 +263,7 @@ export hashLike := (h: hash, hPat: hash): boolean =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isString)
  */
 
-export isString := (x: any): x is string =>
+export isString := (x: unknown): x is string =>
 
 	return (typeof x == 'string') || (x instanceof String)
 
@@ -252,7 +271,7 @@ export isString := (x: any): x is string =>
 
 export type char = string
 
-export isChar := (x: any): x is char =>
+export isChar := (x: unknown): x is char =>
 
 	return isString(x) && (x.length == 1)
 
@@ -266,7 +285,7 @@ export type nonEmptyString = string
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isNonEmptyString)
  */
 
-export isNonEmptyString := (x: any): x is nonEmptyString =>
+export isNonEmptyString := (x: unknown): x is nonEmptyString =>
 
 	# --- must contain non-whitespace character
 	return isString(x) && defined(x.match(/\S/))
@@ -278,7 +297,7 @@ export isNonEmptyString := (x: any): x is nonEmptyString =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isBoolean)
  */
 
-export isBoolean := (x: any): x is boolean =>
+export isBoolean := (x: unknown): x is boolean =>
 
 	return (typeof x == 'boolean') || (x instanceof Boolean)
 
@@ -289,7 +308,7 @@ export isBoolean := (x: any): x is boolean =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isNumber)
  */
 
-export isNumber := (x: any): x is number =>
+export isNumber := (x: unknown): x is number =>
 
 	return (
 		   (typeof x == 'bigint')
@@ -299,13 +318,13 @@ export isNumber := (x: any): x is number =>
 
 # ---------------------------------------------------------------------------
 
-export isPrimitive := (x: any): boolean =>
+export isPrimitive := (x: unknown): boolean =>
 
 	return isString(x) || isNumber(x) || isBoolean(x)
 
 # ---------------------------------------------------------------------------
 
-export isNonPrimitive := (x: any): boolean =>
+export isNonPrimitive := (x: unknown): boolean =>
 
 	return (x != null) && (typeof x == 'object')
 
@@ -322,7 +341,7 @@ export type integer = number
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isInteger)
  */
 
-export isInteger := (x: any): x is integer =>
+export isInteger := (x: unknown): x is integer =>
 
 	return isNumber(x) && Number.isInteger(x.valueOf())
 
@@ -334,7 +353,7 @@ export isInteger := (x: any): x is integer =>
 
 export type intArray = integer[]
 
-export isArrayOfIntegers := (x: any): x is intArray =>
+export isArrayOfIntegers := (x: unknown): x is intArray =>
 
 	if not Array.isArray(x)
 		return false
@@ -350,7 +369,7 @@ export isArrayOfIntegers := (x: any): x is intArray =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isArrayOfStrings)
  */
 
-export isArrayOfStrings := (x: any): x is string[] =>
+export isArrayOfStrings := (x: unknown): x is string[] =>
 
 	if not Array.isArray(x)
 		return false
@@ -373,7 +392,7 @@ export type regexp = RegExp
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isRegExp)
  */
 
-export isRegExp := (item: any): item is regexp =>
+export isRegExp := (item: unknown): item is regexp =>
 
 	return (item instanceof RegExp)
 
@@ -384,7 +403,7 @@ export isRegExp := (item: any): item is regexp =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isObject)
  */
 
-export isObject := (x: any): x is object =>
+export isObject := (x: unknown): x is object =>
 
 	return (typeof x == 'object') && (x != null)
 
@@ -395,7 +414,7 @@ export isObject := (x: any): x is object =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isFunction)
  */
 
-export isFunction := (item: any): boolean =>
+export isFunction := (item: unknown): boolean =>
 
 	return (typeof item == 'function')
 
@@ -411,7 +430,7 @@ export isFunction := (item: any): boolean =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isEmpty)
  */
 
-export isEmpty := (x: any): boolean =>
+export isEmpty := (x: unknown): boolean =>
 
 	if (x == undef) || (x == null)
 		return true
@@ -431,7 +450,7 @@ export isEmpty := (x: any): boolean =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,nonEmpty)
  */
 
-export nonEmpty := (x: any): boolean =>
+export nonEmpty := (x: unknown): boolean =>
 
 	return not isEmpty(x)
 
@@ -465,7 +484,7 @@ export unhide := (str: string): string =>
 
 # ---------------------------------------------------------------------------
 
-export isClass := (x: any): boolean =>
+export isClass := (x: unknown): boolean =>
 
 	if (typeof x != 'function')
 		return false
@@ -473,45 +492,130 @@ export isClass := (x: any): boolean =>
 
 # ---------------------------------------------------------------------------
 
-export isPromise := (x: any): boolean =>
+export isPromise := (x: unknown): boolean =>
 
-	if (typeof x != 'object') || (x == null)
-		return false
-	return (typeof x.then == 'function')
+	return (
+		(typeof x == 'object')
+		&& (x != null)
+		&& ('then' in x)
+		&& (typeof x.then == 'function')
+		)
 
 # ---------------------------------------------------------------------------
 # --- NOTE: An '&' preceding a key name indicates
 #           that it should be a function
 
 export isClassInstance := (
-		x: any,
+		x: unknown,
 		lReqKeys: string[]=[]
 		): boolean =>
 
-	constructorName := x?.constructor?.name
-	if (
-			   (x == null)
-			|| (typeof x != 'object')
-			|| Array.isArray(x)
-			|| isPromise(x)
-			|| notdefined(constructorName)
-			)
+	if isHash(x)
+		if isArray(x) || isPromise(x)
+			return false
+		if notdefined(x?.constructor?.name)
+			return false
+		for key of lReqKeys
+			let type = undef
+			if lMatches := key.match(///^ (\&) (.*) $///)
+				[_, type, key] := lMatches
+			if (key in x)
+				item: any := x[key]
+				if nonEmpty(item)
+					if (type == '&') && (typeof item != 'function')
+						return false
+				else
+					return false
+			else
+				return false
+		return true
+	else
 		return false
-	for key in lReqKeys
-		let type = undef
-		if lMatches := key.match(///^ (\&) (.*) $///)
-			[_, type, key] := lMatches
-		if notdefined(x[key])
-			return false
-		if (type == '&') && (typeof x[key] != 'function')
-			return false
-	return true
 
 # ---------------------------------------------------------------------------
 
-export isIterable := (x: any): boolean =>
+export isIterable := (x: unknown): boolean =>
 
-	if notdefined(x)
-		return false
-	else
+	if isHash(x)
 		return (typeof x[Symbol.iterator] == 'function')
+	return false
+
+# ---------------------------------------------------------------------------
+# --- Functions to normalize JavaScript code & expressions
+# ---------------------------------------------------------------------------
+
+export addFunctionNames := (code: string): string =>
+
+	# --- The names we add will look like: '__dummy99' where
+	#     '99' can be any sequence of digits
+	#     to make it trivial to remove them later
+
+	let id = 99
+	re := ///
+			function       # 'function' keyword
+			\s*            # optional whitespace
+			( \* ) ?       # optional '*'
+			\s*            # optional whitespace
+			\(
+			///g
+	replaceFunc := (match: string, ast: string?) =>
+		n := id
+		id += 1
+		return (
+			  (ast == undefined)
+			? "function __dummy#{n.toString()}("
+			: "function* __dummy#{n.toString()}("
+			)
+	return code.replaceAll(re, replaceFunc)
+
+# ---------------------------------------------------------------------------
+
+export removeFunctionNames := (code: string): string =>
+
+	return code.replaceAll(/__dummy\d+/g, '')
+
+# ---------------------------------------------------------------------------
+
+export normalizeCode := (
+		code: string,
+		): string =>
+
+	# --- Due to a bug in JavaScript, we have to make sure
+	#     that all function names (even in generators)
+	#     have a name, which we must remove after minimization
+
+	newCode := addFunctionNames(code)
+
+	# --- Remove extra whitespace
+	#     Remove extra parens from '(str)=>return'
+	#     Remove comments
+	hOptions := {
+		annotations: false
+		mangle: false
+		compress: undefined
+		keep_fargs: true
+		keep_fnames: true
+		warnings: true
+		}
+	hResult := minify newCode, hOptions
+	if hResult.error
+		throw new Error(hResult.error.message)
+	else if hResult.code
+		return removeFunctionNames(hResult.code)
+	else
+		throw new Error("Unknown error in normalizeCode()")
+
+# ---------------------------------------------------------------------------
+
+export normalizeExpr := (
+		code: string,
+		): string =>
+
+	str := normalizeCode(code)
+	len := str.length
+	if (str[len-1] == ';')
+		return str.substring(0, len-1)
+	else
+		return str
+
+# ---------------------------------------------------------------------------

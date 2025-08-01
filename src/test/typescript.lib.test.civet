@@ -1,0 +1,71 @@
+# typescript.lib.test.civet
+
+import {SourceFile} from 'npm:typescript'
+
+import {isHash, normalizeCode} from 'datatypes'
+import {pass, o, s, t} from 'llutils'
+import {DBG} from 'logger'
+import {getCmdArgs} from 'utils'
+import {setDirTree, slurp, withExt} from 'fsys'
+import {
+	ts2ast, ts2js, ast2ts, ast2js, typeCheckFiles, pprintAST,
+	getCode,
+	} from 'typescript'
+import {
+	equal, like, succeeds, fails, truthy, falsy, isType,
+	} from 'unit-test'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+setup := (): void =>
+
+	DBG "setDirTree()"
+
+	setDirTree 'test/typescript', """
+		test.ts
+			const str: string = 'abc'
+		test2.ts
+			const func1 = (str: string): boolean =>
+				return true
+		"""
+
+setup()
+
+# ---------------------------------------------------------------------------
+
+DBG "getCode(str)"
+
+equal getCode('let x = 42;'), 'let x = 42;'
+equal getCode('test/typescript/test.ts'), """
+	const str: string = 'abc'
+	"""
+
+# ---------------------------------------------------------------------------
+
+DBG "ts2js(tsCode)"
+
+equal ts2js('const s: string = "abc";'),
+		'var s = "abc";'
+
+DBG "ts2ast(tsCode)", "pprintAST(ast)"
+
+ast := ts2ast('test/typescript/test2.ts')
+equal pprintAST(ast), s"""
+	SourceFile - 'const func1 = (str: string): ...'
+		FirstStatement - 'const func1 = (str: string): ...'
+			VariableDeclarationList - 'const func1 = (str: string): ...'
+				VariableDeclaration - 'func1 = (str: string): boolea...'
+					Identifier - 'func1'
+					ArrowFunction - '(str: string): boolean =>\\n\tr...'
+						Parameter - 'str: string'
+							Identifier - 'str'
+							StringKeyword - 'string'
+						BooleanKeyword - 'boolean'
+						EqualsGreaterThanToken - '=>'
+						Block - 'return true'
+							ReturnStatement - 'return true'
+								TrueKeyword - 'true'
+		EndOfFileToken - ''
+	"""

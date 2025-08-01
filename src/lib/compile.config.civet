@@ -1,23 +1,17 @@
 # compile.config.civet - default compiler configuration
 
-import {
-	compile as compileSvelte,
-	} from 'npm:svelte/compiler'
+import {compile as compileSvelte} from 'npm:svelte/compiler'
 
-import {o} from './llutils.lib.ts'
-import {
-	LOG, LOGVALUE, DBG, DBGVALUE,
-	} from './logger.lib.ts'
+import {o} from 'llutils'
+import {LOG, LOGVALUE, DBG, DBGVALUE} from 'logger'
 import {
 	withExt, rmFile, slurp, barf, patchFirstLine,
 	TPathInfo, parsePath,
-	} from './fs.lib.ts'
-import {
-	cmdSucceeds, execCmdSync,
-	} from './exec.lib.ts'
-import {cielo2civetFile} from './cielo.lib.ts'
-import {civet2tsFile} from './civet.lib.ts'
-import {installCmd, runUnitTestsFor} from './compile.lib.ts'
+	} from 'fsys'
+import {cmdSucceeds, execCmdSync} from 'exec'
+import {civet2tsFile} from 'civet'
+import {cielo2civetFile} from 'cielo'
+import {installCmd, runUnitTestsFor} from 'compile'
 
 # ---------------------------------------------------------------------------
 # --- NOTES:

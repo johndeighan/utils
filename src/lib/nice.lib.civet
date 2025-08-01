@@ -1,31 +1,48 @@
-# nice.civet
+# nice.lib.civet
 
 import {
-	undef, defined, notdefined, assert, hash,
-	isArray, isFunction, isBoolean, isString,
+	undef, defined, notdefined, assert, croak, hash, hashof,
+	isArray, isFunction, isBoolean, isString, isClass, isArrayOfStrings,
 	jsType, className, functionName, symbolName,
-	nonEmpty, functionDef, regexpDef,
-	} from './datatypes.lib.ts'
+	nonEmpty, classDef, functionDef, regexpDef,
+	} from 'datatypes'
 import {
 	getOptions, escapeStr, unescapeStr,
-	keys, toBlock, o, OL, croak, rtrim, Fetcher,
-	} from './llutils.lib.ts'
+	keys, toBlock, o, OL, rtrim, Fetcher,
+	} from 'llutils'
 import {
 	indented,
-	} from './indent.lib.ts'
+	} from 'indent'
 import {
 	TPLLToken, tkEOF, tkIndent, tkUndent,
 	TTokenGenerator, allTokensInBlock,
-	} from './pll.lib.ts'
+	} from 'pll'
+
+# ---------------------------------------------------------------------------
 
 type TCompareFunc = (a: string, b: string) => number
 
 # ---------------------------------------------------------------------------
 
-getCompareFunc := (lSortKeys: string[]): TCompareFunc =>
+export alphaCompare: TCompareFunc := (
+		a: string,
+		b: string
+		): number =>
 
-	# --- Convert to a function
-	h: hash := {}
+	return (a < b) ? -1 : (a > b) ? 1 : 0
+
+# ---------------------------------------------------------------------------
+
+# --- Returns a function that:
+#        compares 2 strings based on their position in lSortKeys
+#        else compares alphabetically
+
+getCompareFunc := (
+		lSortKeys: string[]
+		): TCompareFunc =>
+
+	# --- Create map of key to number
+	h: hashof<number> := {}
 	for key,i of lSortKeys
 		h[key] = i+1
 
@@ -43,52 +60,55 @@ getCompareFunc := (lSortKeys: string[]): TCompareFunc =>
 			if defined(bVal)
 				return 1
 			else
-				return (a < b) ? -1 : (a > b) ? 1 : 0
+				return alphaCompare(a, b)
 
 # ---------------------------------------------------------------------------
 
-export toNice := (x: any, hOptions: hash={}): string =>
+export toNice := (
+		x: unknown,
+		hOptions: hash={}
+		): string =>
 
 	# --- When strict, classes and function
 	#     include their definitions, with escaped chars
 
-	{strict} := getOptions hOptions, {
+	type opt = {
+		strict: boolean
+		sortFunc: TCompareFunc?
+		sortKeys: string[]?
+		}
+	{strict, sortFunc, sortKeys
+		} := getOptions<opt> hOptions, {
 		strict: false
+		sortFunc: undef
+		sortKeys: undef
 		}
 
-	switch jsType(x)
-		when 'undef'
-			return '.undef.'
-		when 'null'
+	if (typeof x == 'undefined')
+		return '.undef.'
+
+	if (typeof x == 'bigint')
+		return x.toString()
+
+	if (typeof x == 'number')
+		return (
+			  Number.isNaN(x)    ? '.NaN.'
+			: Number.isFinite(x) ? x.toString()
+			: ((x < 0) ? '.neginfinity.' : '.infinity.')
+			)
+
+	if (typeof x == 'function')
+		if isClass(x)
+			return ".class #{classDef(x)}."
+		else
+			return ".function #{functionDef(x)}."
+
+	if (typeof x == 'object')
+
+		if (x == null)
 			return '.null.'
-		when 'boolean'
-			return x ? '.true.' : '.false.'
-		when 'string'
-			if needsPreEsc(x)
-				return '\\' + escapeStr(x, o'style=C')
-			else
-				return escapeStr(x, o'style=C')
-		when 'NaN'
-			return '.NaN.'
-		when 'infinity'
-			return '.infinity.'
-		when 'neginfinity'
-			return '.neginfinity.'
-		when 'number','integer'
-			return x.toString()
-		when 'class'
-			name := className(x)
-			return name ? ".class #{name}." : '.class.'
-		when 'function'
-			name := functionName(x)
-			return name ? ".function #{name}." : ".function."
-		when 'symbol'
-			name := symbolName(x)
-			return name ? ".symbol #{name}." : ".symbol."
-		when 'regexp'
-			def := regexpDef(x)
-			return def ? ".regexp #{def}." : '.regexp.'
-		when 'array'
+
+		if isArray(x)
 			if (x.length == 0)
 				return '.[].'
 			lLines := []
@@ -101,37 +121,54 @@ export toNice := (x: any, hOptions: hash={}): string =>
 					lLines.push "- #{block}"
 			return toBlock(lLines)
 
-		when 'hash','instance'
-			{sortKeys} := getOptions hOptions, {
-				sortKeys: false    # --- can be boolean/array/function
-				}
+		if (x instanceof String)
+			s := x.toString()
+			if needsPreEsc(s)
+				return '\\' + escapeStr(s, o'style=C')
+			else
+				return escapeStr(s, o'style=C')
 
-			sortKeysFunc: TCompareFunc := (
-				  isArray(sortKeys)    ? getCompareFunc(sortKeys)
-				: isFunction(sortKeys) ? sortKeys
-				:                        (a: string, b: string) => return (a < b) ? -1 : (a > b) ? 1 : 0
-				)
+		if (x instanceof Boolean)
+			return x ? '.true.' : '.false.'
 
-			lKeys := Object.keys(x)
-			if (lKeys.length == 0)
-				return '.{}.'
-			lLines := []
-			if (sortKeys == true)
-				lKeys.sort()
-			else if (sortKeys != false)
-				lKeys.sort(sortKeysFunc)
-			for key of lKeys
-				assert isString(key), "key not a string: #{OL(key)}"
-				val := x[key]
+		if (x instanceof Number)
+			return x.toString()
+
+		if (x instanceof RegExp)
+			def := regexpDef(x)
+			return def ? ".regexp #{def}." : '.regexp.'
+
+#		sortKeysFunc: TCompareFunc := (
+#			  isArray(sortKeys)    ? getCompareFunc(sortKeys)
+#			: isFunction(sortKeys) ? sortKeys
+#			:                        alphaCompare
+#			)
+
+		let sortKeysFunc: TCompareFunc
+		if defined(sortFunc)
+			sortKeysFunc = sortFunc
+		else if defined(sortKeys)
+			sortKeysFunc = getCompareFunc(sortKeys)
+		else
+			sortKeysFunc = alphaCompare
+
+		lKeys := Object.keys(x)
+		if (lKeys.length == 0)
+			return '.{}.'
+		lLines := []
+		for key of lKeys.sort(sortKeysFunc)
+			if isString(key)
+				val := (x as hashof<unknown>)[key]
 				block := toNice(val, hOptions)
 				if shouldSplit(val)
 					lLines.push "#{key}:"
 					lLines.push indented(block)
 				else
 					lLines.push "#{key}: #{block}"
-			return toBlock(lLines)
-		else
-			return "<Unknown object #{x}"
+		return toBlock(lLines)
+
+	else
+		return "<Unknown object #{x}>"
 
 # ---------------------------------------------------------------------------
 

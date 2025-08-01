@@ -8,8 +8,12 @@ import {
 	createSourceFile, createPrinter, createProgram, transpileModule,
 	getPreEmitDiagnostics, flattenDiagnosticMessageText,
 	getLineAndCharacterOfPosition, forEachChild,
-	} from "typescript"
-import {minify} from 'npm:uglify-js'
+	} from "npm:typescript"
+
+import {hash, isHash} from 'datatypes'
+import {truncStr, hasKey, getOptions} from 'llutils'
+import {DBG, LOGVALUE} from 'logger'
+import {TNodeInfo, getAstWalker} from 'ast-walker'
 
 decoder := new TextDecoder("utf-8")
 
@@ -34,106 +38,40 @@ export getCode := (str: string): string =>
 
 # ---------------------------------------------------------------------------
 
-export addFunctionNames := (code: string): string =>
-
-	# --- The names we add will look like: '__dummy99' where
-	#     '99' can be any sequence of digits
-	#     to make it trivial to remove them later
-
-	let id = 99
-	re := ///
-			function       # 'function' keyword
-			\s*            # optional whitespace
-			( \* ) ?       # optional '*'
-			\s*            # optional whitespace
-			\(
-			///g
-	replaceFunc := (match: string, ast: string?) =>
-		n := id
-		id += 1
-		return (
-			  (ast == undefined)
-			? "function __dummy#{n.toString()}("
-			: "function* __dummy#{n.toString()}("
-			)
-	return code.replaceAll(re, replaceFunc)
-
-# ---------------------------------------------------------------------------
-
-export removeFunctionNames := (code: string): string =>
-
-	return code.replaceAll(/__dummy\d+/g, '')
-
-# ---------------------------------------------------------------------------
-
-export normalizeCode := (
-		code: string,
-		ext: string = '.js'
-		): string =>
-
-	switch ext
-		'.js'
-
-			# --- Due to a bug in JavaScript, we have to make sure
-			#     that all function names (even in generators)
-			#     have a name, which we must remove after minimization
-
-			newCode := addFunctionNames(code)
-
-			# --- Remove extra whitespace
-			#     Remove extra parens from '(str)=>return'
-			#     Remove comments
-			hOptions := {
-				annotations: false
-				mangle: false
-				compress: undefined
-				keep_fargs: true
-				keep_fnames: true
-				warnings: true
-				}
-			hResult := minify newCode, hOptions
-			console.log hResult
-			if hResult.error
-				throw new Error(hResult.error.message)
-			else if hResult.code
-				return removeFunctionNames(hResult.code)
-			else
-				throw new Error("Unknown error in normalizeCode()")
-		else
-			return code.trim().replaceAll(/\s+/g, ' ')
-
-# ---------------------------------------------------------------------------
-
-export normalizeExpr := (
-		code: string,
-		ext: string = '.js'
-		): string =>
-
-	str := normalizeCode(code, ext)
-	len := str.length
-	if (str[len-1] == ';')
-		return str.substring(0, len-1)
-	else
-		return str
-
-# ---------------------------------------------------------------------------
-
-export truncStr := (str: string, len: number) =>
-
-	if (str.length <= len)
-		return str
-	return str.substring(0, len-3) + '...'
-
-# ---------------------------------------------------------------------------
-
 /**
  * ts2ast() - convert TypeScript code to an AST
  */
 
-export ts2ast := (str: string): SourceFile =>
+export ts2ast := (
+		str: string,
+		hOptions: hash = {}
+		): SourceFile =>
+
+	type opt = {
+		addNames: boolean
+		}
+	{addNames} := getOptions<opt> hOptions, {
+		addNames: true
+		}
 
 	tsCode := getCode str
-	return createSourceFile("temp.ts", tsCode, ScriptTarget.Latest)
+	hAst := createSourceFile("temp.ts", tsCode, ScriptTarget.Latest)
+	filter := (x: any) =>
+		return (
+			   (typeof x == 'object')
+			&& (x != null)
+			&& hasKey(x, 'kind')
+			&& (typeof x.kind == 'number')
+			)
+	if addNames
+		walker := getAstWalker(hAst, filter)
+		for item of walker()
+			{node} := item
+			if (typeof node == 'object') && (node != null) && ('kind' in node)
+				{kind} := node
+				if (typeof kind == 'number')
+					item.kindStr = SyntaxKind[kind]
+	return hAst
 
 # ---------------------------------------------------------------------------
 
@@ -192,11 +130,13 @@ export typeCheckFile = typeCheckFiles   # --- synonym
 
 # ---------------------------------------------------------------------------
 
+type TNodePrinter = (src: SourceFile, n: Node, depth: number) => string
+
 pprintNode := (
 		source: SourceFile,
 		node: Node,
 		depth: number
-		) =>
+		): string =>
 
 	kind := SyntaxKind[node.kind]
 	text := node.getText(source).replaceAll('\n', '\\n')
@@ -205,12 +145,16 @@ pprintNode := (
 
 # ---------------------------------------------------------------------------
 
-export pprintAST := (source: SourceFile, pprint=pprintNode): string =>
+export pprintAST := (
+		source: SourceFile,
+		pprint: TNodePrinter = pprintNode
+		): string =>
 
 	lLines: string[] := []
 
 	traverse := (node: Node, depth=0): void =>
-		lLines.push pprint(source, node, depth)
+		line := pprint(source, node, depth)
+		lLines.push line
 		forEachChild node, (childNode) => traverse(childNode, depth + 1)
 		return
 

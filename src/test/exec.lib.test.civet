@@ -1,0 +1,93 @@
+# exec.lib.test.civet
+
+import {
+	isEmpty, nonEmpty,
+	} from 'datatypes'
+import {DBG} from 'logger'
+import {o} from 'llutils'
+import {getCmdArgs} from 'utils'
+import {setDirTree} from 'fsys'
+import {
+	mkstr, getCmdLine, getProcOpt, typeCheck,
+	execCmd, execCmdSync, cmdSucceeds,
+	TExecResult,
+	} from 'exec'
+import {
+	equal, like, succeeds, fails, truthy, falsy,
+	} from 'unit-test'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+setup := (): void =>
+
+	DBG "setDirTree()"
+
+	setDirTree 'test/exec', """
+		bad.civet
+			str: string := undef
+
+		"""
+
+setup()
+
+# ---------------------------------------------------------------------------
+
+DBG "mkstr(x)"
+
+buffer := new ArrayBuffer(3)
+view := new Int8Array(buffer)
+
+view[0] = 97
+view[1] = 98
+view[2] = 99
+
+equal mkstr('abc'), 'abc'
+equal mkstr(buffer), 'abc'
+equal mkstr(view), 'abc'
+
+DBG "getCmdLine()"
+
+equal getCmdLine('dothis', ['-a', 'willy']), 'dothis -a willy'
+
+DBG "getProcOpt()"
+
+like getProcOpt(['-h'], true), {
+	args: ['-h']
+	stdout: 'piped'
+	stderr: 'piped'
+	}
+
+like getProcOpt(['-h'], false), {
+	stdout: 'inherit'
+	stderr: 'inherit'
+	}
+
+DBG "execCmd()", "type TExecResult"
+
+(() =>
+	hResult := await execCmd('echo', ["Hello"], o'collect')
+	equal hResult.code, 0
+	equal hResult.stdout, "Hello\n"
+	)()
+
+DBG "execCmdSync()", "type TExecResult"
+
+equal execCmdSync("echo", ["Hello"]).code, 0
+
+(() =>
+	hResult := execCmdSync('echo', ["Hello"], o'collect')
+	equal hResult.code, 0
+	equal hResult.stdout, "Hello\n"
+	)()
+
+DBG "cmdSucceeds(cmdName, lArgs, hOptions)"
+
+truthy cmdSucceeds('ls')
+falsy  cmdSucceeds('nosuchcmd')
+
+DBG "typeCheck(tsCode)"
+
+truthy isEmpty(typeCheck("let s: string = 'abc';"))
+truthy nonEmpty(typeCheck("let s: string = 42;"))

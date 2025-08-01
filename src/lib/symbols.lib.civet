@@ -1,18 +1,18 @@
 # symbols.lib.civet
 
 import {
-	undef, defined, notdefined, assert,
+	undef, defined, notdefined, assert, croak,
 	hash, hashof, isEmpty, nonEmpty,
-	} from './datatypes.lib.ts'
+	} from 'datatypes'
 import {
-	pass, OL, ML, croak, o, getOptions, hasKey, keys,
-	} from './llutils.lib.ts'
-import {LOG, DBG, DBGVALUE, ERR} from './logger.lib.ts'
-import {resetOneIndent} from './indent.lib.ts'
+	pass, OL, ML, o, getOptions, hasKey, keys,
+	} from 'llutils'
+import {LOG, DBG, DBGVALUE, ERR} from 'logger'
+import {resetOneIndent} from 'indent'
 import {
 	TPLLToken, TTokenGenerator, allTokensInBlock,
-	} from './pll.lib.ts'
-import {isFile, slurp} from './fs.lib.ts'
+	} from 'pll'
+import {isFile, slurp} from 'fsys'
 
 /**
  * @module symbols - locate common symbols
@@ -49,7 +49,10 @@ export loadSymbols := (
 	DBG "in loadSymbols()"
 
 	# --- Check if libraries actually exist
-	{checkFiles} := getOptions hOptions, {
+	type opt = {
+		checkFiles: boolean
+		}
+	{checkFiles} := getOptions<opt> hOptions, {
 		checkFiles: false
 		}
 
@@ -138,10 +141,5 @@ export getNeededImportStmts := (
 	lStmts := for lib of keys(hLibs)
 		lSyms := hLibs[lib]
 		strSyms := lSyms.join(', ')
-		if lib.match(/^[A-Za-z][A-Za-z0-9_]*$/)
-			"import {#{strSyms}} from '#{lib}';"
-		else if lib.match(/^[\@\.\/]/)
-			"import {#{strSyms}} from '#{lib}';"
-		else
-			"import {#{strSyms}} from './#{lib}';"
+		"import {#{strSyms}} from '#{lib}';"
 	return lStmts

@@ -1,0 +1,11 @@
+import {withExt} from '../../src/lib/fsys.lib.ts'
+export default new Object {
+	hCompilers: {
+		'.test': {
+			getOutPaths: (path: string) => [withExt(path, '.out')],
+			tester: () => true,
+			compiler: (path: string) => undefined
+			}
+		},
+	hPostProcessors: {}
+	}

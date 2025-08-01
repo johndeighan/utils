@@ -1,27 +1,27 @@
 # compile.lib.civet
 
 import {
-	undef, defined, notdefined, assert, hash, hashof, isHash,
+	undef, defined, notdefined, assert, croak,
+	hash, hashof, isHash,
 	nonEmptyString, isNonEmptyString, nonEmpty,
-	} from './datatypes.lib.ts'
+	} from 'datatypes'
 import {
-	croak, pass, keys, hasKey, hasKeys, missingKeys,
-	OL, o, getOptions, getOneOption,
-	} from './llutils.lib.ts'
+	pass, keys, hasKey, hasKeys, missingKeys,
+	OL, o, getOptions,
+	} from 'llutils'
 import {
 	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
 	INDENT, UNDENT,
 	pushLogLevel, popLogLevel,
-	} from './logger.lib.ts'
+	} from 'logger'
 import {
 	isFile, isDir, fileExt, withExt, rmFile, mkpath, parsePath,
 	relpath, newerDestFileExists, slurp, barf, isStub,
 	allFilesMatching, TPathInfo,
-	patchFirstLine, configFromFile,
-	} from './fs.lib.ts'
-import {
-	execCmd, execCmdSync, cmdSucceeds,
-	} from './exec.lib.ts'
+	patchFirstLine,
+	} from 'fsys'
+import {execCmd, execCmdSync, cmdSucceeds} from 'exec'
+import {configFromFile} from 'cielo'
 
 /**
  * @module compile.lib - compile files
@@ -169,6 +169,13 @@ export compileFile := (
 	assert isFile(path), "No such file: #{OL(path)}"
 	DBG "COMPILE: #{OL(path)}", INDENT
 
+	type opt = {
+		nopp: boolean
+		}
+	{nopp} := getOptions<opt> hOptions, {
+		nopp: false
+		}
+
 	hPathInfo := parsePath path
 	{relPath, stub, purpose, ext} := hPathInfo
 
@@ -196,7 +203,6 @@ export compileFile := (
 
 	DBG "compiling #{OL(path)} to #{OL(lOutPaths)}"
 	status := compiler path
-	nopp := getOneOption hOptions, 'nopp', false
 	let postProcStatus: any? = undef
 	if (status == 'compiled') && defined(purpose) && not nopp
 		postProc := getPostProcessor(purpose)
@@ -232,8 +238,13 @@ export allCompilableFiles := (
 		hOptions: hash={}
 		): Generator<TPathInfo, void, void> ->
 
+	type opt = {
+		root: string
+		filter: Function?
+		}
 	{root, filter} := getOptions hOptions, {
 		root: '**'
+		filter: undef
 		}
 	pattern := getCompilerGlobPattern(root)
 	DBG "pattern = #{pattern}"

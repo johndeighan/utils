@@ -1,0 +1,87 @@
+# parser.lib.test.civet
+
+import {undef, hash} from 'datatypes'
+import {DBG} from 'logger'
+import {o} from 'llutils'
+import {getCmdArgs} from 'utils'
+# import {
+# 	KeppelGrammar,
+# 	} from './parser/keppel.grammar.ts'
+import {
+	TRuleFunc, isRuleFunc, Rule, TLaxRule, TCallback,
+	ParseError, TParser, getParser,
+	} from 'parser'
+import {
+	equal, same, like, succeeds, fails, truthy, falsy,
+	matches, isType, notType, objListLike,
+	} from 'unit-test'
+
+getCmdArgs()
+#  htmlParse := getParser<hash>(KeppelGrammar)
+
+# ---------------------------------------------------------------------------
+# Regular Expressions
+
+reIdent := ///^ [a-zA-Z_$] [a-zA-Z0-9_$]* ///
+reIdent.toString = () => 'reIdent'
+
+reNumber := ///^
+	[-+]?
+	\d+
+	(?:
+		\.
+		\d+
+		([eE][-+]?\d+)?
+		)?
+	///
+reNumber.toString = () => 'reNumber'
+
+reString := ///^
+	(?: ' ([^']*) ' ) | (?: " ([^"]*) " )
+	///
+reString.toString = () => 'reString'
+
+reOp := /[+\-*\/]/
+reOp.toString = () => 'reOp'
+
+# ---------------------------------------------------------------------------
+
+parseIdent := getParser reIdent
+succeeds () => parseIdent 'abc'
+succeeds () => parseIdent ' abc  '  # --- whitespace skipped
+fails    () => parseIdent '1abc'
+fails    () => parseIdent 'abc def'
+succeeds () => getParser(reIdent, [], o'partial') 'abc def'
+
+parseOp := getParser reOp
+succeeds () => parseOp '+'
+succeeds () => parseOp '  -  '
+succeeds () => parseOp '*'
+succeeds () => parseOp '  /  '
+fails    () => parseOp '!'
+
+parseNum := getParser reNumber
+succeeds () => parseNum '42'
+succeeds () => parseNum '  42  '
+succeeds () => parseNum '3.14'
+succeeds () => parseNum '  3.14  '
+succeeds () => parseNum '3.14e5'
+succeeds () => parseNum '  3.14E5  '
+fails    () => parseNum '!'
+
+parseAssign := getParser [reIdent, '=', reNumber]
+succeeds () => parseAssign 'x=42'
+succeeds () => parseAssign ' x = 42 '
+
+parseAssign2 := getParser [reIdent, '=', [reIdent, reOp, reIdent]]
+succeeds () => parseAssign2 'x = a + b'
+
+parseVal := getParser {
+	number: reNumber
+	string: reString
+	}
+succeeds () => parseVal '12'
+succeeds () => parseVal '"abc"'
+succeeds () => parseVal ' 12 '
+succeeds () => parseVal ' "abc" '
+fails    () => parseVal '+'

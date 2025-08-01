@@ -1,9 +1,11 @@
 # runtemp.cmd.civet
 
-import {
-	undef, getCmdArgs, assert, DBG, LOG, isFile,
-	compileFile, execCmd, getLogLevel,
-	} from "../lib/utils.lib.ts"
+import {assert} from 'datatypes'
+import {getCmdArgs} from 'utils'
+import {DBG, LOG, getLogLevel} from 'logger'
+import {isFile} from 'fsys'
+import {execCmd} from 'exec'
+import {compileFile} from 'compile'
 
 hArgs := getCmdArgs()
 lStubs := (hArgs._.length == 0) ? ['temp'] : hArgs._

@@ -1,7 +1,7 @@
 # cleanup.cmd.civet
 
 import {expandGlobSync} from '@std/fs/expand-glob'
-import pathLib from 'path'
+import pathLib from 'node:path'
 import {existsSync} from '@std/fs'
 
 # ---------------------------------------------------------------------------

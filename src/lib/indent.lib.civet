@@ -1,14 +1,14 @@
 # indent.lib.civet
 
 import {
-	undef, defined, notdefined, assert, array,
-	isString, isArray, isArrayOfStrings, isHash, integer, isInteger,
-	} from './datatypes.lib.ts'
+	undef, defined, notdefined, assert, croak, array,
+	isString, isArray, isArrayOfStrings, isHash,
+	integer, isInteger,
+	} from 'datatypes'
 import {
-	rtrim, countChars,
+	rtrim, countChars, escapeStr,
 	blockToArray, arrayToBlock, toArray, toBlock,
-	croak, escapeStr,
-	} from './llutils.lib.ts'
+	} from 'llutils'
 
 /**
  * @module indent - indent level utilities

@@ -4,14 +4,13 @@ import {createRequire} from "node:module"
 import {sprintf} from "@std/fmt/printf"
 import {relative} from '@std/path'
 
-import {truncStr} from './typescript.lib.ts'
 import {
 	undef, defined, notdefined, assert, char, deepEqual,
 	isHash, isArray, isNonEmptyString, isArrayOfStrings,
 	isEmpty, nonEmpty, isString, isObject, isInteger,
 	integer, hash, hashof, array, arrayof, voidFunc,
-	TFilterFunc, isNonPrimitive, functionDef,
-	} from './datatypes.lib.ts'
+	isNonPrimitive, functionDef, croak,
+	} from 'datatypes'
 
 /**
  * @module llutils - low level utilities
@@ -45,16 +44,6 @@ export sinceLoadStr := (datetime: (Date | integer)? = undef) =>
 # ---------------------------------------------------------------------------
 
 /**
- * throws an exception with the provided message
- */
-
-export croak := (msg: string): never =>
-
-	throw new Error(msg)
-
-# ---------------------------------------------------------------------------
-
-/**
  * Asserts that `cond` is true. If it isn't, an exception is
  * thrown with the given `msg`
  */
@@ -77,6 +66,14 @@ export pass := (): void =>    # do nothing
 
 # ---------------------------------------------------------------------------
 
+export truncStr := (str: string, len: number) =>
+
+	if (str.length <= len)
+		return str
+	return str.substring(0, len-3) + '...'
+
+# ---------------------------------------------------------------------------
+
 /**
  * stringify any value, so that if we take the resultStr, we can
  *    let x = <resultStr>
@@ -89,10 +86,16 @@ export stringify := (
 	level: number=0
 	): string =>
 
-	{oneLine, compress, trunc} := getOptions hOptions, {
+	type opt = {
+		oneLine: boolean
+		compress: boolean
+		trunc: number
+		}
+	{oneLine, compress, trunc
+		} := getOptions<opt> hOptions, {
 		oneLine: false
 		compress: true
-		trunc: undef
+		trunc: 0
 		}
 
 	typeStr := typeof x
@@ -131,7 +134,7 @@ export stringify := (
 		when 'function'
 			functionDef(x)
 
-	if defined(trunc)
+	if isInteger(trunc) && (trunc > 0)
 		return truncStr(result, trunc)
 	else
 		return result
@@ -263,40 +266,17 @@ export t := (lStrings: TemplateStringsArray): string =>
 # ---------------------------------------------------------------------------
 
 /**
- * Adds any keys in hDefaults that are missing in hOptions
- * to hOptions with their given values
+ * returns a hash of options with their values,
+ * - adding any default values from hDefaults
+ *   if they're missing
  */
 
-export addDefaults := (hOptions: hash, hDefaults: hash): hash =>
+export getOptions := <T extends hash>(
+		hOptions: hash={},
+		hDefaults: T
+		): T =>
 
-	assert isObject(hOptions), "hOptions not an object: #{OL(hOptions)}"
-	assert isObject(hDefaults), "hDefaults not an object: #{OL(hDefaults)}"
-
-	# --- Fill in defaults for missing values
-	for key of Object.keys(hDefaults)
-		value := hDefaults[key]
-		if not hOptions.hasOwnProperty(key) && defined(value)
-			hOptions[key] = value
-	return hOptions
-
-# ---------------------------------------------------------------------------
-
-/**
- * returns a hash of options with their values, using options
- * if it's a hash, or parsing options using strToHash() if
- * it's a string - adding any default values from hDefaults
- * if they're missing in the resulting hash
- */
-
-export getOptions := (hOptions: hash={}, hDefaults: hash={}): hash =>
-
-	return addDefaults hOptions, hDefaults
-
-# ---------------------------------------------------------------------------
-
-export getOneOption := (hOptions: hash={}, name: string, defVal: any) =>
-
-	return hOptions[name] || defVal
+	return {...hDefaults, ...hOptions}
 
 # ---------------------------------------------------------------------------
 
@@ -317,21 +297,21 @@ export removeEmptyKeys := (h: hash): hash =>
 
 /**
  * return an array of all own keys in a hash
+ * with possible exceptions
  */
 
 export keys := (obj: hash, hOptions: hash={}): string[] =>
 
-	h := getOptions hOptions, {
-		except: []
+	type opt = {
+		lExcept: string[]
+		}
+	{lExcept} := getOptions<opt> hOptions, {
+		lExcept: []
 		}
 
-	let except = h.except
-
-	if isString(except)
-		except = [except]
 	lKeys: string[] := []
 	for key of Object.keys(obj)
-		if not except.includes(key)
+		if not lExcept.includes(key)
 			lKeys.push key
 	return lKeys
 
@@ -545,38 +525,6 @@ export invertHash := (h: hash): hash =>
 
 # ---------------------------------------------------------------------------
 
-export withoutKeys := (
-		h: hash,
-		...lKeys: string[]
-		): hash =>
-
-	hNew: hash := {}
-	for key of keys(h)
-		if not lKeys.includes(key)
-			hNew[key] = h[key]
-	return hNew
-
-# ---------------------------------------------------------------------------
-
-type TKeyVal = [key: string, val: any]
-
-export withKeyVals := (
-		h: hash,
-		...lKeyVals: TKeyVal[]
-		): hash =>
-
-	hNew: hash := {}
-	for k of keys(h)
-		hNew[k] = h[k]
-	for pair of lKeyVals
-		[key, val] := pair
-		hNew[key] = val
-	return hNew
-
-export withKeyVal = withKeyVals
-
-# ---------------------------------------------------------------------------
-
 /**
  * by default, replace these characters:
  *    carriage return
@@ -590,16 +538,25 @@ export withKeyVal = withKeyVals
  *    poschar - char to use to indicate position
  */
 
-hDebugReplace: hash := {
+hDebugReplace: hashof<string> := {
 	"\r": '←'
 	"\n": '↓'
 	"\t": '→'
 	" ":  '˳'
 	}
 
-hCReplace: hash := {
+hDebugNoNewlineReplace: hashof<string> := {
+	"\t": '→'
+	" ":  '˳'
+	}
+
+hCReplace: hashof<string> := {
 	"\r": '\\r'
 	"\n": '\\n'
+	"\t": '\\t'
+	}
+
+hCNoNewlineReplace: hashof<string> := {
 	"\t": '\\t'
 	}
 
@@ -608,12 +565,22 @@ export escapeStr := (
 		hOptions: hash = {}
 		): string =>
 
+	type opt = {
+		style: string
+		hReplace: hashof<string>
+		block: boolean
+		offset: number?
+		range: number[]?      # --- can be [int, int]
+		poschar: char
+		beginchar: char
+		endchar: char
+		}
 	{
 		style, hReplace, block, offset, poschar,
 		beginchar, endchar
-		} := getOptions hOptions, {
+		} := getOptions<opt> hOptions, {
 			style: 'debug'
-			hReplace: undef
+			hReplace: {}
 			block: false
 			offset: undef
 			range: undef      # --- can be [int, int]
@@ -622,17 +589,17 @@ export escapeStr := (
 			endchar: '⟩'
 			}
 
-	let hRealReplace: hash = {}
-	if defined(hReplace)
+	let hRealReplace: hashof<string> = {}
+	if nonEmpty(hReplace)
 		hRealReplace = hReplace
 	else if (style == 'C')
 		if block
-			hRealReplace = withoutKeys(hCReplace, '\n', '\r')
+			hRealReplace = hCNoNewlineReplace
 		else
 			hRealReplace = hCReplace
 	else
 		if block
-			hRealReplace = withoutKeys(hDebugReplace, '\n', '\r')
+			hRealReplace = hDebugNoNewlineReplace
 		else
 			hRealReplace = hDebugReplace
 
@@ -663,13 +630,17 @@ export unescapeStr := (
 		hOptions: hash = {}
 		): string =>
 
-	{style, hReplace} := getOptions hOptions, {
+	type opt = {
+		style: string
+		hReplace: hashof<string>
+		}
+	{style, hReplace} := getOptions<opt> hOptions, {
 		style: 'C'
-		hReplace: undef
+		hReplace: {}
 		}
 
-	let hRealReplace: hash = {}
-	if defined(hReplace)
+	let hRealReplace: hashof<string> = {}
+	if nonEmpty(hReplace)
 		hRealReplace = hReplace
 	else
 		if (style == 'debug')
@@ -719,7 +690,8 @@ export escapeBlock := (
 	hOptions: hash = {}
 	): string =>
 
-	return escapeStr(block, withKeyVal(hOptions, ['block', true]))
+	hOptions.block = true
+	return escapeStr(block, hOptions)
 
 # ---------------------------------------------------------------------------
 
@@ -969,7 +941,7 @@ export interpolate := (
 		hReplace: hashof<string>   # --- { <tag>: <replacement>, ... }
 		): string =>
 
-	for key of Object.keys(hReplace)
+	for key of keys(hReplace)
 		assert (key[0] == '$'), "all keys must start with '$'"
 	re := ///
 		\$
@@ -1005,3 +977,18 @@ export randomLabel := (): string =>
 # ---------------------------------------------------------------------------
 
 export require := getImportSync(import.meta.url)
+
+# ---------------------------------------------------------------------------
+
+export getLineAndColumn := (text: string, pos: number) =>
+
+	# --- Get line number by counting number of \n chars
+	#        before the current position
+	#     Get column number by finding closest previous position
+	#        of a \n and computing the difference
+
+	shortStr := text.substring(0, pos)
+	return [
+		countChars(shortStr, "\n") + 1
+		pos - shortStr.lastIndexOf('\n')
+		]

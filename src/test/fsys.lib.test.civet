@@ -1,0 +1,791 @@
+# fsys.lib.test.civet
+
+import {
+	undef, defined, hash, voidFunc, isString, deepEqual,
+	} from 'datatypes'
+import {
+	o, spaces, sinceLoad, sinceLoadStr, sleep, hasKey, pass,
+	} from 'llutils'
+import {DBG} from 'logger'
+import {getCmdArgs} from 'utils'
+import {TPLLToken} from 'pll'
+import {
+	isFile, isDir, getPathType, fileExt, withExt,
+	lStatFields, getStats, isStub, parsePath,
+	allFilesMatching, allLinesIn,
+	normalizePath, pathToURL, mkpath, relpath, pathSubDirs, myself,
+	rmFile, rmDir, newerDestFileExists,
+	clearDir, mkDir, mkDirsForFile, slurp, barf,
+	removeFilesMatching, removeFilesExcept,
+	watchFile, FileEventHandler, TWatcherCallbackFunc,
+	TFsChangeType, TFsCallbackFunc, setDirTree,
+	allTokensInFile, TPathType,
+	TFileOp, fileOpsTable, patchFirstLine,
+	} from 'fsys'
+import {
+	equal, truthy, falsy, like, objListLike, matches,
+	succeeds, fails, includesAll, isType, notType,
+	} from 'unit-test'
+
+hArgs := getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+setup := (): void =>
+
+	DBG "setDirTree()"
+
+	setDirTree('test/fs', """
+			tokens.txt
+				if x==1
+					print "OK"
+				exit
+			dummy.txt
+				dummy
+			file1.txt
+				line1
+				line2
+				line3
+			file2.txt
+				# test1.cielo
+
+				LOG := (str) => console.log str
+				LOG "Hello, World!"
+			file3.flags.txt
+				# test1.cielo
+
+				LOG := (str) => console.log str
+				LOG "Hello, World!"
+			file4.cielo
+				# file.cielo
+
+				abc
+			file5.cielo
+				this is the REAL first line
+				# file.cielo
+
+				abc
+			file.config.ts
+				export default new Object({
+					a: 1,
+					b: 'abc',
+					f: () => 'hello'
+					})
+			/aaa
+				/bbb
+					newfile.txt
+						abc
+					oldfile.txt
+						abc
+					temp.txt
+						abc
+			/subdir
+				new.txt
+					abc
+					def
+		""", o'clear')
+	return
+
+setup()
+
+# ---------------------------------------------------------------------------
+
+DBG "isFile()"
+
+truthy isFile('./deno.jsonc')
+truthy isFile('deno.jsonc')
+falsy isFile('./src/lib/notafile.txt')
+truthy isFile("./test/fs/dummy.txt")
+falsy  isFile("./test/fs")
+
+DBG "isDir()"
+
+truthy isDir('test')
+falsy isDir('nosuchdir')
+truthy isDir("./test/fs")
+falsy  isDir("./test/fs/dummy.txt")
+
+DBG "type TPathType"
+
+isType  'TPathType', 'missing'
+isType  'TPathType', 'file'
+notType 'TPathType', 'xxx'
+
+DBG "getPathType()"
+
+equal getPathType('./deno.jsonc'), 'file'
+equal getPathType("./test/fs"), 'dir'
+equal getPathType('./src/lib/notafile.txt'), 'missing'
+equal getPathType("./test"), 'dir'
+equal getPathType("./test/fsys.lib.test.civet"), 'file'
+equal getPathType("C:/temp/file.txt"), 'missing'
+
+DBG "fileExt()"
+
+equal fileExt('C:/Users/johnd/utils/deno.jsonc'), '.jsonc'
+equal fileExt("C:/temp/file.txt"), ".txt"
+equal fileExt("c:\\temp/to/file.txt"), ".txt"
+equal fileExt("c:\\temp/to/file.flag.txt"), ".txt"
+
+DBG "withExt()"
+
+equal withExt('deno.jsonc', '.txt'), 'deno.txt'
+equal withExt("C:/temp/file.txt", ".js"), "C:/temp/file.js"
+equal withExt("c:\\temp/to/file.txt", ".js"), "c:\\temp/to/file.js"
+equal withExt("c:\\temp/to/file.flag.txt", ".js"), "c:\\temp/to/file.flag.js"
+
+DBG "const lStatFields"
+
+includesAll lStatFields, ['size', 'mtime']
+
+DBG "getStats(path)"
+
+truthy hasKey(getStats('deno.jsonc'), 'mtimeMs')
+equal getStats('test/fs/file1.txt').size, 17
+
+DBG "isStub()"
+
+truthy isStub('abc')
+falsy  isStub('.js')
+falsy  isStub('abc/deno')
+falsy  isStub('abc\\deno')
+
+DBG "type TPathInfo", "parsePath()"
+
+like  parsePath("C:/temp/file.txt"), {
+	type: 'missing'
+	path: "C:/temp/file.txt"
+	root: 'C:/'
+	dir: 'C:/temp'
+	fileName: 'file.txt'
+	stub: 'file'
+	purpose: undefined
+	ext: '.txt'
+	relPath: "../../../temp/file.txt"
+	relDir: "../../../temp"
+	}
+
+like parsePath(import.meta.url), {
+	type: 'file'
+	fileName: 'fsys.lib.test.ts'
+	stub: 'fsys.lib'
+	purpose: 'test'
+	ext: '.ts'
+	relPath: 'test/fsys.lib.test.ts'
+	relDir: 'test'
+	}
+
+DBG "allFilesMatching()"
+
+objListLike Array.from(allFilesMatching('**/test/fs/file*.txt')), [
+	{
+		type: 'file'
+		root: 'C:/'
+		fileName: 'file1.txt',
+		stub: 'file1'
+		ext: '.txt'
+		relPath: 'test/fs/file1.txt'
+		}
+	{
+		type: 'file'
+		root: 'C:/'
+		fileName: 'file2.txt',
+		stub: 'file2'
+		ext: '.txt'
+		relPath: 'test/fs/file2.txt'
+		}
+	{
+		type: 'file'
+		root: 'C:/'
+		fileName: 'file3.flags.txt',
+		stub: 'file3'
+		purpose: 'flags'
+		ext: '.txt'
+		relPath: 'test/fs/file3.flags.txt'
+		}
+	]
+
+objListLike Array.from(allFilesMatching('**/test/fs/**', o'includeDirs')), [
+	{
+		type: 'dir'
+		fileName: 'fs',
+		}
+	{
+		type: 'dir'
+		fileName: 'aaa',
+		}
+	{
+		type: 'dir'
+		fileName: 'bbb',
+		}
+	{
+		type: 'file'
+		fileName: 'newfile.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'oldfile.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'temp.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'dummy.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'file1.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'file2.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'file3.flags.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'file4.cielo',
+		}
+	{
+		type: 'file'
+		fileName: 'file5.cielo',
+		}
+	{
+		type: 'dir'
+		fileName: 'subdir',
+		}
+	{
+		type: 'file'
+		fileName: 'new.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'tokens.txt',
+		}
+	{
+		type: 'file'
+		fileName: 'file.config.ts',
+		}
+	], (h) =>
+		x := h['fileName']
+		return isString(x) ? x : ''
+
+(() =>
+	hOptions := {
+		includeDirs: true
+		filter: (hFile: hash) =>
+			flag := switch hFile.type
+				when 'dir'
+					(hFile.fileName != 'fs')
+				when 'file'
+					defined(hFile.fileName.match(/^[a-z0-9]+\.txt$/))
+				else
+					false
+			return flag ? hFile : undef
+		}
+
+	objListLike Array.from(allFilesMatching('**/test/fs/**', hOptions)), [
+		{
+			type: 'dir'
+			fileName: 'aaa',
+			}
+		{
+			type: 'dir'
+			fileName: 'bbb',
+			}
+		{
+			type: 'file'
+			fileName: 'newfile.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'oldfile.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'temp.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'dummy.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'file1.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'file2.txt',
+			}
+		{
+			type: 'dir'
+			fileName: 'subdir',
+			}
+		{
+			type: 'file'
+			fileName: 'new.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'tokens.txt',
+			}
+		]
+	)()
+
+(() =>
+	hOptions := {
+		includeDirs: false
+		filter: (hFile: hash) =>
+			{fileName} := hFile
+			if defined(fileName.match(/^[a-z0-9]+\.txt$/))
+				return fileName
+		}
+
+	equal Array.from(allFilesMatching('**/test/fs/**', hOptions)), [
+		'newfile.txt',
+		'oldfile.txt',
+		'temp.txt',
+		'dummy.txt',
+		'file1.txt',
+		'file2.txt',
+		'new.txt',
+		'tokens.txt',
+		]
+	)()
+
+DBG "allLinesIn()"
+
+lLines: string[] := []
+for await line of allLinesIn('./test/fs/file1.txt')
+	lLines.push line
+
+equal lLines, [
+	'line1'
+	'line2'
+	'line3'
+	]
+
+DBG "normalizePath()"
+
+equal normalizePath("C:/temp/file.txt"), "C:/temp/file.txt"
+equal normalizePath("C:\\temp/to/file.txt"), "C:/temp/to/file.txt"
+equal normalizePath("C:\\temp/to/file.flag.txt"), "C:/temp/to/file.flag.txt"
+equal normalizePath('C:\\Users\\johnd'), 'C:/Users/johnd'
+
+DBG "pathToURL()"
+
+equal pathToURL('c:/x/temp.txt'), "file:///c:/x/temp.txt"
+
+DBG "mkpath()"
+
+equal mkpath("C:/temp/file.txt"), "C:/temp/file.txt"
+equal mkpath("C:/temp", "file.txt"), "C:/temp/file.txt"
+equal mkpath("C:\\temp/to/file.txt"), "C:/temp/to/file.txt"
+equal mkpath("C:\\temp/to/file.flag.txt"), "C:/temp/to/file.flag.txt"
+equal mkpath("C:/temp", "file.txt"), "C:/temp/file.txt"
+equal mkpath("C:\\temp/to", "file.txt"), "C:/temp/to/file.txt"
+equal mkpath("C:\\temp", "to/file.flag.txt"), "C:/temp/to/file.flag.txt"
+equal mkpath('c:\\', 'Users', 'johnd'), 'C:/Users/johnd'
+
+DBG "relpath()"
+
+equal relpath('C:/Users/johnd/utils/deno.jsonc'), 'deno.jsonc'
+
+DBG "type TPathDesc", "pathSubDirs()"
+
+(() =>
+	fullPath := "C:/Users/johnd/utils/test/fs/deno.jsonc"
+	relPath  := "test/fs/deno.jsonc"
+
+	# --- non-relative, try both full and relative paths
+	equal pathSubDirs(fullPath, o'!relative'), {
+		dir: 'C:/Users/johnd/utils/test/fs'
+		root: "C:/"
+		lParts: ['Users', 'johnd', 'utils', 'test', 'fs']
+		}
+	equal pathSubDirs(relPath, o'!relative'), {
+		dir: 'C:/Users/johnd/utils/test/fs'
+		root: "C:/"
+		lParts: ['Users', 'johnd', 'utils', 'test', 'fs']
+		}
+
+	# --- relative, try both full and relative paths
+	equal pathSubDirs(fullPath, o'relative'), {
+		dir: "test/fs"
+		root: ""
+		lParts: ['test', 'fs']
+		}
+	equal pathSubDirs(relPath, o'relative'), {
+		dir: "test/fs"
+		root: ""
+		lParts: ['test', 'fs']
+		}
+
+	# --- Default is not relative
+	equal pathSubDirs(fullPath), {
+		dir: 'C:/Users/johnd/utils/test/fs'
+		root: "C:/"
+		lParts: ['Users', 'johnd', 'utils', 'test', 'fs']
+		}
+	equal pathSubDirs(relPath), {
+		dir: 'C:/Users/johnd/utils/test/fs'
+		root: "C:/"
+		lParts: ['Users', 'johnd', 'utils', 'test', 'fs']
+		}
+	)()
+
+DBG "myself()"
+
+equal myself(import.meta.url), 'test/fsys.lib.test.ts'
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+DBG "slurp(path)"
+
+equal slurp('./test/fs/file1.txt'), """
+	line1
+	line2
+	line3
+	"""
+
+barfPath := 'test/fs/barfed.txt'
+
+DBG "barf(path, contents)"
+
+(() =>
+	contents := """
+		abc
+
+		xyz
+		"""
+
+	barf barfPath, contents
+	equal slurp(barfPath), """
+		abc
+
+		xyz
+		"""
+	)()
+
+DBG "newerDestFileExists(srcPath, destPath)"
+
+truthy newerDestFileExists('test/fs/file1.txt', barfPath)
+falsy  newerDestFileExists(barfPath, 'test/fs/file1.txt')
+
+DBG "mkDir()"
+
+falsy  isDir('test/fs/tempdir')
+falsy  isFile('test/fs/tempdir/file42.txt')
+mkDir 'test/fs/tempdir'
+barf 'test/fs/tempdir/file42.txt', 'abc'
+truthy isDir('test/fs/tempdir')
+truthy isFile('test/fs/tempdir/file42.txt')
+
+DBG "rmFile()"
+
+truthy isFile(barfPath)
+rmFile barfPath
+falsy  isFile(barfPath)
+
+DBG "rmDir()"
+
+truthy isDir('test/fs/tempdir')
+rmDir 'test/fs/tempdir', o'clear'
+falsy  isDir('test/fs/tempdir')
+
+path := 'test/fs/aaa/bbb/newfile.txt'
+
+DBG "mkDirsForFile(path)"
+
+(() =>
+	mkDirsForFile path
+	truthy isDir('test/fs')
+	truthy isDir('test/fs/aaa')
+	truthy isDir('test/fs/aaa/bbb')
+	falsy  isDir('test/fs/aaa/bbb/ccc')
+	truthy isFile(path)
+	barf path, 'abc'
+	truthy isFile(path)
+	)()
+
+DBG "clearDir(dir)"
+
+(() =>
+	setup()
+	clearDir 'test/fs/aaa'
+
+	truthy isDir('test/fs/aaa')
+	falsy  isDir('test/fs/aaa/bbb')
+	falsy  isFile(path)
+	)()
+
+DBG "removeFilesMatching()"
+
+(() =>
+	setup()
+	removeFilesMatching '**/*file.txt'
+
+	falsy  isFile('test/fs/aaa/newfile.txt')
+	falsy  isFile('test/fs/aaa/bbb/newfile.txt')
+	falsy  isFile('test/fs/aaa/bbb/oldfile.txt')
+	truthy isFile('test/fs/aaa/bbb/temp.txt')
+	)()
+
+DBG "removeFilesExcept()"
+
+(() =>
+	setup()
+	lKeep := [
+		'test/fs/aaa/bbb/newfile.txt'
+		'test/fs/aaa/bbb/oldfile.txt'
+		]
+	removeFilesExcept '**/*file.txt', lKeep
+
+	falsy  isFile('test/fs/aaa/newfile.txt')
+	truthy isFile('test/fs/aaa/bbb/newfile.txt')
+	truthy isFile('test/fs/aaa/bbb/oldfile.txt')
+	truthy isFile('test/fs/aaa/bbb/temp.txt')
+	)()
+
+DBG "type TFsChangeType", "type TFsCallbackFunc", "class FileEventHandler"
+
+(() =>
+	lChanges: TFsChangeType[] := []
+	fileChangeFunc: TFsCallbackFunc := (change: TFsChangeType) =>
+		lChanges.push change
+		return
+
+	handler := new FileEventHandler(fileChangeFunc)
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp2.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+
+	await sleep 2
+
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+
+	await sleep 2
+
+	expected := [
+		{kind: 'modify', path: '/usr/lib/temp2.txt'}
+		{kind: 'modify', path: '/usr/lib/temp.txt'}
+		{kind: 'modify', path: '/usr/lib/temp.txt'}
+		]
+
+	equal lChanges, expected
+	)()
+
+# --- get the final change list via getChangeList() method
+(() =>
+	handler := new FileEventHandler(nullHandler, {track: true})
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp2.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+
+	await sleep 2
+
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+	handler.handle {
+		kind: 'modify',
+		path: '/usr/lib/temp.txt'
+		}
+
+	lChanges := await handler.getChangeList()
+
+	expected := [
+		{kind: 'modify', path: '/usr/lib/temp2.txt'}
+		{kind: 'modify', path: '/usr/lib/temp.txt'}
+		{kind: 'modify', path: '/usr/lib/temp.txt'}
+		]
+
+	equal lChanges, expected
+	)()
+
+DBG "type TWatcherCallbackFunc", "watchFile()", "watchFiles()"
+
+await (() =>
+	# --- Set contents of dummy.txt to standard contents
+	path := mkpath('test/fs/dummy.txt')
+	barf path, 'dummy\n'
+
+	let doStop: boolean = false
+	lEvents: TFsChangeType[] := []
+	add := (str: string, stop: boolean=false): void =>
+		if stop
+			doStop = true
+		barf path, str, o'append'
+		return
+
+	callback: TWatcherCallbackFunc := ({kind, path}) =>
+		lEvents.push {kind, path: mkpath(path), ms: sinceLoad()}
+		return doStop
+
+	promise := watchFile path, callback
+
+	add 'A'
+	add 'B'
+	add 'C'
+	await sleep 0.3
+	add 'D'
+	add 'E', true
+
+	await Promise.allSettled([promise])
+
+	equal slurp(path), 'dummy\nABCDE'
+
+	objListLike lEvents, [
+		{kind: 'modify', path}
+		{kind: 'modify', path}
+		]
+	)()
+
+DBG "allTokensInFile()"
+
+objListLike Array.from(allTokensInFile('test/fs/tokens.txt')), [
+	{kind: 'line',   str: 'if x==1'}
+	{kind: 'indent'}
+	{kind: 'line',   str: 'print "OK"'}
+	{kind: 'undent'}
+	{kind: 'line',   str: 'exit'}
+	]
+
+DBG "setDirTree()"
+
+(() =>
+	lFileOps := setDirTree('test/t', """
+		temp.txt
+			abc
+			def
+		""", o'scaffold')
+
+	equal lFileOps, [
+			{ funcName: 'mkDir', path: 'test/t'}
+			{ funcName: 'barf',  path: 'test/t/temp.txt', contents: "abc\ndef"}
+			]
+	)()
+
+(() =>
+	lFileOps := setDirTree('test/t', """
+		dummy.txt
+			abc
+			def
+		file1.txt
+			abc
+		file2.txt
+			abc
+		file3.flags.txt
+			abc
+		/aaa
+			/bbb
+				newfile.txt
+				oldfile.txt
+				temp.txt
+			/subdir1
+		/subdir2
+		""", o'scaffold')
+
+	equal lFileOps, [
+			{ funcName: 'mkDir', path: 'test/t'}
+			{ funcName: 'barf',  path: 'test/t/dummy.txt', contents: "abc\ndef"}
+			{ funcName: 'barf',  path: 'test/t/file1.txt', contents: "abc"}
+			{ funcName: 'barf',  path: 'test/t/file2.txt', contents: "abc"}
+			{ funcName: 'barf',  path: 'test/t/file3.flags.txt', contents: "abc"}
+			{ funcName: 'mkDir', path: 'test/t/aaa'}
+			{ funcName: 'mkDir', path: 'test/t/aaa/bbb'}
+			{ funcName: 'barf',  path: 'test/t/aaa/bbb/newfile.txt', contents: ''}
+			{ funcName: 'barf',  path: 'test/t/aaa/bbb/oldfile.txt', contents: ''}
+			{ funcName: 'barf',  path: 'test/t/aaa/bbb/temp.txt', contents: ''}
+			{ funcName: 'mkDir', path: 'test/t/aaa/subdir1'}
+			{ funcName: 'mkDir', path: 'test/t/subdir2'}
+			]
+	)()
+
+DBG "type TFileOp"
+
+isType 'TFileOp', {
+	funcName: 'mkDir',
+	path: '/usr/bin'
+	}
+isType 'TFileOp', {
+	funcName: 'barf',
+	path: '/usr/bin/deighan.txt'
+	}
+isType 'TFileOp', {
+	funcName: 'barf',
+	path: '/usr/bin/temp.txt',
+	contents: 'abc\ndef'
+	}
+
+DBG "fileOpsTable()"
+
+(() =>
+	lFileOps: TFileOp[] := [
+		{funcName: 'mkDir', path: '/usr/bin'}
+		{funcName: 'barf',  path: '/usr/bin/deighan.txt'}
+		{funcName: 'barf',  path: '/usr/bin/temp.txt', contents: 'abc\ndef'}
+		]
+	block := fileOpsTable(lFileOps)
+	equal block, """
+		--------------------------
+		#{spaces(9)}FILE OPS
+		--------------------------
+		mkdir /usr/bin
+		barf  /usr/bin/deighan.txt
+		barf  /usr/bin/temp.txt
+		#{spaces(6)}abc
+		#{spaces(6)}def
+		--------------------------
+		"""
+	)()
+
+DBG "patchFirstLine(path, str, newstr)"
+
+(() =>
+	path1 := 'test/fs/file4.cielo'
+	path2 :='test/fs/file5.cielo'
+	patchFirstLine path1, '.cielo', '.civet'
+	patchFirstLine path2, '.cielo', '.civet'
+	truthy slurp(path1).includes 'file.civet'
+	falsy  slurp(path2).includes 'file.civet'
+	)()

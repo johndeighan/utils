@@ -1,0 +1,47 @@
+# cielo.lib.test.civet
+
+import {defined} from 'datatypes'
+import {DBG} from 'logger'
+import {getCmdArgs} from 'utils'
+import {setDirTree} from 'fsys'
+import {
+	cielo2civet, cielo2civetFile, configFromFile,
+	} from 'cielo'
+import {
+	equal, like, succeeds, fails, truthy, falsy,
+	} from 'unit-test'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+setup := (): void =>
+
+	DBG "setDirTree()"
+
+	setDirTree 'test/cielo', """
+		file.config.ts
+			export default new Object({
+				a: 1,
+				b: 'abc',
+				f: () => 'hello'
+				})
+		"""
+
+setup()
+
+# ---------------------------------------------------------------------------
+
+DBG "cielo2civet(code)", "cielo2civetFile()"
+
+equal cielo2civet('abc'), 'abc'
+
+DBG "configFromFile(path)"
+
+(() =>
+	hConfig := configFromFile 'test/cielo/file.config.ts'
+	truthy defined(hConfig)
+	truthy defined(hConfig.a)
+	falsy  defined(hConfig.x)
+	equal  hConfig.f(), 'hello'
+	)()

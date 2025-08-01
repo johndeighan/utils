@@ -1,11 +1,15 @@
 # compile.cmd.civet
 
+import {assert, croak} from 'datatypes'
+import {pass, OL} from 'llutils'
+import {getCmdArgs} from 'utils'
+import {watchFiles, allFilesMatching} from 'fsys'
 import {
-	undef, defined, notdefined, pass, OL, assert, croak,
-	getCmdArgs, watchFiles, allFilesMatching,
 	DBG, LOG, WARN, ERR,
+	} from 'logger'
+import {
 	getCompilerGlobPattern, compileFile, TCompileResult,
-	} from '../lib/utils.lib.ts'
+	} from 'compile'
 
 {_, w: watch} := getCmdArgs {
 	_: """

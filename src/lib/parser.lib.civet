@@ -1,58 +1,22 @@
 # parser.lib.civet
 
-import {sprintf} from "@std/fmt/printf"
-
 import {
-	undef, defined, notdefined, isArray,
-	char, array, hash, isEmpty, nonEmpty,
-	} from './datatypes.lib.ts'
+	undef, defined, notdefined, assert, hash, hashof,
+	isArray, isFunction, isString, isRegExp, isHash,
+	} from 'datatypes'
 import {
-	getOptions, escapeStr, spaces, randomLabel,
-	} from './llutils.lib.ts'
-import {logIndent} from './log-formatter.lib.ts'
+	getOptions, escapeStr, spaces, randomLabel, OL,
+	getLineAndColumn,
+	} from 'llutils'
 import {
-	getLogLevel, setLogLevel,
-	TFormatter, TreeLogger,
-	} from './logger.lib.ts'
+	DBG, INDENT, UNDENT,
+	} from 'logger'
 
 # ---------------------------------------------------------------------------
 
-export class State
-	text: string = ''
-	pos: number = 0
-
-	# --- optional fields
-	skipRule?: Rule
-
-	constructor(
-			src: string | State
-			n: number = 0
-			hProps: Object = {}
-			)
-		if (typeof src == 'string')
-			@text = src
-			@pos = n
-			Object.assign(@, hProps)
-		else
-			Object.assign(@, src)
-			@.pos += n
-
-export isFinished := ($: State): boolean =>
-	{text, pos, skipRule} := $
-	if (pos == text.length)
-		return true
-	else if (skipRule)
-		# --- try running skip rule
-		delete $.skipRule     # prevent rule running the skip rule
-		$next := skipRule.next($)
-		if defined($next)
-			return ($next.pos == $next.text.length)
-		else
-			return false
-	else
-		return false
-
-export type TRuleFunc = ($: State) => State?
+export type TRuleFunc = (str: string, pos: number) => number
+export isRuleFunc := (x: any): x is TRuleFunc =>
+	return (typeof x == 'function')
 
 export class Rule
 	type: string
@@ -69,267 +33,197 @@ export class Rule
 		@func = func
 		@lChildren = []
 
-	next($: State): State?
-		return @func($)
+	next(str: string, pos: number): number
+		return @func(str, pos)
 
 # --- Anything that can be converted to a Rule
-type TLaxRule = (string | RegExp | Rule | TLaxRule[])
-
-# ---------------------------------------------------------------------------
-# --- returns $ if no skip rule OR rule doesn't match
-
-skipIgnored := ($: State): State =>
-
-	# --- Will always return a defined value
-	{skipRule} := $
-	if notdefined(skipRule)
-		return $
-
-	# --- make sure skip is only tried once
-	delete($.skipRule)
-	$next := skipRule.next($)
-	if defined($next)
-		$.skipRule = skipRule    # still need to restore
-		return Object.assign $next, {skipRule}
-	else
-		return Object.assign $, {skipRule}
-
-# ---------------------------------------------------------------------------
+export type TLaxRule = RegExp | string | TRuleFunc | TLaxRule[] | hashof<TLaxRule>
 
 export type TCallback = (rule: Rule, lMatches: string[]) => void
 
 # ---------------------------------------------------------------------------
+# --- Custom errors
 
-export RegexMatcher := (
-		re: RegExp
-		...lCallbacks: TCallback[]
-		): Rule =>
+export class ParseError extends Error
 
-	rule := new Rule('r', ($: State): State? =>
-
-		$cur := skipIgnored($)
-		lMatches := re.exec($cur.text.substring($cur.pos))
-		if (lMatches == null)
-			return undef
-
-		# --- Token is matched, add matches to state,
-		#     return the next state
-		numChars := lMatches[0].length
-		$next := new State($cur, numChars)
-		for cb of lCallbacks
-			cb(rule, lMatches)
-		return $next
-		)
-	return rule
-
-# ---------------------------------------------------------------------------
-
-export StringMatcher := (
-		str: string
-		...lCallbacks: TCallback[]
-		): Rule =>
-
-	newRule := new Rule('s', ($: State): State? =>
-
-		$cur := skipIgnored($)
-		if not $cur.text.startsWith(str, $cur.pos)
-			return undef
-
-		$next := new State($cur, str.length)
-		for cb of lCallbacks
-			cb(newRule, [str])
-		return $next
-		)
-	return newRule
-
-# ---------------------------------------------------------------------------
-
-export function getRule(
-		laxRule: TLaxRule
-		...lCallbacks: TCallback[]
-		): Rule
-
-	if (laxRule instanceof Rule)
-		return laxRule
-	if isArray(laxRule)
-		lRules := for r of laxRule
-			getRule r
-		return All lRules
-	if (laxRule instanceof RegExp)
-		return RegexMatcher(laxRule, lCallbacks...)
-	if (typeof laxRule == 'string')
-		return StringMatcher(laxRule, lCallbacks...)
-	throw new Error("Invalid rule: #{laxRule}")
-
-# ---------------------------------------------------------------------------
-# --- Match a sequence of rules in order
-
-export function All(
-		lLaxRules: TLaxRule[]
-		...lCallbacks: TCallback[]
-		): Rule
-
-	lRules := for laxRule of lLaxRules
-		getRule laxRule, lCallbacks...
-
-	newRule := new Rule('&', ($: State) =>
-		for rule,i of lRules
-			$next := rule.next($)
-			if notdefined($next)
-				return undef
-			$ = $next
-
-		for cb of lCallbacks
-			cb(newRule, [])
-		return $
-		)
-
-	return newRule
-
-# ---------------------------------------------------------------------------
-# --- Match any of the rules, check left to right
-
-export function Any(
-		lLaxRules: TLaxRule[]
-		...lCallbacks: TCallback[]
-		): Rule
-
-	lRules := for laxRule of lLaxRules
-		getRule laxRule
-
-	newRule := new Rule('|', ($: State) =>
-		for rule,i of lRules
-			$next := rule.next($)
-			if defined($next)
-				for cb of lCallbacks
-					cb(newRule, [])
-				return $next
-		return undef
-		)
-	return newRule
-
-# ---------------------------------------------------------------------------
-# --- Match a rule 1 or more times
-
-export function Plus(
-		laxRule: TLaxRule
-		...lCallbacks: TCallback[]
-		): Rule
-
-	rule := getRule(laxRule)
-
-	newRule := new Rule('+', ($: State) =>
-		$first := rule.next($)
-		if notdefined($first)
-			return undef
-		$ = $first
-		loop
-			$next := rule.next($)
-			if notdefined($next)
-				for cb of lCallbacks
-					cb(newRule, [])
-				return $next
-			$ = $next
-		)
-	return newRule
-
-# ---------------------------------------------------------------------------
-# --- Match a rule optionally
-
-export function Optional(
-		laxRule: TLaxRule
-		...lCallbacks: TCallback[]
-		): Rule
-
-	rule := getRule(laxRule)
-
-	newRule := new Rule('?', ($: State) =>
-		$next := rule.next($)
-		if defined($next)
-			for cb of lCallbacks
-				cb(newRule, [])
-			return $next
-		else
-			# --- Still succeed since it was optional
-			return $
-		)
-
-	return newRule
-
-# ---------------------------------------------------------------------------
-
-export function Star(
-		laxRule: TLaxRule
-		...lCallbacks: TCallback[]
-		): Rule
-
-	rule := getRule(laxRule)
-
-	newRule := new Rule('*', ($: State) =>
-		loop
-			$next := rule.next($)
-			if notdefined($next)
-				for cb of lCallbacks
-					cb(newRule, [])
-				return $
-			$ = $next
-		)
-	return newRule
-
-# ---------------------------------------------------------------------------
-
-export getLineAndColumn := (text: string, pos: number) =>
-
-	countChars := (str: string, ch: string): number =>
-		let count = 0
-		let pos = -1
-		while (pos = str.indexOf(ch, pos+1)) != -1
-			count += 1
-		return count
-
-
-	# --- Get line number by counting number of \n chars
-	#        before the current position
-	#     Get column number by finding closest previous position
-	#        of a \n and computing the difference
-
-	shortStr := text.substring(0, pos)
-	return [
-		countChars(shortStr, "\n") + 1,
-		pos - shortStr.lastIndexOf('\n')
-		]
+	constructor(msg: string)
+		super msg
+		this.name = 'ParseError'
 
 # ---------------------------------------------------------------------------
 # --- Returns a function that:
 #        1. accepts a string
-#        2. returns true or false
+#        2. throws error on failure
 
-type TParser = (str: string) => boolean
+export type TParser = (str: string) => void
 
 export function getParser(
 		laxRule: TLaxRule
+		lCallbacks: TCallback[] = []
 		hOptions: hash = {}
 		): TParser
 
-	{pos, partial, reSkip} := getOptions hOptions, {
-		pos: 0
-		partial: false
-		reSkip: /^\s+/
+	type opt = {
+		reSkip: RegExp
+		partial: boolean
 		}
-	rule := getRule laxRule
+	{reSkip, partial} := getOptions<opt> hOptions, {
+		reSkip: /^\s+/
+		partial: false
+		}
 
-	return (text: string): boolean =>
-		skipRule := defined(reSkip) ? RegexMatcher(reSkip) : undef
+	# ..........................................................
+	# function that skips reSkip, if defined
 
-		$ := new State(text, 0, {skipRule})
+	skipIgnored: TRuleFunc := (str, pos) =>
 
-		$next := rule.next($)
-
-		if defined($next) && (isFinished($next) || partial)
-			return true
+		lMatches := str.substring(pos).match reSkip
+		if defined(lMatches)
+			len := lMatches[0].length
+			if (len > 0)
+				DBG "#{len} chars skipped"
+			return pos + len
 		else
-			[line, column] := getLineAndColumn(text, $.pos)
-			throw new SyntaxError("""
-				No match at pos #{$.pos}
-				Remainder: #{escapeStr(text.slice($.pos))}
-				""")
+			return pos
+
+	# ..........................................................
+	# --- function that maps RegExp => Rule
+
+	RegexMatcher := (re: RegExp): Rule =>
+
+		return new Rule('r', (str, pos): number =>
+
+			skipPos := skipIgnored(str, pos)
+
+			lMatches := re.exec(str.substring(skipPos))
+			if (lMatches == null)
+				throw new ParseError "RegExp Rule not matched"
+
+			len := lMatches[0].length
+			assert (len > 0), "Zero length in regex match"
+			newPos := skipPos + len
+			for cb of lCallbacks
+				cb(rule, lMatches)
+			return newPos
+			)
+
+	# ..........................................................
+	# --- function that maps string => Rule
+
+	StringMatcher := (substr: string): Rule =>
+
+		return new Rule('s', (str, pos): number =>
+
+			skipPos := skipIgnored(str, pos)
+
+			if not str.startsWith(substr, skipPos)
+				throw new ParseError "String Rule not matched"
+
+			len := substr.length
+			assert (len > 0), "Zero length in regex match"
+			newPos := skipPos + len
+			for cb of lCallbacks
+				cb(rule, [substr])
+			return newPos
+			)
+
+	# ..........................................................
+	# --- function that maps TRuleFunc => Rule
+
+	FuncMatcher := (func: TRuleFunc): Rule =>
+
+		return new Rule('f', (str, pos): number =>
+
+			skipPos := skipIgnored(str, pos)
+			newPos := func(str, skipPos)
+			assert (newPos > pos), "Zero length in rule match"
+			for cb of lCallbacks
+				cb(rule, [str.substring(pos, newPos)])
+			return newPos
+			)
+
+	# ..........................................................
+	# --- function that maps TLaxRule => Rule
+
+	getRule := (laxRule: TLaxRule): Rule =>
+
+		if isRegExp(laxRule)
+			return RegexMatcher(laxRule)
+
+		else if isString(laxRule)
+			return StringMatcher(laxRule)
+
+		else if isRuleFunc(laxRule)
+			return FuncMatcher(laxRule)
+
+		else if isArray(laxRule)
+			return All laxRule
+
+		else
+			return Any laxRule
+
+	# ..........................................................
+	# --- function that maps TLaxRule[] => Rule
+
+	Any := (hItems: hashof<TLaxRule>): Rule =>
+
+		lRules := for key,val in hItems
+			rule := getRule(val as TLaxRule)
+			rule.label = key
+			rule
+
+		return new Rule('|', (str, pos): number =>
+			# --- Try each rule
+			#     if any succeed, succeed & return new pos
+			#     else throw error
+			for rule of lRules
+				try
+					newPos := rule.next(str, pos)
+					for cb of lCallbacks
+						cb(rule, [str.substring(pos, newPos)])
+					return newPos
+
+			throw new ParseError "Any Rule not matched"
+			)
+
+	# ..........................................................
+	# --- function that maps TLaxRule[] => Rule
+
+	All := (lLaxRules: TLaxRule[]): Rule =>
+
+		lRules := for laxRule of lLaxRules
+			getRule laxRule
+
+		return new Rule('&', (str, pos): number =>
+			for rule of lRules
+				try
+					newPos := rule.next(str, pos)
+					pos = newPos
+				catch err
+					throw new ParseError "All Rule not matched"
+
+			for cb of lCallbacks
+				cb(rule, [])
+			return pos
+			)
+
+	# --- Return a function that throws an error
+	#     if string doesn't parse
+
+	rule := getRule laxRule
+	return (str) =>
+		DBG "Parse #{escapeStr(str)}", INDENT
+		try
+			endPos := rule.next(str, 0)
+			DBG "endPos = #{endPos}"
+			if (endPos == str.length) || partial
+				DBG UNDENT
+				return true
+			finalPos := skipIgnored(str, endPos)
+			DBG "finalPos = #{finalPos}", UNDENT
+			if (finalPos != str.length)
+				throw new ParseError("Not all input exhausted")
+			return
+		catch err
+			DBG UNDENT
+			throw err

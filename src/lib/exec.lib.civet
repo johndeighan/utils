@@ -9,20 +9,20 @@ import {
 	} from "npm:typescript"
 
 import {
-	undef, defined, notdefined, assert, hash,
+	undef, defined, notdefined, assert, croak, hash,
 	isString, isArray, isArrayOfStrings,
-	} from './datatypes.lib.ts'
+	} from 'datatypes'
 import {
-	getOptions, croak, OL, pass, blockToArray,
-	} from './llutils.lib.ts'
+	getOptions, OL, pass, blockToArray,
+	} from 'llutils'
 import {
 	barf,
-	} from './fs.lib.ts'
+	} from 'fsys'
 import {
 	getLogLevel, pushLogLevel, popLogLevel,
 	DBG, LOG, WARN, ERR, LOGVALUE,
 	INDENT, UNDENT,
-	} from './logger.lib.ts'
+	} from 'logger'
 
 /**
  * @module exec-utils - utilities for executing external code
@@ -38,15 +38,15 @@ textDecoder := new TextDecoder()
 
 export mkstr := (item: any): string =>
 
-	if defined(item)
-		if isString(item)
-			return stripAnsiCode(item)
-		else if isArray(item)
-			return stripAnsiCode(item.join(''))
-		else
-			return stripAnsiCode(textDecoder.decode(item))
-	else
-		return ''
+	if isString(item)
+		return stripAnsiCode(item)
+	else if isArray(item)
+		return stripAnsiCode(item.join(''))
+	else if (item instanceof ArrayBuffer)
+		return stripAnsiCode(textDecoder.decode(item))
+	else if (item instanceof Int8Array)
+		return stripAnsiCode(textDecoder.decode(item))
+	return ''
 
 # ---------------------------------------------------------------------------
 
@@ -76,30 +76,6 @@ export type TExecResult = {
 	stderr: string?
 	}
 
-getFinalResult := (
-	hResult: hash,
-	collect: boolean
-	): TExecResult =>
-
-	hRes := if collect
-		{
-			success: hResult.success
-			code:    hResult.code
-			signal:  hResult.signal
-			stdout:  mkstr(hResult.stdout)
-			stderr:  mkstr(hResult.stderr)
-			}
-	else
-		{
-			success: hResult.success
-			code:    hResult.code
-			signal:  hResult.signal
-			stdout:  undef
-			stderr:  undef
-			}
-	DBG "hResult = #{OL(hRes)}"
-	return hRes
-
 # ---------------------------------------------------------------------------
 
 /**
@@ -121,14 +97,14 @@ export getProcOpt := (
 	return if collect
 		{
 			args: lArgs,
-			env: hEnv
+			env: {DEFAULT_LOGGER: getLogLevel()}
 			stdout: 'piped'
 			stderr: 'piped'
 			}
 	else
 		{
 			args: lArgs,
-			env: hEnv
+			env: {DEFAULT_LOGGER: getLogLevel()}
 			stdout: 'inherit'
 			stderr: 'inherit'
 			}
@@ -142,22 +118,32 @@ export execCmd := (
 	hOptions: hash = {}
 	): TExecResult =>
 
-	{collect, nolog} := getOptions hOptions, {
+	type opt = {
+		collect: boolean
+		nolog: boolean
+		}
+	{collect, nolog} := getOptions<opt> hOptions, {
 		collect: false
 		nolog: false
 		}
 	if nolog
 		pushLogLevel 'silent'
+
 	DBG "EXEC: #{OL(getCmdLine(cmdName, lArgs))}"
 	DBG INDENT
 	hProcOpt := getProcOpt(lArgs, collect)
 	child := new Deno.Command(cmdName, hProcOpt)
 	DBG UNDENT
-	hResult := await child.output()
-	hFinalResult := getFinalResult(hResult, collect)
+	{success, code, signal, stdout, stderr} := await child.output();
 	if nolog
 		popLogLevel()
-	return hFinalResult
+	return {
+		success
+		code
+		signal: signal || undef
+		stdout: collect ? mkstr(stdout) : undef
+		stderr: collect ? mkstr(stderr) : undef
+		}
 
 # ---------------------------------------------------------------------------
 
@@ -167,7 +153,11 @@ export execCmdSync := (
 	hOptions: hash = {}
 	): TExecResult =>
 
-	{collect, nolog} := getOptions hOptions, {
+	type opt = {
+		collect: boolean
+		nolog: boolean
+		}
+	{collect, nolog} := getOptions<opt> hOptions, {
 		collect: false
 		nolog: false
 		}
@@ -178,11 +168,16 @@ export execCmdSync := (
 	hProcOpt := getProcOpt(lArgs, collect)
 	child := new Deno.Command(cmdName, hProcOpt)
 	DBG UNDENT
-	hResult := child.outputSync()
-	hFinalResult := getFinalResult(hResult, collect)
+	{success, code, signal, stdout, stderr} := child.outputSync()
 	if nolog
 		popLogLevel()
-	return hFinalResult
+	return {
+		success
+		code
+		signal: signal || undef
+		stdout: collect ? mkstr(stdout) : undef
+		stderr: collect ? mkstr(stderr) : undef
+		}
 
 # ---------------------------------------------------------------------------
 
@@ -192,7 +187,10 @@ export cmdSucceeds := (
 	hOptions: hash = {}
 	): boolean =>
 
-	{quiet} := getOptions hOptions, {
+	type opt = {
+		quiet: boolean
+		}
+	{quiet} := getOptions<opt> hOptions, {
 		quiet: true
 		}
 	try

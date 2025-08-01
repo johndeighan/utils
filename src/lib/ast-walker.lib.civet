@@ -1,0 +1,54 @@
+# ast-walker.lib.civet
+
+import type {SourceFile} from 'npm:typescript'
+
+import {
+	undef, defined, notdefined, integer,
+	isArray, isHash, isNonPrimitive, TFilterFunc, TDefined,
+	} from 'datatypes'
+
+# ---------------------------------------------------------------------------
+
+export type TNodeInfo = {
+	node: unknown
+	kindStr?: string
+	level: integer
+	key?: string
+	parent?: TNodeInfo
+	}
+
+# ---------------------------------------------------------------------------
+
+export getAstWalker := (
+		item: TDefined | SourceFile,
+		filter: TFilterFunc = isNonPrimitive
+		level: number = 0
+		setVisited: WeakSet<object> = new WeakSet()
+		parent: TNodeInfo? = undef
+		) =>
+
+	return (): Generator<TNodeInfo, void, void> ->
+
+		cur := {
+			node: item
+			level
+			parent
+			}
+		if (typeof item == 'object') && setVisited.has(item)
+			return
+		if filter(item)
+			yield cur
+		if (typeof item == 'object') && (item != null)
+			setVisited.add item
+
+		if isArray(item)
+			for val of item
+				if defined(val)
+					for info of getAstWalker(val, filter, level+1, setVisited, cur)()
+						yield info
+		else if isHash(item)
+			for key,val in item
+				if defined(val)
+					for info of getAstWalker(val, filter, level+1, setVisited, cur)()
+						yield info
+		return

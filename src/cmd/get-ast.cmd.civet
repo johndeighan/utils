@@ -1,8 +1,9 @@
 # get-ast.cmd.civet
 
+import {civet2ast} from 'civet'
 import {
-	LOG, LOGVALUE, DBG, DBGVALUE, civet2ast,
-	} from '../src/lib/utils.lib.ts'
+	LOG, LOGVALUE, DBG, DBGVALUE,
+	} from 'logger'
 
 hArgs := getCmdArgs()
 

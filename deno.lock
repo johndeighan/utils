@@ -75,7 +75,6 @@
       "jsr:@std/streams@^1.0.8",
       "npm:@danielx/civet@~0.9.6",
       "npm:acorn-typescript@*",
-      "npm:acorn@*",
       "npm:glob@11",
       "npm:source-map-support@~0.5.21",
       "npm:svelte@^5.23.2"

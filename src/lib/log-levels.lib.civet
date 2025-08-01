@@ -1,11 +1,8 @@
 # log-levels.lib.civet
 
 import {
-	undef, defined, notdefined, assert, hashof,
-	} from './datatypes.lib.ts'
-import {
-	croak,
-	} from './llutils.lib.ts'
+	undef, defined, notdefined, assert, croak, hashof,
+	} from 'datatypes'
 
 # ---------------------------------------------------------------------------
 

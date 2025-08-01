@@ -1,10 +1,13 @@
-# run-unit-test.civet
+# utest.civet
 
+import {undef, notdefined, assert} from 'datatypes'
+import {OL} from 'llutils'
+import {getCmdArgs} from 'utils'
+import {relpath} from 'fsys'
+import {DBG, LOG, WARN, ERR} from 'logger'
 import {
-	undef, assert, getCmdArgs, OL, relpath,
 	runUnitTestsFor, runAllUnitTests,
-	DBG, LOG, WARN, ERR,
-	} from '../lib/utils.lib.ts'
+	} from 'compile'
 
 {_, w: watch} := getCmdArgs {
 	w: {type: 'boolean'}

@@ -1,3 +1,5 @@
+# unit-test.lib.civet
+
 /**
  * unit-test - provides functions for use in unit tests
  * available tests:
@@ -18,29 +20,31 @@
  * @module
  */
 
-# unit-test.lib.civet
-
 import {
 	assert, assertEquals, assertStrictEquals, assertNotEquals,
 	assertObjectMatch,
 	assertStringIncludes, assertMatch, assertArrayIncludes,
 	} from '@std/assert'
 
-import {normalizeCode} from './typescript.lib.ts'
 import {
 	undef, defined, notdefined, isEmpty, nonEmpty,
 	array, arrayof, isArray, isHash, isString, hash,
 	hashof, isIterable, deepEqual, hashLike,
 	TObjCompareFunc, TObjLikeFunc, TToStringFunc,
-	} from './datatypes.lib.ts'
-import {pass, stringify, OL, keys} from './llutils.lib.ts'
-import {sourceLib, getNeededImportStmts} from './symbols.lib.ts'
-import {typeCheck} from './exec.lib.ts'
+	normalizeCode,
+	} from 'datatypes'
+import {
+	pass, stringify, OL, keys,
+	} from 'llutils'
+import {
+	sourceLib, getNeededImportStmts,
+	} from 'symbols'
+import {typeCheck} from 'exec'
 import {
 	pushLogLevel, popLogLevel,
 	DBG, LOG, LOGVALUE, DBGVALUE, INDENT, UNDENT,
-	} from './logger.lib.ts'
-import {getMyOutsideCaller} from './v8-stack.lib.ts'
+	} from 'logger'
+import {getMyOutsideCaller} from 'v8-stack'
 
 # ---------------------------------------------------------------------------
 

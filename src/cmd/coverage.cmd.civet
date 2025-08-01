@@ -1,11 +1,11 @@
 # coverage.cmd.civet
 
-import {
-	undef, strToHash, getCmdArgs, words, LOG, LOGVALUE, DBG,
-	} from '../lib/utils.lib.ts'
+import {words, strToHash} from 'llutils'
+import {getCmdArgs} from 'utils'
+import {LOG, LOGVALUE, DBG} from 'logger'
 import {
 	allExportsIn, allUnitTestsIn, mergeAnalyses, dumpSymbols,
-	} from '../lib/analyze.lib.ts'
+	} from 'analyze'
 
 lValidStubs: string[] := words(
 	'datatypes llutils logger text-table indent pll fs',

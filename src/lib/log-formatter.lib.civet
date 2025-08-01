@@ -5,8 +5,8 @@ import {LogLevels} from "@std/log/levels"
 
 import {
 	spaces, sinceLoadStr, interpolate,
-	} from './llutils.lib.ts'
-import {getLogLevel} from './log-levels.lib.ts'
+	} from 'llutils'
+import {getLogLevel} from 'log-levels'
 
 export let logIndent: number = 0
 getPrefix := () => spaces(3).repeat(logIndent)
@@ -59,8 +59,11 @@ export getFormatter := (str: string, dest: string) =>
 			'$msg': getPrefix() + msg
 			})
 		if (dest == 'console')
-			lConsoleLog.push result
-		return result
+			patched := result.replaceAll('\t', '   ')
+			lConsoleLog.push patched
+			return patched
+		else
+			return result
 
 # ---------------------------------------------------------------------------
 

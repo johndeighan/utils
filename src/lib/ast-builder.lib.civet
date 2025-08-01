@@ -1,0 +1,95 @@
+# ast-builder.lib.civet
+
+import {
+	undef, defined, notdefined, array, hash, hashof, croak,
+	nonEmpty, isNonEmptyString, assert, isArray, isHash, isString,
+	} from 'datatypes'
+import {OL} from 'llutils'
+import {resetOneIndent, indented} from 'indent'
+
+# ---------------------------------------------------------------------------
+
+export type TNodeDesc = (
+	  string
+	| [string]
+	| [string, hash]
+	| [string, hash, TNodeDesc[]]   # --- [name, hAttr, lChildren]
+	)
+
+# ---------------------------------------------------------------------------
+
+export type TAstKeys = {
+	kindKey: string
+	childrenKey: string
+	}
+
+hStdKeys: TAstKeys := {
+	kindKey: 'kind'
+	childrenKey: 'lChildren'
+	}
+
+export toAst := (
+		node: TNodeDesc
+		hKeys: TAstKeys = hStdKeys
+		): hash =>
+
+	# --- These are string keys
+	{kindKey, childrenKey} := hKeys
+
+	if isString(node)
+		return {[kindKey]: node}
+
+	# --- kind will be a defined string
+	#     hAttr may be undef, else is a hash
+	#     lChildren may be undef, else is TNodeDesc[]
+	[kind, hAttr, lChildren] := node
+
+	assert isNonEmptyString(kind), "Bad kind: #{OL(kind)}"
+	if defined(hAttr)
+		assert not (kindKey in hAttr), "#{kindKey} in hAttr"
+		assert not (childrenKey in hAttr), "#{childrenKey} in hAttr"
+
+	h: hash := (
+		  defined(hAttr)
+		? Object.assign({[kindKey]: kind}, hAttr)
+		: {[kindKey]: kind}
+		)
+	if defined(lChildren)
+		lSubs := for child of lChildren
+			toAst(child, hKeys)
+		h[childrenKey] = lSubs
+	return h
+
+# ---------------------------------------------------------------------------
+
+export ast2str := (
+		hAst: hash | string
+		hKeys: hashof<string> = hStdKeys
+		): string =>
+
+	if (typeof hAst == 'string')
+		return "- #{hAst}"
+
+	# --- These are string keys
+	{kindKey, childrenKey} := hKeys
+
+	lAttr: string[] := []
+	lChildren: string[] := []
+	for key,val in hAst
+		if (key == childrenKey)
+			if isArray(val)
+				for child of val
+					if isHash(child) || isString(child)
+						lChildren.push indented(ast2str(child))
+					else
+						croak "Child not hash or string: #{OL(child)}"
+			else
+				croak "Value for key #{childrenKey} not an array"
+		else if (key != kindKey)
+			lAttr.push indented("#{key}: #{val}")
+
+	return [
+		"- #{hAst[kindKey]}",
+		lAttr...
+		lChildren...
+		].join('\n')

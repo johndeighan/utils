@@ -1,0 +1,7 @@
+# temp.config.civet
+
+new Object {
+	a: 1
+	b: 'abc'
+	func: () => console.log 'hello'
+	}

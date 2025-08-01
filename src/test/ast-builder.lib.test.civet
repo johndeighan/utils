@@ -1,0 +1,47 @@
+# ast-builder.lib.test.civet
+
+import {o} from 'llutils'
+import {getCmdArgs} from 'utils'
+import {DBG} from 'logger'
+import {TNodeDesc, toAst, ast2str} from 'ast-builder'
+import {
+	equal, like, succeeds, fails, truthy, falsy,
+	isType, notType,
+	} from 'unit-test'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+isType 'TNodeDesc', ['abc']
+
+# ---------------------------------------------------------------------------
+
+ast := toAst [
+	'para',
+	{
+		in: 'text'
+		of: 'something'
+		}
+	[
+		['dummy']
+		]
+	]
+
+equal ast, {
+	kind: 'para'
+	in: 'text'
+	of: 'something'
+	lChildren: [
+		{kind: 'dummy'}
+		]
+	}
+
+equal ast2str(ast), """
+	- para
+		in: text
+		of: something
+		- dummy
+	"""
+
+# equal ast, ast2

@@ -1,21 +1,23 @@
 # cielo.lib.civet
 
 import {
-	undef, defined, notdefined, assert,
-	} from './datatypes.lib.ts'
+	undef, defined, notdefined, assert, croak, hash, isHash,
+	} from 'datatypes'
 import {
-	croak, pass, keys, hasKey, hasKeys, OL,
-	} from './llutils.lib.ts'
+	pass, keys, hasKey, hasKeys, OL, ML, require,
+	} from 'llutils'
 import {
-	DBG, LOG, WARN, ERR,
+	isFile, fileExt, withExt, slurp, barf, barfTempFile,
+	parsePath,
+	} from 'fsys'
+import {
+	DBG, LOG, WARN, ERR, DBGVALUE,
 	pushLogLevel, popLogLevel,
-	} from './logger.lib.ts'
-import {
-	isFile, fileExt, withExt, slurp, barf,
-	} from './fs.lib.ts'
+	} from 'logger'
 import {
 	execCmdSync,
-	} from './exec.lib.ts'
+	} from 'exec'
+import {civet2ts, civet2tsFile} from 'civet'
 
 # ---------------------------------------------------------------------------
 
@@ -29,6 +31,12 @@ export cielo2civet := (code: string): string =>
 
 # ---------------------------------------------------------------------------
 
+export cielo2ts := (code: string): string =>
+
+	return civet2ts(cielo2civet(code))
+
+# ---------------------------------------------------------------------------
+
 /**
  * cielo2civetFile(cieloPath, civetPath)
  *    - pre-process the .cielo file to .civet file
@@ -36,18 +44,61 @@ export cielo2civet := (code: string): string =>
 
 export cielo2civetFile := (
 		cieloPath: string
-		civetPath: string?=undef
-		): void =>
+		civetPath: string = withExt(cieloPath, '.civet')
+		): string =>
 
 	assert isFile(cieloPath), "No such file: #{OL(cieloPath)} (cielo2civet)"
 	assert (fileExt(cieloPath) == '.cielo'), "Not a cielo file: #{OL(cieloPath)}"
-	if notdefined(civetPath)
-		civetPath = withExt(cieloPath, '.civet')
-	else
-		assert (fileExt(civetPath) == '.civet'), "Not a civet file: #{OL(civetPath)}"
+	assert (fileExt(civetPath) == '.civet'), "Not a civet file: #{OL(civetPath)}"
 	code := slurp cieloPath
 	barf civetPath, cielo2civet(code)
 	assert isFile(civetPath), "File not created: #{OL(civetPath)}"
-	return
+	return civetPath
+
+# ---------------------------------------------------------------------------
+
+/**
+ * cielo2tsFile(cieloPath, tsPath)
+ *    - pre-process the .cielo file to .ts file
+ */
+
+export cielo2tsFile := (
+		cieloPath: string
+		tsPath: string = withExt(cieloPath, '.ts')
+		): string =>
+
+	assert isFile(cieloPath), "No such file: #{OL(cieloPath)} (cielo2ts)"
+	assert (fileExt(cieloPath) == '.cielo'), "Not a cielo file: #{OL(cieloPath)}"
+	assert (fileExt(tsPath) == '.ts'), "Not a ts file: #{OL(tsPath)}"
+	code := slurp cieloPath
+	barf tsPath, cielo2ts(code)
+	assert isFile(tsPath), "File not created: #{OL(tsPath)}"
+	return tsPath
+
+# ---------------------------------------------------------------------------
+
+export configFromFile := (aPath: string): hash =>
+
+	{path, type, purpose, ext} := parsePath(aPath)
+	assert (type == 'file'), "Not a file: #{OL(path)}"
+	assert (purpose == 'config'), "Not a config file: #{OL(path)}"
+	DBG "GET CONFIG: path = #{OL(path)}"
+
+	srcPath := (
+		if (ext == '.civet')
+			civet2tsFile path
+		else
+			path
+		)
+	assert (fileExt(srcPath) == '.ts'),
+		"config not a .ts or .civet file: #{OL(path)}"
+	DBGVALUE 'srcPath', srcPath
+	hImported := require(srcPath)
+	DBGVALUE 'hImported', hImported
+	hResult := hImported?.default || hImported
+	DBGVALUE "hResult", hResult
+	assert isHash(hResult),
+			"Default import in #{OL(srcPath)} not a hash: #{ML(hResult)}"
+	return hResult
 
 # ---------------------------------------------------------------------------

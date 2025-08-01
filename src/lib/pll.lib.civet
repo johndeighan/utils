@@ -2,15 +2,15 @@
 
 import {
 	undef, defined, notdefined, hash, isEmpty, nonEmpty,
-	} from './datatypes.lib.ts'
+	} from 'datatypes'
 import {
 	getOptions, allLinesInBlock, escapeStr,
-	} from './llutils.lib.ts'
-import {DBG, DBGVALUE} from './logger.lib.ts'
+	} from 'llutils'
+import {DBG, DBGVALUE} from 'logger'
 import {
 	oneIndent, indentLevel, splitLine,
-	} from './indent.lib.ts'
-import {TextTable} from './text-table.lib.ts'
+	} from 'indent'
+import {TextTable} from 'text-table'
 
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
@@ -44,7 +44,10 @@ export allTokensIn := (
 		hOptions: hash={}
 		): Generator<TPLLToken, void, void> ->
 
-	{lTypes} := getOptions hOptions, {
+	type opt = {
+		lTypes: string[]
+		}
+	{lTypes} := getOptions<opt> hOptions, {
 		lTypes: ['indent','undent']
 		}
 	let level = 0

@@ -1,5 +1,13 @@
 to do
 
+Search all libs for use of type any
+
+continue compiling libs
+
+work on parser.lib.civet and temp.civet
+	- how to implement Star, Optional, Plus ???
+
+
 ✓ 2. get unit tests working w/o eval
 3. get unit tests working w/ eval
 4. Indicate failure by throwing

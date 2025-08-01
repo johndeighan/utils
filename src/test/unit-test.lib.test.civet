@@ -1,0 +1,160 @@
+# unit-test.lib.test.civet
+
+import {undef} from 'datatypes'
+import {DBG} from 'logger'
+import {range} from 'llutils'
+import {getCmdArgs} from 'utils'
+import {pathToURL} from 'fsys'
+import {
+	equal, truthy, falsy, fails, succeeds, iterEqual, iterLike,
+	like, strListLike, objListLike,
+	matches, includes, includesAll, isType, notType,
+	splitFuncStr, getTsCode,
+	getSymbolsFromType, getImportCode, checkType,
+	} from 'unit-test'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+DBG "equal()"
+
+equal    2+2, 4
+equal    'abc'+'def', 'abcdef'
+equal    'abc   '.trim(), 'abc'
+equal    {a:1, b:2}, {b:2, a:1}
+
+DBG "truthy()"
+
+truthy   42
+truthy   'abc'
+truthy   '   '
+
+DBG "falsy()"
+
+falsy    false
+falsy    undefined
+falsy    null
+falsy    ''
+
+DBG "fails(func)"
+
+fails    () => throw new Error("bad")
+
+DBG "succeeds(func)"
+
+succeeds () => return 'me'
+
+DBG "iterEqual(iterable, array)"
+
+iterEqual [1,2,3], [1,2,3]
+iterEqual range(5), [0,1,2,3,4]
+
+(() =>
+	gen := () ->
+		yield 'a'
+		yield 'x'
+		return
+	iterEqual gen(), ['a', 'x']
+	)()
+
+DBG "iterLike(iterable, array)"
+
+iterLike [{a:1, b:2}], [{a:1}]
+
+(() =>
+	gen := () ->
+		yield {a:1, b:2}
+		yield {c:3, d:4}
+		return
+	iterLike gen(), [
+		{a:1}
+		{d:4}
+		]
+	)()
+
+DBG "matches()"
+
+matches  "this is a long sentence", "long"
+matches  "another 42 lines", /\d+/
+matches  "abcdef", "abc"
+
+DBG "like()"
+
+like     {a:1, b:2, c:3}, {a:1, c:3}
+
+DBG "strListLike()"
+
+strListLike ['a','b'], ['a', 'b']
+strListLike ['b','a'], ['a', 'b']
+
+DBG "objListLike()"
+
+objListLike [{a:1, b:2, c:3}], [{a:1, c:3}]
+
+DBG "includes()"
+
+includes ['a','b','c'], 'b'
+
+DBG "includesAll()"
+
+includesAll ['a','b','c'], ['a', 'c']
+
+DBG "getSymbolsFromType(typeStr)"
+
+equal getSymbolsFromType('integer'), ['integer']
+equal getSymbolsFromType('hashof<integer>'), ['hashof','integer']
+
+DBG "getImportCode(typeStr)"
+
+equal getImportCode('integer'), """
+	import {integer} from 'datatypes';
+	"""
+equal getImportCode('hashof<integer>'), """
+	import {hashof, integer} from 'datatypes';
+	"""
+
+DBG "splitFuncStr(valueStr)"
+
+equal splitFuncStr("abc"), undef
+equal splitFuncStr("() => true"), [[], 'true']
+equal splitFuncStr("(  ) => true"), [[], 'true']
+equal splitFuncStr("(a,b,c) => false"), [
+	['a','b','c']
+	'false'
+	]
+equal splitFuncStr("( a , b,c ) => false"), [
+	['a','b','c']
+	'false'
+	]
+equal splitFuncStr("(a: string, b)=>true"), [
+	['a: string', 'b']
+	'true'
+	]
+
+DBG "getTsCode(typeStr, valueStr)"
+
+equal getTsCode('integer', '42'), 'const x: integer = 42'
+equal getTsCode('TFilterFunc', '(x) => true'),
+	'const x: TFilterFunc = (x: any) => true'
+
+DBG "checkType(x, typeStr)"
+
+equal checkType(42, 'number'), []
+
+DBG "isType()"
+
+dump := () =>
+	return
+
+isType 'number', 23
+isType 'string', 'abc'
+isType 'boolean', false
+isType '() => void', () => return
+isType '() => void', dump
+isType 'voidFunc', dump
+isType 'TFilterFunc', (x: any) => return true
+
+DBG "notType()"
+
+notType 'string', 23

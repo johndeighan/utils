@@ -1,16 +1,24 @@
 # analyze.lib.civet
 
 import {
-	undef, allLinesIn, LOG, LOGVALUE, DBG, OL, DBGVALUE, croak,
-	defined, notdefined, isEmpty, nonEmpty, assert, words, hashof,
-	hash, isHash, integer, TextTable, hasKey, hasKeys, allMatches,
-	} from './utils.lib.ts'
+	undef, defined, notdefined, assert, croak,
+	isEmpty, nonEmpty, isInteger,
+	hash, isHash, integer, hashof,
+	} from 'datatypes'
+import {
+	words, hasKey, hasKeys, allMatches, OL,
+	} from 'llutils'
+import {
+	LOG, LOGVALUE, DBG, DBGVALUE,
+	} from 'logger'
+import {TextTable} from 'text-table'
+import {allLinesIn} from 'fsys'
 
 # ---------------------------------------------------------------------------
 
 export type symbolKind = 'const'|'var'|'function'|'type'|'interface'|'enum'|'class'
 
-export isSymbolKind := (x: any): x is symbolKind =>
+export isSymbolKind := (x: string): x is symbolKind =>
 
 	return ['const','var','function','type','interface','enum','class'].includes(x)
 
@@ -22,13 +30,12 @@ export type symbolDesc = {
 	status?: string
 	}
 
-export isSymbolDesc := (x: any): x is symbolDesc =>
+export isSymbolDesc := (x: unknown): x is symbolDesc =>
 
-	if not isHash(x)
+	if not (isHash(x) && hasKeys(x, 'name', 'kind', 'numTests'))
 		return false
-	if not hasKeys(x, 'name', 'kind', 'numTests')
-		return false
-	return (x.numTests >= 0)
+	n := x.numTests
+	return isInteger(n) && (n >= 0)
 
 export type testDesc = {
 	kind: symbolKind

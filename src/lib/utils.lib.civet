@@ -7,30 +7,28 @@
 
 import {
 	ts2ast, ts2js, ast2ts, ast2js, typeCheckFiles, pprintAST
-	getCode, normalizeCode, truncStr,
-	} from './typescript.lib.ts'
+	getCode,
+	} from 'typescript'
 import {
-	TFilterFunc, TStringifier, TStringParser, TAssertFunc,
+	TStringifier, TStringParser, TAssertFunc,
 	deepEqual, hashLike, undef, defined, notdefined,
 	isString, char, integer, isChar, isNonEmptyString,
 	isBoolean, isNumber, isInteger,
 	isPrimitive, isNonPrimitive,
 	isArray, isArrayOfIntegers, isArrayOfStrings,
 	isHash, isFunction, isObject, isRegExp,
-	isEmpty, nonEmpty, assert,
+	isEmpty, nonEmpty, assert, croak,
 	jsType, isSymbol, symbolName, functionName, functionDef,
 	classDef, regexpDef,
 	hash, hashof, array, arrayof,
 	regexp, voidFunc, nonEmptyString,
 	isClass, className, isPromise, isClassInstance, isIterable,
 	TObjCompareFunc, TObjLikeFunc, TToStringFunc,
-	} from './datatypes.lib.ts'
+	normalizeCode, normalizeExpr,
+	} from 'datatypes'
 import {
-	TNodeInfo, NodeGenerator,
-	} from './node-generator.lib.ts'
-import {
-	pass, stringify, OL, ML,
-	getOptions, getOneOption, croak, throwsError,
+	pass, stringify, OL, ML, truncStr,
+	getOptions, throwsError,
 	strToHash, o, s, t, removeEmptyKeys, keys,
 	hasKey, hasKeys, missingKeys, merge, hit,
 	spaces, tabs, rtrim, countChars,
@@ -38,31 +36,31 @@ import {
 	TBlockSpec, isBlockSpec, toArray,
 	arrayToBlock, toBlock,
 	escapeStr, unescapeStr, escapeBlock,
-	relpath, wsSplit, words, addDefaults,
+	relpath, wsSplit, words,
 	sinceLoad, sinceLoadStr, sleep, sleepSync,
 	getNExtra, rpad, lpad, centered,
 	TAlignment, isAlignment, alignString, zpad,
 	allMatches, range,
 	Fetcher, require, assertSameStr, interpolate,
-	} from './llutils.lib.ts'
+	} from 'llutils'
 import {
 	TLogLevel, isLogLevel,
 	setLogLevel, pushLogLevel, popLogLevel,
 	getLogLevel, getLog,
 	INDENT, UNDENT,
 	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
-	} from './logger.lib.ts'
-import {TextTable} from './text-table.lib.ts'
+	} from 'logger'
+import {TextTable} from 'text-table'
 import {
 	oneIndent, resetOneIndent, indentLevel, splitLine,
 	indented, undented,
-	} from './indent.lib.ts'
+	} from 'indent'
 import {
 	TPLLToken, tkEOF, allTokensIn, allTokensInBlock, tokenTable, TTokenGenerator,
-	} from './pll.lib.ts'
+	} from 'pll'
 import {
 	toNice, fromNice, getPrimitive,
-	} from './nice.lib.ts'
+	} from 'nice'
 import {
 	isFile, isDir, fileExt, withExt,
 	rmFile, rmDir, TPathType, getPathType, getStats,
@@ -71,18 +69,18 @@ import {
 	normalizePath, mkpath, pathToURL, newerDestFileExists,
 	pathSubDirs, clearDir, mkDir, mkDirsForFile, lStatFields,
 	myself, removeFilesMatching, removeFilesExcept,
-	TWatcherCallbackFunc, TFsChangeType, TFsCallbackFunc, setDirTree,
+	TWatcherCallbackFunc, TFsCallbackFunc, setDirTree,
 	TFileOp, fileOpsTable, allTokensInFile,
-	patchFirstLine, configFromFile,
-	} from './fs.lib.ts'
+	patchFirstLine,
+	} from 'fsys'
 import {
 	loadSymbols, sourceLib, libsAndSymbols, getNeededImportStmts,
-	} from './symbols.lib.ts'
+	} from 'symbols'
 import {
 	execCmd, execCmdSync, cmdSucceeds,
 	mkstr, getCmdLine, getProcOpt,
 	TExecResult, typeCheck,
-	} from './exec.lib.ts'
+	} from 'exec'
 import {
 	TTesterFunc, TCompilerFunc, TPostProcessor,
 	TCompilerInfo,
@@ -93,93 +91,10 @@ import {
 	getCompilerGlobPattern, allCompilableFiles,
 	runUnitTestsFor, runAllUnitTests,
 	isCompilerInfo, isCompilerConfig,
-	} from './compile.lib.ts'
+	} from 'compile'
 import {
 	civet2ts, civet2tsFile, civet2jsFile, civet2ast,
-	} from './civet.lib.ts'
-
-export {
-	ts2ast, ts2js, ast2ts, ast2js, typeCheckFiles, pprintAST
-	getCode, normalizeCode, truncStr,
-
-	deepEqual, hashLike, undef, defined, notdefined,
-	isString, isChar, isNonEmptyString,
-	isBoolean, isNumber, isInteger,
-	isPrimitive, isNonPrimitive
-	isArray, isArrayOfIntegers, isArrayOfStrings,
-	isHash, isFunction, isObject, isRegExp,
-	isEmpty, nonEmpty, assert, assertSameStr,
-	interpolate, stringify,
-	jsType, isSymbol, symbolName, functionName, functionDef,
-	classDef, regexpDef,
-	isClass, className, isPromise, isClassInstance, isIterable,
-
-	pass, OL, ML,
-	getOptions, getOneOption, croak, throwsError,
-	strToHash, o, s, t, removeEmptyKeys, keys,
-	hasKey, hasKeys, missingKeys, merge, hit,
-	spaces, tabs, rtrim, countChars,
-	blockToArray, allLinesInBlock, toArray,
-	arrayToBlock, toBlock,
-	escapeStr, unescapeStr, escapeBlock,
-	relpath, wsSplit, words, addDefaults,
-	sinceLoad, sinceLoadStr, sleep, sleepSync,
-	getNExtra, rpad, lpad, centered,
-	isAlignment, alignString, zpad,
-	allMatches, NodeGenerator, range,
-	Fetcher, require,
-
-	TextTable,
-
-	isFile, isDir, fileExt, withExt,
-	rmFile, rmDir, getPathType, getStats,
-	parsePath, slurp, barf, barfTempFile, isStub,
-	allFilesMatching, allLinesIn, watchFile, watchFiles, FileEventHandler,
-	normalizePath, mkpath, pathToURL, newerDestFileExists, setDirTree,
-	fileOpsTable, allTokensInFile,
-	patchFirstLine, configFromFile, isCompilerInfo, isCompilerConfig,
-	pathSubDirs, clearDir, mkDir, mkDirsForFile, lStatFields,
-	myself, removeFilesMatching, removeFilesExcept,
-
-	loadSymbols, sourceLib, libsAndSymbols, getNeededImportStmts,
-
-	setLogLevel, pushLogLevel, popLogLevel,
-	getLogLevel, getLog,
-	INDENT, UNDENT,
-	DBG, LOG, WARN, ERR, LOGVALUE, DBGVALUE,
-
-	oneIndent, resetOneIndent, indentLevel, splitLine,
-	indented, undented,
-
-	tkEOF, allTokensIn, allTokensInBlock, tokenTable,
-
-	toNice, fromNice, getPrimitive,
-
-	execCmd, execCmdSync, cmdSucceeds,
-	mkstr, getCmdLine, getProcOpt, typeCheck,
-
-	userConfigPath, getCompilerConfig,
-	installCmd, uninstallCmd, getCompilerInfo, getPostProcessor,
-	compileFile,
-	getCompilerGlobPattern, allCompilableFiles,
-	runUnitTestsFor, runAllUnitTests, isBlockSpec,
-	civet2ts, civet2tsFile, civet2jsFile, civet2ast,
-	}
-
-export type {
-	TFilterFunc, TStringifier, TStringParser, TAssertFunc,
-	hash, hashof, array, arrayof, regexp, char, integer,
-	TObjCompareFunc, TObjLikeFunc, TToStringFunc,
-	voidFunc, nonEmptyString,
-	TExecResult, TBlockSpec, TPathType, TPathInfo,
-	TWatcherCallbackFunc, TFsChangeType, TFsCallbackFunc, TFileOp,
-	TPLLToken, TTokenGenerator, TAlignment, TNodeInfo,
-
-	TTesterFunc, TCompilerFunc, TPostProcessor,
-	TCompilerInfo, TCompilerConfig,
-
-	TCompileStatus, TCompileResult, TUnitTestResult,
-	}
+	} from 'civet'
 
 # ---------------------------------------------------------------------------
 
@@ -273,10 +188,9 @@ export logLevelFromArgs := (lArgs: string[]): TLogLevel? =>
  *
  * If key '_' is present, it must be a hash possibly including keys:
  *    'range' - either an integer specifying the exact number of
- *              non-options expected, of an array of 2 integers
+ *              non-options expected, or an array of 2 integers
  *              specifying the minimum and maximum number of
- *              non-options expected. The 2nd of these may be
- *              the string 'inf' to indicate no maximum number
+ *              non-options expected.
  *    'desc' - a text description of what non-options are
  *
  * All other keys are names of options allowed
@@ -306,13 +220,20 @@ export logLevelFromArgs := (lArgs: string[]): TLogLevel? =>
  * (see library @jdeighan/logger)
  */
 
+export type TCmdArgs = {
+	[key: string]: unknown
+	}
+
 export getCmdArgs := (
 	hDesc: hash? = undef,
 	lArgs: string[] = Deno.args,
 	hOptions: hash = {}
 	): hash =>
 
-	{doSetLogger} := getOptions hOptions, {
+	type opt = {
+		doSetLogger: boolean
+		}
+	{doSetLogger} := getOptions<opt> hOptions, {
 		doSetLogger: true
 		}
 
@@ -384,7 +305,10 @@ export getCmdArgs := (
 
 	addNonOption := (str: string) =>
 		DBG "addNonOption(#{OL(str)})"
-		hResult._.push str
+		if isArray(hResult?._)
+			hResult._.push str
+		else
+			croak "addNonOption(): '_' not an array"
 
 	for str of lArgs
 		# --- ignore '--'
@@ -426,17 +350,17 @@ export getCmdArgs := (
 					hResult[name] = defaultVal
 
 		# --- Check of there's a restriction on the number of non-options
-		if hasKey(hDesc, '_')
+		if hasKey(hDesc, '_') && isArray(hResult._)
 			len := hResult._.length
 			DBG "Check number of non-options (#{len})"
 			hInfo := getNonOptionInfo(hDesc)
 			DBG "Non-option info: #{OL(hInfo)}"
 			if defined(hInfo)
 				{min, max} := hInfo
-				if defined(min)
-					assert (len >= min), "#{len} non-options < min (#{min})"
-				if defined(max)
-					assert (len <= max), "#{len} non-options > max (#{max})"
+				if defined(hInfo.min)
+					assert (len >= hInfo.min), "#{len} non-options < min (#{hInfo.min})"
+				if defined(hInfo.max)
+					assert (len <= hInfo.max), "#{len} non-options > max (#{hInfo.max})"
 
 	DBG "hResult = #{OL(hResult)}"
 	return hResult
@@ -461,54 +385,59 @@ export getOptionInfo := (hDesc: hash, name: string): hash =>
 # ---------------------------------------------------------------------------
 # --- returns undef if no '_' key in hDesc
 
-type nonOptionInfo = {
+type TNonOptionInfo = {
 	desc: string
-	min?: number
-	max?: number
+	min: number
+	max: number
 	}
 
-export getNonOptionInfo := (hDesc: hash): nonOptionInfo? =>
+export getNonOptionInfo := (hDesc: hash): TNonOptionInfo? =>
 
 	DBG "hDesc = #{OL(hDesc)}"
 	if not hasKey(hDesc, '_')
 		DBG "No '_' key in hDesc"
 		return undef
-	let {desc, range} = hDesc._
-	if isEmpty(desc)
-		desc = '<no description available>'
+	h := hDesc._
+	if not isHash(h)
+		DBG "hDesc._ not a hash"
+		return undef
+	let {desc, range} = h
+	realDesc := (
+		  isEmpty(desc)  ? '<no description available>'
+		: isString(desc) ? desc
+		: "<bad _ description>"
+		)
 	DBG "desc = #{desc}"
-	if defined(range)
-		DBG "range = #{OL(range)}"
-		if isInteger(range)
-			DBG "Integer range: #{range}"
-			return {
-				desc
-				min: range
-				max: range
-				}
-		else if isArray(range)
-			assert (range.length == 2), "Bad '_' key: #{OL(range)}"
-			[min, max] := range
-			DBG "Array range: #{min}..#{max}"
-			assert isInteger(min), "range min not an integer"
-			if (max == 'inf')
-				return {
-					desc
-					min
-					max: Infinity
-					}
-			else
-				assert isInteger(max), "range max not an integer"
-				return {
-					desc
-					min
-					max
-					}
-		else
-			croak "Invalid range: #{OL(range)}"
-	else
+	if notdefined(range)
 		DBG "No range key"
-		return {desc}
+		return {
+			desc: realDesc
+			min: 0
+			max: Number.MAX_SAFE_INTEGER
+			}
+
+	DBG "range = #{OL(range)}"
+	if isInteger(range)
+		DBG "Integer range: #{range}"
+		return {
+			desc: realDesc
+			min: range
+			max: range
+			}
+	else if isArray(range)
+		assert (range.length == 2), "Bad '_' key: #{OL(range)}"
+		[min, max] := range
+		DBG "Array range: #{min}..#{max}"
+		if isInteger(min) && isInteger(max)
+			return {
+				desc: realDesc
+				min
+				max
+				}
+		else
+			croak "range min or max not an integer: #{OL(min)}..#{OL(max)}"
+	else
+		croak "Invalid range: #{OL(range)}"
 
 # ---------------------------------------------------------------------------
 
@@ -526,20 +455,17 @@ export helpStr := (hDesc: hash): string =>
 		push "-#{name}: #{type} - #{desc}", 1
 	if defined(hDesc._)
 		push "Non-options:"
-		if isString(hDesc._)
-			push "#{hDesc._}", 1
-		else if isHash(hDesc._)
-			{desc, range} := hDesc._
-			push (desc || '<no description available>'), 1
-			if defined(range)
-				if isInteger(range)
-					push "There must be exactly #{cntStr(range, 'non-option')", 1
-				else if isArray(range)
-					[min, max] := range
-					if (min > 0)
-						push "There must be at least #{cntStr(min, 'non-option')}", 1
-					if (max != 'inf')
-						push "There must be at most #{cntStr(max, 'non-option')}", 1
+		hInfo := getNonOptionInfo(hDesc)
+		if defined(hInfo)
+			{desc, min, max} := hInfo
+			push desc, 1
+			if (min == max)
+				push "There must be exactly #{min} non-options", 1
+			else
+				if (min > 0)
+					push "There must be at least #{cntStr(min, 'non-option')}", 1
+				if (max < Number.MAX_SAFE_INTEGER)
+					push "There must be at most #{cntStr(max, 'non-option')}", 1
 		else
 			croak "Bad descriptor for '_'"
 	return lLines.join('\n')

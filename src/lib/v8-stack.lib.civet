@@ -1,38 +1,46 @@
+# v8-stack.lib.civet
+
 /**
  * v8-stack - runtime stack utilities
  * @module
  */
-
-# v8-stack.lib.civet
 
 import {
 	install, mapSourcePosition,
 	} from 'source-map-support'
 import {sprintf} from '@std/fmt/printf'
 
-import {hash} from './datatypes.lib.ts'
 import {
-	undef, defined, notdefined, isEmpty, nonEmpty,
-	assert, croak, hasKey, OL, ML, getOptions,
-	isString, isNonEmptyString, isInteger, rpad, centered,
+	undef, defined, notdefined, assert, croak,
+	isEmpty, nonEmpty, hash,
+	isString, isNonEmptyString, isInteger,
+	} from 'datatypes'
+import {
+	hasKey, OL, ML, rpad, centered,
+	} from 'llutils'
+import {
 	isFile, mkpath, fileExt, withExt, normalizePath, relpath,
+	} from 'fsys'
+import {
 	DBG, LOG, WARN, ERR, INDENT, UNDENT,
-	} from './utils.lib.ts'
+	} from 'logger'
 
 install()     # from source-map-support
 width := 40
 
 # ---------------------------------------------------------------------------
 
-export type stackFrame = {
-	type: string    # eval | native | constructor | method | function | script
-	source: string  # source file name
+export type TFrameType = 'eval'|'native'|'constructor'|'method'|'function'|'script'|'unknown'
+
+export type TStackFrame = {
+	type: TFrameType    # eval | native | constructor | method | function | script | unknown
+	source: string      # source file name
 	line: number
 	column: number
-	name: string    # name of function or method
+	name: string        # name of function or method
 	isConstructor: boolean
 	isAsync: boolean
-	objType: string?  # --- if type == 'method'
+	objType: string?    # --- if type == 'method'
 	}
 
 # ---------------------------------------------------------------------------
@@ -44,7 +52,7 @@ export type stackFrame = {
  * 	if a source map is available
  */
 
-export getV8Stack := (): stackFrame[] =>
+export getV8Stack := (): TStackFrame[] =>
 	# --- ignores any stack frames from this module
 	#     files will be mapped to original source files
 	#        if a source map is available
@@ -61,7 +69,7 @@ export getV8Stack := (): stackFrame[] =>
 
 		# @ts-ignore
 		Error.prepareStackTrace = (error, lFrames) =>
-			lResultFrames: stackFrame[] := []
+			lResultFrames: TStackFrame[] := []
 			DBG "getV8Stack(): #{lFrames.length} stack frames"
 			for frame,i of lFrames
 
@@ -101,7 +109,7 @@ export getV8Stack := (): stackFrame[] =>
 					DBG "SKIP: source = '#{source}'", UNDENT
 					continue
 
-				h := {
+				h: TStackFrame := {
 					type: (
 						  isEval                ? 'eval'
 						: isNative              ? 'native'
@@ -109,15 +117,15 @@ export getV8Stack := (): stackFrame[] =>
 						: defined(methodName)   ? 'method'
 						: defined(functionName) ? 'function'
 						: isTopLevel            ? 'script'
-						:                         'unkn'
+						:                         'unknown'
 						)
 					source
 					line
 					column
 					name: (
-						  defined(functionName) ? functionName
-						: defined(functionObj)  ? '<anon>'
-						: defined(methodName)   ? methodName
+						  isString(functionName) ? functionName
+						: defined(functionObj)   ? '<anon>'
+						: isString(methodName)   ? methodName
 						:                         ''
 						)
 					isConstructor
@@ -154,7 +162,7 @@ export getV8Stack := (): stackFrame[] =>
 		errObj := new Error()
 
 		# @ts-ignore - because errObj.stack will be an array
-		lStack: stackFrame[] := errObj.stack || []
+		lStack: TStackFrame[] := errObj.stack || []
 
 		# --- reset to previous values
 
@@ -217,7 +225,7 @@ export getV8StackStr := (hOptions: hash={}): string =>
  * Get the current function's caller
  */
 
-export getMyCaller := (): stackFrame? =>
+export getMyCaller := (): TStackFrame? =>
 
 	try
 		lStack := getV8Stack()
@@ -237,7 +245,7 @@ export getMyCaller := (): stackFrame? =>
  * from the same module
  */
 
-export getMyOutsideCaller := (): stackFrame? =>
+export getMyOutsideCaller := (): TStackFrame? =>
 
 	try
 		lStack := getV8Stack()

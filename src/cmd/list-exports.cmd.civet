@@ -1,9 +1,10 @@
 # list-exports.cmd.civet
 
-import {
-	getCmdArgs, words, LOG, TextTable,
-	} from '../lib/utils.lib.ts'
-import {allExportsIn} from '../lib/analyze.lib.ts'
+import {LOG} from 'logger'
+import {TextTable} from 'text-table'
+import {words} from 'llutils'
+import {getCmdArgs} from 'utils'
+import {allExportsIn} from 'analyze'
 
 lValidStubs: string[] := words(
 	'datatypes llutils logger text-table indent pll fs',

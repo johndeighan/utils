@@ -1,14 +1,12 @@
 # build-dot-symbols.cmd.civet
 
 import {
-	undef, defined, notdefined, assert, hash, getOptions,
-	isEmpty, nonEmpty, OL,
-	LOG, DBG, WARN, LOGVALUE, DBGVALUE,
-	allFilesMatching, barf,
-	} from '../lib/utils.lib.ts'
-import {
-	allExportsIn,
-	} from '../lib/analyze.lib.ts'
+	undef, assert, hash, isEmpty, nonEmpty,
+	} from 'datatypes'
+import {getOptions, OL} from 'llutils'
+import {LOG, DBG, WARN, LOGVALUE, DBGVALUE} from 'logger'
+import {barf, allFilesMatching} from 'fsys'
+import {allExportsIn} from 'analyze'
 
 # ---------------------------------------------------------------------------
 # --- ASYNC GENERATOR
@@ -18,7 +16,11 @@ export getDotSymbolsLines := (
 		hOptions: hash={}
 		): AsyncGenerator<string, void, void> ->
 
-	{oneIndent, maxLineLen} := getOptions hOptions, {
+	type opt = {
+		oneIndent: string
+		maxLineLen: number
+		}
+	{oneIndent, maxLineLen} := getOptions<opt> hOptions, {
 		oneIndent: '\t'
 		maxLineLen: 75
 		}

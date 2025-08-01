@@ -1,0 +1,4 @@
+import {undef} from 'datatypes'
+
+x := undef
+console.log x

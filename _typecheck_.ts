@@ -1,2 +1,2 @@
-
-const x: string = 23
+import {regexp} from 'datatypes';
+const x: regexp = "abc"

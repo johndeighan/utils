@@ -3,18 +3,18 @@
 import {sprintf} from "@std/fmt/printf"
 
 import {
-	undef, defined, notdefined, assert, nonEmpty,
+	undef, defined, notdefined, assert, croak, nonEmpty,
 	isString, isNumber, isInteger, isArray,
 	array, arrayof, hash, hashof, integer, char,
 	intArray, isArrayOfIntegers,
-	} from './datatypes.lib.ts'
+	} from 'datatypes'
 import {
-	getOptions, OL, croak, words, rtrim, alignString,
+	getOptions, OL, words, rtrim, alignString,
 	toBlock, TAlignment,
-	} from './llutils.lib.ts'
+	} from 'llutils'
 import {
 	LOGVALUE, DBG,
-	} from './logger.lib.ts'
+	} from 'logger'
 
 # ---------------------------------------------------------------------------
 
@@ -57,9 +57,14 @@ type rowDesc = titleRec | labelsRec | dataRec | sepRec | fullsepRec | totalsRec 
  * 	textTable := table.asString(o'hide=1')
  */
 
+type opt = {
+	decPlaces: number
+	parseNumbers: boolean
+	}
+
 export class TextTable
 
-	hOptions: hash
+	hOptions: opt
 	numCols: integer
 	lLabels: string[] = []
 
@@ -77,7 +82,7 @@ export class TextTable
 		#        parseNumbers - string data that looks like a number
 		#                       is treated as a number, default: false
 
-		@hOptions = getOptions hOptions, {
+		@hOptions = getOptions<opt> hOptions, {
 			decPlaces: 2
 			parseNumbers: false
 			}
@@ -296,11 +301,14 @@ export class TextTable
 	asString(hOptions={})
 
 		# --- option to hide certain columns
-		{hide} := getOptions hOptions, {
-			hide: undef
+		type opt = {
+			lHide: number[]
 			}
-		DBG 'hide', hide
-		lHidden := @getColsToHide(hide)
+		{lHide} := getOptions<opt> hOptions, {
+			lHide: []
+			}
+		DBG 'lHide', lHide
+		lHidden := @getColsToHide(lHide)
 		DBG 'lHidden', lHidden
 
 		# --- create a filter function

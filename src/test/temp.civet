@@ -1,0 +1,38 @@
+export type TDefined = {}
+export defined := (x: unknown): x is TDefined =>
+	return (x != undefined) && (x != null)
+
+export interface hash
+	[key: string | symbol]: any
+
+# ---------------------------------------------------------------------------
+
+export getOptions := <T extends hash>(
+		hOptions: hash={},
+		hDefaults: T
+		): T =>
+
+	return {...hDefaults, ...hOptions}
+
+# ---------------------------------------------------------------------------
+
+hOptions := {
+	anything: 42
+	}
+
+# --- in my function that uses getOptions() ---
+
+type opt = {
+	oneLine: boolean
+	compress: boolean
+	trunc: number
+	lExcept: string[]
+	}
+h := getOptions<opt> hOptions, {
+	oneLine: true
+	compress: true
+	trunc: 0
+	lExcept: ['dont']
+	}
+
+console.dir h
