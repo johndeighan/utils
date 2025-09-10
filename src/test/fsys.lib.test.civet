@@ -4,30 +4,31 @@ import {
 	undef, defined, hash, voidFunc, isString, deepEqual,
 	} from 'datatypes'
 import {
-	o, spaces, sinceLoad, sinceLoadStr, sleep, hasKey, pass,
+	o, spaces, sinceLoad, sinceLoadStr, sleep, pass,
 	} from 'llutils'
-import {DBG} from 'logger'
-import {getCmdArgs} from 'utils'
+import {LOG, DBG} from 'logger'
+import {getCmdArgs} from 'cmd-args'
 import {TPLLToken} from 'pll'
 import {
 	isFile, isDir, getPathType, fileExt, withExt,
 	lStatFields, getStats, isStub, parsePath,
 	allFilesMatching, allLinesIn,
 	normalizePath, pathToURL, mkpath, relpath, pathSubDirs, myself,
-	rmFile, rmDir, newerDestFileExists,
+	rmFile, rmDir, isExt, newerDestFileExists,
 	clearDir, mkDir, mkDirsForFile, slurp, barf,
 	removeFilesMatching, removeFilesExcept,
-	watchFile, FileEventHandler, TWatcherCallbackFunc,
-	TFsChangeType, TFsCallbackFunc, setDirTree,
-	allTokensInFile, TPathType,
-	TFileOp, fileOpsTable, patchFirstLine,
+	watchFile, FileEventHandler,
+	TFsEventHandler,
+	TPathType, TPathInfo,
+	patchFirstLine, FsEvent,
 	} from 'fsys'
+import {setDirTree} from 'pllfile'
 import {
 	equal, truthy, falsy, like, objListLike, matches,
 	succeeds, fails, includesAll, isType, notType,
 	} from 'unit-test'
 
-hArgs := getCmdArgs()
+getCmdArgs()
 
 # ---------------------------------------------------------------------------
 
@@ -35,7 +36,7 @@ setup := (): void =>
 
 	DBG "setDirTree()"
 
-	setDirTree('test/fs', """
+	setDirTree('src/test/fsys', """
 			tokens.txt
 				if x==1
 					print "OK"
@@ -95,15 +96,15 @@ DBG "isFile()"
 truthy isFile('./deno.jsonc')
 truthy isFile('deno.jsonc')
 falsy isFile('./src/lib/notafile.txt')
-truthy isFile("./test/fs/dummy.txt")
-falsy  isFile("./test/fs")
+truthy isFile("./src/test/fsys/dummy.txt")
+falsy  isFile("./src/test/fsys")
 
 DBG "isDir()"
 
 truthy isDir('test')
 falsy isDir('nosuchdir')
-truthy isDir("./test/fs")
-falsy  isDir("./test/fs/dummy.txt")
+truthy isDir("./src/test/fsys")
+falsy  isDir("./src/test/fsys/dummy.txt")
 
 DBG "type TPathType"
 
@@ -114,10 +115,10 @@ notType 'TPathType', 'xxx'
 DBG "getPathType()"
 
 equal getPathType('./deno.jsonc'), 'file'
-equal getPathType("./test/fs"), 'dir'
+equal getPathType("./src/test/fsys"), 'dir'
 equal getPathType('./src/lib/notafile.txt'), 'missing'
 equal getPathType("./test"), 'dir'
-equal getPathType("./test/fsys.lib.test.civet"), 'file'
+equal getPathType("./src/test/fsys.lib.test.civet"), 'file'
 equal getPathType("C:/temp/file.txt"), 'missing'
 
 DBG "fileExt()"
@@ -140,8 +141,8 @@ includesAll lStatFields, ['size', 'mtime']
 
 DBG "getStats(path)"
 
-truthy hasKey(getStats('deno.jsonc'), 'mtimeMs')
-equal getStats('test/fs/file1.txt').size, 17
+truthy ('mtime' in getStats('deno.jsonc'))
+equal getStats('src/test/fsys/file1.txt').size, 17
 
 DBG "isStub()"
 
@@ -171,20 +172,20 @@ like parsePath(import.meta.url), {
 	stub: 'fsys.lib'
 	purpose: 'test'
 	ext: '.ts'
-	relPath: 'test/fsys.lib.test.ts'
-	relDir: 'test'
+	relPath: 'src/test/fsys.lib.test.ts'
+	relDir: 'src/test'
 	}
 
 DBG "allFilesMatching()"
 
-objListLike Array.from(allFilesMatching('**/test/fs/file*.txt')), [
+objListLike Array.from(allFilesMatching('**/src/test/fsys/file*.txt')), [
 	{
 		type: 'file'
 		root: 'C:/'
 		fileName: 'file1.txt',
 		stub: 'file1'
 		ext: '.txt'
-		relPath: 'test/fs/file1.txt'
+		relPath: 'src/test/fsys/file1.txt'
 		}
 	{
 		type: 'file'
@@ -192,7 +193,7 @@ objListLike Array.from(allFilesMatching('**/test/fs/file*.txt')), [
 		fileName: 'file2.txt',
 		stub: 'file2'
 		ext: '.txt'
-		relPath: 'test/fs/file2.txt'
+		relPath: 'src/test/fsys/file2.txt'
 		}
 	{
 		type: 'file'
@@ -201,94 +202,97 @@ objListLike Array.from(allFilesMatching('**/test/fs/file*.txt')), [
 		stub: 'file3'
 		purpose: 'flags'
 		ext: '.txt'
-		relPath: 'test/fs/file3.flags.txt'
+		relPath: 'src/test/fsys/file3.flags.txt'
 		}
 	]
 
-objListLike Array.from(allFilesMatching('**/test/fs/**', o'includeDirs')), [
-	{
-		type: 'dir'
-		fileName: 'fs',
-		}
-	{
-		type: 'dir'
-		fileName: 'aaa',
-		}
-	{
-		type: 'dir'
-		fileName: 'bbb',
-		}
-	{
-		type: 'file'
-		fileName: 'newfile.txt',
-		}
-	{
-		type: 'file'
-		fileName: 'oldfile.txt',
-		}
-	{
-		type: 'file'
-		fileName: 'temp.txt',
-		}
-	{
-		type: 'file'
-		fileName: 'dummy.txt',
-		}
-	{
-		type: 'file'
-		fileName: 'file1.txt',
-		}
-	{
-		type: 'file'
-		fileName: 'file2.txt',
-		}
-	{
-		type: 'file'
-		fileName: 'file3.flags.txt',
-		}
-	{
-		type: 'file'
-		fileName: 'file4.cielo',
-		}
-	{
-		type: 'file'
-		fileName: 'file5.cielo',
-		}
-	{
-		type: 'dir'
-		fileName: 'subdir',
-		}
-	{
-		type: 'file'
-		fileName: 'new.txt',
-		}
-	{
-		type: 'file'
-		fileName: 'tokens.txt',
-		}
-	{
-		type: 'file'
-		fileName: 'file.config.ts',
-		}
-	], (h) =>
-		x := h['fileName']
-		return isString(x) ? x : ''
+(() =>
+	lFiles :=  Array.from(allFilesMatching('src/test/fsys/**', o'includeDirs'))
+	objListLike lFiles, [
+		{
+			type: 'dir'
+			fileName: 'fsys',
+			}
+		{
+			type: 'dir'
+			fileName: 'aaa',
+			}
+		{
+			type: 'dir'
+			fileName: 'bbb',
+			}
+		{
+			type: 'file'
+			fileName: 'newfile.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'oldfile.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'temp.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'dummy.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'file.config.ts'
+			}
+		{
+			type: 'file'
+			fileName: 'file1.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'file2.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'file3.flags.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'file4.cielo',
+			}
+		{
+			type: 'file'
+			fileName: 'file5.cielo',
+			}
+		{
+			type: 'dir'
+			fileName: 'subdir',
+			}
+		{
+			type: 'file'
+			fileName: 'new.txt',
+			}
+		{
+			type: 'file'
+			fileName: 'tokens.txt',
+			}
+		], (h) =>
+			x := h['fileName']
+			return isString(x) ? x : ''
+	)()
 
 (() =>
 	hOptions := {
 		includeDirs: true
-		filter: (hFile: hash) =>
+		filter: (hFile: TPathInfo) =>
 			flag := switch hFile.type
 				when 'dir'
-					(hFile.fileName != 'fs')
+					(hFile.fileName != 'fsys')
 				when 'file'
 					defined(hFile.fileName.match(/^[a-z0-9]+\.txt$/))
 				else
 					false
-			return flag ? hFile : undef
+			return flag
 		}
 
-	objListLike Array.from(allFilesMatching('**/test/fs/**', hOptions)), [
+	objListLike Array.from(allFilesMatching('src/test/fsys/**', hOptions)), [
 		{
 			type: 'dir'
 			fileName: 'aaa',
@@ -339,13 +343,13 @@ objListLike Array.from(allFilesMatching('**/test/fs/**', o'includeDirs')), [
 (() =>
 	hOptions := {
 		includeDirs: false
-		filter: (hFile: hash) =>
+		filter: (hFile: TPathInfo) =>
 			{fileName} := hFile
-			if defined(fileName.match(/^[a-z0-9]+\.txt$/))
-				return fileName
+			return fileName.match(/^[a-z0-9]+\.txt$/)
 		}
 
-	equal Array.from(allFilesMatching('**/test/fs/**', hOptions)), [
+	lFiles := Array.from(allFilesMatching('src/test/fsys/**', hOptions))
+	equal lFiles.map((h) => h.fileName), [
 		'newfile.txt',
 		'oldfile.txt',
 		'temp.txt',
@@ -360,7 +364,7 @@ objListLike Array.from(allFilesMatching('**/test/fs/**', o'includeDirs')), [
 DBG "allLinesIn()"
 
 lLines: string[] := []
-for await line of allLinesIn('./test/fs/file1.txt')
+for await line of allLinesIn('./src/test/fsys/file1.txt')
 	lLines.push line
 
 equal lLines, [
@@ -398,62 +402,62 @@ equal relpath('C:/Users/johnd/utils/deno.jsonc'), 'deno.jsonc'
 DBG "type TPathDesc", "pathSubDirs()"
 
 (() =>
-	fullPath := "C:/Users/johnd/utils/test/fs/deno.jsonc"
-	relPath  := "test/fs/deno.jsonc"
+	fullPath := "C:/Users/johnd/utils/src/test/fsys/deno.jsonc"
+	relPath  := "src/test/fsys/deno.jsonc"
 
 	# --- non-relative, try both full and relative paths
 	equal pathSubDirs(fullPath, o'!relative'), {
-		dir: 'C:/Users/johnd/utils/test/fs'
+		dir: 'C:/Users/johnd/utils/src/test/fsys'
 		root: "C:/"
-		lParts: ['Users', 'johnd', 'utils', 'test', 'fs']
+		lParts: ['Users', 'johnd', 'utils', 'src', 'test', 'fsys']
 		}
 	equal pathSubDirs(relPath, o'!relative'), {
-		dir: 'C:/Users/johnd/utils/test/fs'
+		dir: 'C:/Users/johnd/utils/src/test/fsys'
 		root: "C:/"
-		lParts: ['Users', 'johnd', 'utils', 'test', 'fs']
+		lParts: ['Users', 'johnd', 'utils', 'src', 'test', 'fsys']
 		}
 
 	# --- relative, try both full and relative paths
 	equal pathSubDirs(fullPath, o'relative'), {
-		dir: "test/fs"
+		dir: "src/test/fsys"
 		root: ""
-		lParts: ['test', 'fs']
+		lParts: ['src', 'test', 'fsys']
 		}
 	equal pathSubDirs(relPath, o'relative'), {
-		dir: "test/fs"
+		dir: "src/test/fsys"
 		root: ""
-		lParts: ['test', 'fs']
+		lParts: ['src', 'test', 'fsys']
 		}
 
 	# --- Default is not relative
 	equal pathSubDirs(fullPath), {
-		dir: 'C:/Users/johnd/utils/test/fs'
+		dir: 'C:/Users/johnd/utils/src/test/fsys'
 		root: "C:/"
-		lParts: ['Users', 'johnd', 'utils', 'test', 'fs']
+		lParts: ['Users', 'johnd', 'utils', 'src', 'test', 'fsys']
 		}
 	equal pathSubDirs(relPath), {
-		dir: 'C:/Users/johnd/utils/test/fs'
+		dir: 'C:/Users/johnd/utils/src/test/fsys'
 		root: "C:/"
-		lParts: ['Users', 'johnd', 'utils', 'test', 'fs']
+		lParts: ['Users', 'johnd', 'utils', 'src', 'test', 'fsys']
 		}
 	)()
 
 DBG "myself()"
 
-equal myself(import.meta.url), 'test/fsys.lib.test.ts'
+equal myself(import.meta.url), 'src/test/fsys.lib.test.ts'
 
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 
 DBG "slurp(path)"
 
-equal slurp('./test/fs/file1.txt'), """
+equal slurp('./src/test/fsys/file1.txt'), """
 	line1
 	line2
 	line3
 	"""
 
-barfPath := 'test/fs/barfed.txt'
+barfPath := 'src/test/fsys/barfed.txt'
 
 DBG "barf(path, contents)"
 
@@ -472,19 +476,24 @@ DBG "barf(path, contents)"
 		"""
 	)()
 
+DBG "isExt(str)"
+
+truthy isExt('.something')
+falsy  isExt('./windows/temp.txt')
+
 DBG "newerDestFileExists(srcPath, destPath)"
 
-truthy newerDestFileExists('test/fs/file1.txt', barfPath)
-falsy  newerDestFileExists(barfPath, 'test/fs/file1.txt')
+truthy newerDestFileExists('src/test/fsys/file1.txt', barfPath)
+falsy  newerDestFileExists(barfPath, 'src/test/fsys/file1.txt')
 
 DBG "mkDir()"
 
-falsy  isDir('test/fs/tempdir')
-falsy  isFile('test/fs/tempdir/file42.txt')
-mkDir 'test/fs/tempdir'
-barf 'test/fs/tempdir/file42.txt', 'abc'
-truthy isDir('test/fs/tempdir')
-truthy isFile('test/fs/tempdir/file42.txt')
+falsy  isDir('src/test/fsys/tempdir')
+falsy  isFile('src/test/fsys/tempdir/file42.txt')
+mkDir 'src/test/fsys/tempdir'
+barf 'src/test/fsys/tempdir/file42.txt', 'abc'
+truthy isDir('src/test/fsys/tempdir')
+truthy isFile('src/test/fsys/tempdir/file42.txt')
 
 DBG "rmFile()"
 
@@ -494,20 +503,20 @@ falsy  isFile(barfPath)
 
 DBG "rmDir()"
 
-truthy isDir('test/fs/tempdir')
-rmDir 'test/fs/tempdir', o'clear'
-falsy  isDir('test/fs/tempdir')
+truthy isDir('src/test/fsys/tempdir')
+rmDir 'src/test/fsys/tempdir', o'clear'
+falsy  isDir('src/test/fsys/tempdir')
 
-path := 'test/fs/aaa/bbb/newfile.txt'
+path := 'src/test/fsys/aaa/bbb/newfile.txt'
 
 DBG "mkDirsForFile(path)"
 
 (() =>
 	mkDirsForFile path
-	truthy isDir('test/fs')
-	truthy isDir('test/fs/aaa')
-	truthy isDir('test/fs/aaa/bbb')
-	falsy  isDir('test/fs/aaa/bbb/ccc')
+	truthy isDir('src/test/fsys')
+	truthy isDir('src/test/fsys/aaa')
+	truthy isDir('src/test/fsys/aaa/bbb')
+	falsy  isDir('src/test/fsys/aaa/bbb/ccc')
 	truthy isFile(path)
 	barf path, 'abc'
 	truthy isFile(path)
@@ -517,10 +526,10 @@ DBG "clearDir(dir)"
 
 (() =>
 	setup()
-	clearDir 'test/fs/aaa'
+	clearDir 'src/test/fsys/aaa'
 
-	truthy isDir('test/fs/aaa')
-	falsy  isDir('test/fs/aaa/bbb')
+	truthy isDir('src/test/fsys/aaa')
+	falsy  isDir('src/test/fsys/aaa/bbb')
 	falsy  isFile(path)
 	)()
 
@@ -530,10 +539,10 @@ DBG "removeFilesMatching()"
 	setup()
 	removeFilesMatching '**/*file.txt'
 
-	falsy  isFile('test/fs/aaa/newfile.txt')
-	falsy  isFile('test/fs/aaa/bbb/newfile.txt')
-	falsy  isFile('test/fs/aaa/bbb/oldfile.txt')
-	truthy isFile('test/fs/aaa/bbb/temp.txt')
+	falsy  isFile('src/test/fsys/aaa/newfile.txt')
+	falsy  isFile('src/test/fsys/aaa/bbb/newfile.txt')
+	falsy  isFile('src/test/fsys/aaa/bbb/oldfile.txt')
+	truthy isFile('src/test/fsys/aaa/bbb/temp.txt')
 	)()
 
 DBG "removeFilesExcept()"
@@ -541,97 +550,102 @@ DBG "removeFilesExcept()"
 (() =>
 	setup()
 	lKeep := [
-		'test/fs/aaa/bbb/newfile.txt'
-		'test/fs/aaa/bbb/oldfile.txt'
+		'src/test/fsys/aaa/bbb/newfile.txt'
+		'src/test/fsys/aaa/bbb/oldfile.txt'
 		]
 	removeFilesExcept '**/*file.txt', lKeep
 
-	falsy  isFile('test/fs/aaa/newfile.txt')
-	truthy isFile('test/fs/aaa/bbb/newfile.txt')
-	truthy isFile('test/fs/aaa/bbb/oldfile.txt')
-	truthy isFile('test/fs/aaa/bbb/temp.txt')
+	falsy  isFile('src/test/fsys/aaa/newfile.txt')
+	truthy isFile('src/test/fsys/aaa/bbb/newfile.txt')
+	truthy isFile('src/test/fsys/aaa/bbb/oldfile.txt')
+	truthy isFile('src/test/fsys/aaa/bbb/temp.txt')
 	)()
 
-DBG "type TFsChangeType", "type TFsCallbackFunc", "class FileEventHandler"
+DBG "type TFsEventHandler", "class FileEventHandler"
 
 (() =>
-	lChanges: TFsChangeType[] := []
-	fileChangeFunc: TFsCallbackFunc := (change: TFsChangeType) =>
-		lChanges.push change
+	lChanges: string[] := []
+	fileChangeFunc: TFsEventHandler := (kind, path) =>
+		lChanges.push kind
 		return
 
 	handler := new FileEventHandler(fileChangeFunc)
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp.txt'
+		paths: ['/usr/lib/temp.txt']
 		}
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp.txt'
+		paths: ['/usr/lib/temp.txt']
 		}
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp2.txt'
+		paths: ['/usr/lib/temp2.txt']
 		}
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp.txt'
+		paths: ['/usr/lib/temp.txt']
 		}
 
 	await sleep 2
 
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp.txt'
+		paths: ['/usr/lib/temp.txt']
 		}
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp.txt'
+		paths: ['/usr/lib/temp.txt']
 		}
 
 	await sleep 2
 
 	expected := [
-		{kind: 'modify', path: '/usr/lib/temp2.txt'}
-		{kind: 'modify', path: '/usr/lib/temp.txt'}
-		{kind: 'modify', path: '/usr/lib/temp.txt'}
+		{kind: 'modify', paths: ['/usr/lib/temp2.txt']}
+		{kind: 'modify', paths: ['/usr/lib/temp.txt']}
+		{kind: 'modify', paths: ['/usr/lib/temp.txt']}
 		]
 
 	equal lChanges, expected
 	)()
 
-# --- get the final change list via getChangeList() method
 (() =>
-	handler := new FileEventHandler(nullHandler, {track: true})
+	setup()
+
+	lChanges: hash[] := []
+	handler := new FileEventHandler((kind, path) =>
+		lChanges.push {kind, path}
+		return
+		)
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp.txt'
+		paths: ['/usr/lib/temp.txt']
 		}
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp.txt'
+		paths: ['/usr/lib/temp.txt']
 		}
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp2.txt'
+		paths: ['/usr/lib/temp2.txt']
 		}
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp.txt'
+		paths: ['/usr/lib/temp.txt']
 		}
 
 	await sleep 2
 
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp.txt'
+		paths: ['/usr/lib/temp.txt']
 		}
 	handler.handle {
 		kind: 'modify',
-		path: '/usr/lib/temp.txt'
+		paths: ['/usr/lib/temp.txt']
 		}
 
-	lChanges := await handler.getChangeList()
+	await sleep 2
 
 	expected := [
 		{kind: 'modify', path: '/usr/lib/temp2.txt'}
@@ -642,23 +656,27 @@ DBG "type TFsChangeType", "type TFsCallbackFunc", "class FileEventHandler"
 	equal lChanges, expected
 	)()
 
-DBG "type TWatcherCallbackFunc", "watchFile()", "watchFiles()"
+DBG "type TFsEventHandler", "watchFile()", "watchFiles()"
 
 await (() =>
 	# --- Set contents of dummy.txt to standard contents
-	path := mkpath('test/fs/dummy.txt')
+	path := mkpath('src/test/fsys/dummy.txt')
 	barf path, 'dummy\n'
 
 	let doStop: boolean = false
-	lEvents: TFsChangeType[] := []
+	lChanges: hash[] := []
 	add := (str: string, stop: boolean=false): void =>
 		if stop
 			doStop = true
 		barf path, str, o'append'
 		return
 
-	callback: TWatcherCallbackFunc := ({kind, path}) =>
-		lEvents.push {kind, path: mkpath(path), ms: sinceLoad()}
+	callback: TFsEventHandler := (kind, path) =>
+		lChanges.push {
+			kind
+			path
+			ms: sinceLoad()
+			}
 		return doStop
 
 	promise := watchFile path, callback
@@ -674,116 +692,17 @@ await (() =>
 
 	equal slurp(path), 'dummy\nABCDE'
 
-	objListLike lEvents, [
+	objListLike lChanges, [
 		{kind: 'modify', path}
 		{kind: 'modify', path}
 		]
-	)()
-
-DBG "allTokensInFile()"
-
-objListLike Array.from(allTokensInFile('test/fs/tokens.txt')), [
-	{kind: 'line',   str: 'if x==1'}
-	{kind: 'indent'}
-	{kind: 'line',   str: 'print "OK"'}
-	{kind: 'undent'}
-	{kind: 'line',   str: 'exit'}
-	]
-
-DBG "setDirTree()"
-
-(() =>
-	lFileOps := setDirTree('test/t', """
-		temp.txt
-			abc
-			def
-		""", o'scaffold')
-
-	equal lFileOps, [
-			{ funcName: 'mkDir', path: 'test/t'}
-			{ funcName: 'barf',  path: 'test/t/temp.txt', contents: "abc\ndef"}
-			]
-	)()
-
-(() =>
-	lFileOps := setDirTree('test/t', """
-		dummy.txt
-			abc
-			def
-		file1.txt
-			abc
-		file2.txt
-			abc
-		file3.flags.txt
-			abc
-		/aaa
-			/bbb
-				newfile.txt
-				oldfile.txt
-				temp.txt
-			/subdir1
-		/subdir2
-		""", o'scaffold')
-
-	equal lFileOps, [
-			{ funcName: 'mkDir', path: 'test/t'}
-			{ funcName: 'barf',  path: 'test/t/dummy.txt', contents: "abc\ndef"}
-			{ funcName: 'barf',  path: 'test/t/file1.txt', contents: "abc"}
-			{ funcName: 'barf',  path: 'test/t/file2.txt', contents: "abc"}
-			{ funcName: 'barf',  path: 'test/t/file3.flags.txt', contents: "abc"}
-			{ funcName: 'mkDir', path: 'test/t/aaa'}
-			{ funcName: 'mkDir', path: 'test/t/aaa/bbb'}
-			{ funcName: 'barf',  path: 'test/t/aaa/bbb/newfile.txt', contents: ''}
-			{ funcName: 'barf',  path: 'test/t/aaa/bbb/oldfile.txt', contents: ''}
-			{ funcName: 'barf',  path: 'test/t/aaa/bbb/temp.txt', contents: ''}
-			{ funcName: 'mkDir', path: 'test/t/aaa/subdir1'}
-			{ funcName: 'mkDir', path: 'test/t/subdir2'}
-			]
-	)()
-
-DBG "type TFileOp"
-
-isType 'TFileOp', {
-	funcName: 'mkDir',
-	path: '/usr/bin'
-	}
-isType 'TFileOp', {
-	funcName: 'barf',
-	path: '/usr/bin/deighan.txt'
-	}
-isType 'TFileOp', {
-	funcName: 'barf',
-	path: '/usr/bin/temp.txt',
-	contents: 'abc\ndef'
-	}
-
-DBG "fileOpsTable()"
-
-(() =>
-	lFileOps: TFileOp[] := [
-		{funcName: 'mkDir', path: '/usr/bin'}
-		{funcName: 'barf',  path: '/usr/bin/deighan.txt'}
-		{funcName: 'barf',  path: '/usr/bin/temp.txt', contents: 'abc\ndef'}
-		]
-	block := fileOpsTable(lFileOps)
-	equal block, """
-		--------------------------
-		#{spaces(9)}FILE OPS
-		--------------------------
-		mkdir /usr/bin
-		barf  /usr/bin/deighan.txt
-		barf  /usr/bin/temp.txt
-		#{spaces(6)}abc
-		#{spaces(6)}def
-		--------------------------
-		"""
 	)()
 
 DBG "patchFirstLine(path, str, newstr)"
 
 (() =>
-	path1 := 'test/fs/file4.cielo'
-	path2 :='test/fs/file5.cielo'
+	path1 := 'src/test/fsys/file4.cielo'
+	path2 :='src/test/fsys/file5.cielo'
 	patchFirstLine path1, '.cielo', '.civet'
 	patchFirstLine path2, '.cielo', '.civet'
 	truthy slurp(path1).includes 'file.civet'

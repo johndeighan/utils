@@ -1,0 +1,80 @@
+# base-utils.lib.test.civet
+
+import {
+	assert, TDefined, TNotDefined, undef, defined,
+	notdefined, assertIsDefined, assertNotDefined,
+	croak, checkSetup, flag, replaceInArray,
+	fileExt, withExt, normalizePath, relpath,
+	TPathInfo, parsePath, TExecResult, TReplaceHash,
+	execCmd, cmdSucceeds, newerDestFileExists,
+	splitPatterns, allFilesMatching, findFile
+	TProcFunc, TProcResult, procFiles,
+	} from 'base-utils'
+import {
+	equal, like, succeeds, fails, truthy, falsy,
+	isType, notType,
+	} from 'unit-test'
+
+# ---------------------------------------------------------------------------
+
+succeeds () => assert 2 == 2
+fails    () => assert 2 == 3 + 5
+succeeds () => defined 'abc'
+fails    () => defined undef
+succeeds () => notdefined undef
+fails    () => notdefined 'abc'
+fails    () => croak "Bad"
+succeeds () => checkSetup()
+truthy   flag 'c', ['-c']
+truthy   flag 'c', ['-cm']
+falsy    flag 'c', []
+falsy    flag 'c', ['-def']
+equal    replaceInArray(['-cm','%PATH'], {'%PATH': '/temp.txt'}),
+	['-cm', '/temp.txt']
+
+# ---------------------------------------------------------------------------
+
+equal fileExt('temp.txt'), '.txt'
+equal withExt('temp.txt', '.md'), 'temp.md'
+equal normalizePath('c:\\Users\\johnd\\utils\\src\\lib\\fsys.lib.civet'),
+	'C:/Users/johnd/utils/src/lib/fsys.lib.civet'
+equal parsePath('c:\\path\\dir\\file.lib.ts'), {
+	root: 'C:/'
+	dir: 'C:/path/dir'
+	fileName: 'file.lib.ts'
+
+	stub: 'file'
+	purpose: 'lib'
+	ext: '.ts'
+	}
+
+
+truthy cmdSucceeds 'ls'
+truthy flag('c', ['-c'])
+truthy flag('x', ['-cx'])
+falsy  flag('x', ['-c'])
+
+equal replaceInArray(['a','b','c'], {
+	b: 'x'
+	}), ['a','x','c']
+
+(() =>
+	hResult := await execCmd('echo', ['Hello'], {}, true)
+	console.dir hResult
+	truthy hResult.success
+	equal hResult.code, 0
+	equal hResult.stdout, "Hello\n"
+	equal hResult.stderr, ""
+	)()
+
+truthy cmdSucceeds 'echo', ['Hello']
+
+equal splitPatterns([
+	'**/temp.txt'
+	'!**/temp*'
+	'*.test.ts'
+	'! **/special.txt'
+	]), [
+		['**/temp.txt', '*.test.ts'],
+		['**/temp*', '**/special.txt'],
+		]

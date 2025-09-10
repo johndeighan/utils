@@ -1,0 +1,17 @@
+# buildcmd.cmd.civet
+
+import {
+	exit, flag, nonOption, tryCmd,
+	doCompile, doUnitTest, doInstallCmd,
+	} from 'base-utils'
+
+stub := nonOption(0)
+if not stub
+	exit "USAGE: buildcmd <stub> [-n]"
+
+# ---------------------------------------------------------------------------
+
+await tryCmd doCompile, stub, 'cmd'
+if not flag('n')
+	await tryCmd doUnitTest, stub, 'cmd'
+	await tryCmd doInstallCmd, stub, 'cmd'

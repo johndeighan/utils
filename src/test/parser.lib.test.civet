@@ -3,10 +3,7 @@
 import {undef, hash} from 'datatypes'
 import {DBG} from 'logger'
 import {o} from 'llutils'
-import {getCmdArgs} from 'utils'
-# import {
-# 	KeppelGrammar,
-# 	} from './parser/keppel.grammar.ts'
+import {getCmdArgs} from 'cmd-args'
 import {
 	TRuleFunc, isRuleFunc, Rule, TLaxRule, TCallback,
 	ParseError, TParser, getParser,
@@ -17,7 +14,6 @@ import {
 	} from 'unit-test'
 
 getCmdArgs()
-#  htmlParse := getParser<hash>(KeppelGrammar)
 
 # ---------------------------------------------------------------------------
 # Regular Expressions

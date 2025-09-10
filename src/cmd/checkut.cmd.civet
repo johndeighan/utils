@@ -1,9 +1,10 @@
 # checkut.cmd.civet
 
 import {LOG} from 'logger'
-import {getCmdArgs} from 'utils'
+import {getCmdArgs} from 'cmd-args'
 
 # ---------------------------------------------------------------------------
 
-hArgs := getCmdArgs()
+[hArgs, lNonOptions] := getCmdArgs()
 LOG hArgs
+LOG lNonOptions

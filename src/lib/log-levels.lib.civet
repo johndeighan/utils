@@ -73,7 +73,8 @@ export popLogLevel := (): TLogLevel =>
 	if defined(result)
 		return result
 	else
-		croak "empty stack"
+		console.error "empty logger stack"
+		resetLogLevel()
 		return 'none'
 
 # ---------------------------------------------------------------------------

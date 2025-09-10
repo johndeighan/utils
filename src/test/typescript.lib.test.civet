@@ -5,11 +5,13 @@ import {SourceFile} from 'npm:typescript'
 import {isHash, normalizeCode} from 'datatypes'
 import {pass, o, s, t} from 'llutils'
 import {DBG} from 'logger'
-import {getCmdArgs} from 'utils'
-import {setDirTree, slurp, withExt} from 'fsys'
+import {getCmdArgs} from 'cmd-args'
+import {slurp, withExt} from 'fsys'
+import {setDirTree} from 'pllfile'
 import {
-	ts2ast, ts2js, ast2ts, ast2js, typeCheckFiles, pprintAST,
-	getCode,
+	typeCheck, splitFuncStr, getSymbolsFromType,
+	getImportCode, getTsCode, checkType,
+	ts2ast, ast2ts, typeCheckFiles, pprintAst,
 	} from 'typescript'
 import {
 	equal, like, succeeds, fails, truthy, falsy, isType,
@@ -23,7 +25,7 @@ setup := (): void =>
 
 	DBG "setDirTree()"
 
-	setDirTree 'test/typescript', """
+	setDirTree 'src/test/typescript', """
 		test.ts
 			const str: string = 'abc'
 		test2.ts
@@ -35,37 +37,113 @@ setup()
 
 # ---------------------------------------------------------------------------
 
-DBG "getCode(str)"
+DBG "typeCheck(tsCode)"
 
-equal getCode('let x = 42;'), 'let x = 42;'
-equal getCode('test/typescript/test.ts'), """
-	const str: string = 'abc'
+truthy isEmpty(typeCheck("let s: string = 'abc';"))
+truthy nonEmpty(typeCheck("let s: string = 42;"))
+
+DBG "ts2ast(tsCode)", "pprintAst(ast)"
+
+ast := ts2ast(slurp('src/test/typescript/test2.ts'))
+equal pprintAst(ast), s"""
+	kind: SourceFile
+	statements:
+		-
+			kind: FirstStatement
+			declarationList:
+				kind: VariableDeclarationList
+				declarations:
+					-
+						kind: VariableDeclaration
+						name:
+							kind: Identifier
+							escapedText: func1
+						initializer:
+							kind: ArrowFunction
+							parameters:
+								-
+									kind: Parameter
+									name:
+										kind: Identifier
+										escapedText: str
+									type:
+										kind: StringKeyword
+							type:
+								kind: BooleanKeyword
+							equalsGreaterThanToken:
+								kind: EqualsGreaterThanToken
+							body:
+								kind: Block
+								statements:
+									-
+										kind: ReturnStatement
+										expression:
+											kind: TrueKeyword
+								multiLine: .true.
+	endOfFileToken:
+		kind: EndOfFileToken
+	text: const func1 = (str: string): boolean =>\\n\\treturn true
+	fileName: temp.ts
+	scriptKind: 3
+	isDeclarationFile: .false.
+	nodeCount: 16
+	identifierCount: 3
+	symbolCount: 0
+	parseDiagnostics:
+		-
+			file: .REF /.
+			start: 41
+			length: 6
+			messageText: '{' expected.
+			category: 1
+			code: 1005
+		-
+			file: .REF /.
+			start: 52
+			length: 0
+			messageText: '}' expected.
+			category: 1
+			code: 1005
+	"""
+DBG "getSymbolsFromType(typeStr)"
+
+equal getSymbolsFromType('integer'), ['integer']
+equal getSymbolsFromType('hashof<integer>'), ['hashof','integer']
+
+DBG "getImportCode(typeStr)"
+
+equal getImportCode('integer'), """
+	import {integer} from 'datatypes';
+	"""
+equal getImportCode('hashof<integer>'), """
+	import {hashof, integer} from 'datatypes';
 	"""
 
-# ---------------------------------------------------------------------------
+DBG "splitFuncStr(valueStr)"
 
-DBG "ts2js(tsCode)"
+equal splitFuncStr("abc"), undef
+equal splitFuncStr("() => true"), [[], 'true']
+equal splitFuncStr("(  ) => true"), [[], 'true']
+equal splitFuncStr("(a,b,c) => false"), [
+	['a','b','c']
+	'false'
+	]
+equal splitFuncStr("( a , b,c ) => false"), [
+	['a','b','c']
+	'false'
+	]
+equal splitFuncStr("(a: string, b)=>true"), [
+	['a: string', 'b']
+	'true'
+	]
 
-equal ts2js('const s: string = "abc";'),
-		'var s = "abc";'
+DBG "getTsCode(typeStr, valueStr)"
 
-DBG "ts2ast(tsCode)", "pprintAST(ast)"
+equal getTsCode('integer', '42'), 'const x: integer = 42'
+equal getTsCode('TFilterFunc', '(x) => true'),
+	'const x: TFilterFunc = (x: unknown) => true'
 
-ast := ts2ast('test/typescript/test2.ts')
-equal pprintAST(ast), s"""
-	SourceFile - 'const func1 = (str: string): ...'
-		FirstStatement - 'const func1 = (str: string): ...'
-			VariableDeclarationList - 'const func1 = (str: string): ...'
-				VariableDeclaration - 'func1 = (str: string): boolea...'
-					Identifier - 'func1'
-					ArrowFunction - '(str: string): boolean =>\\n\tr...'
-						Parameter - 'str: string'
-							Identifier - 'str'
-							StringKeyword - 'string'
-						BooleanKeyword - 'boolean'
-						EqualsGreaterThanToken - '=>'
-						Block - 'return true'
-							ReturnStatement - 'return true'
-								TrueKeyword - 'true'
-		EndOfFileToken - ''
-	"""
+DBG "checkType(x, typeStr)"
+
+equal checkType(42, 'number'), []
+

@@ -6,7 +6,7 @@ import {
 import {getOptions, OL} from 'llutils'
 import {LOG, DBG, WARN, LOGVALUE, DBGVALUE} from 'logger'
 import {barf, allFilesMatching} from 'fsys'
-import {allExportsIn} from 'analyze'
+import {allExportsInFile} from 'typescript'
 
 # ---------------------------------------------------------------------------
 # --- ASYNC GENERATOR
@@ -28,7 +28,7 @@ export getDotSymbolsLines := (
 	let lineLen = 0     # --- always <= maxLineLen
 	let pathYielded = false
 
-	for await {name, kind} of allExportsIn(path)
+	for await {name, kind} of allExportsInFile(path)
 		pos := name.indexOf('<')
 		sym := (pos == -1) ? name : name.substring(0, pos)
 		if (lineLen + sym.length + 1 > maxLineLen)

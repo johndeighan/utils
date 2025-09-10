@@ -1,35 +1,22 @@
 # runtemp.cmd.civet
 
-import {assert} from 'datatypes'
-import {getCmdArgs} from 'utils'
-import {DBG, LOG, getLogLevel} from 'logger'
-import {isFile} from 'fsys'
-import {execCmd} from 'exec'
-import {compileFile} from 'compile'
+import {
+	undef, defined, exit, flag, findFile, tryCmd, LOG,
+	doCompile, doUnitTest, doRun,
+	} from 'base-utils'
 
-hArgs := getCmdArgs()
-lStubs := (hArgs._.length == 0) ? ['temp'] : hArgs._
+if flag('h')
+	exit "USAGE: runtemp [-d] { <stub> }"
 
 # ---------------------------------------------------------------------------
 
-DBG "in cmd runtemp"
-for stub of lStubs
-	compileFile "test/#{stub}.test.civet"
-
-	assert isFile('test/temp.ts'), "Compile of test/temp.civet failed"
-	{code} := if (getLogLevel() == 'debug')
-		await execCmd 'deno', [
-			'run',
-			'-A',
-			'--inspect-brk'
-			'test/temp.ts'
-			Deno.args...
-			]
+lFlags: string[] := []
+for stub of Deno.args
+	if stub.startsWith('-')
+		lFlags.push stub
 	else
-		await execCmd 'deno', [
-			'run',
-			'-A',
-			'test/temp.ts'
-			Deno.args...
-			]
-	DBG "Final result code from temp file: #{code}"
+		await tryCmd doCompile, stub, 'lib'
+		await tryCmd doUnitTest, stub, 'lib'
+
+await tryCmd doCompile, 'temp', undef
+await tryCmd doRun, 'temp', undef, lFlags, {debug: flag('D')}

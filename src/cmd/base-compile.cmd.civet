@@ -1,0 +1,197 @@
+# base-compile.cmd.civet
+
+import {relative, parse} from 'node:path'
+import {existsSync} from 'jsr:@std/fs'
+import {statSync} from 'node:fs'
+
+import {
+	croak, assert, flag, checkSetup,
+	parsePath, relpath,
+	undef, defined, notdefined, procFiles,
+	cmdSucceeds, newerDestFileExists, execCmd,
+	} from 'base-utils'
+
+LOG := console.log
+
+checkSetup()
+
+# ---------------------------------------------------------------------------
+
+verbose := flag('v')
+if verbose
+	LOG "verbose = #{verbose}"
+
+clearFirst := flag('c')
+if verbose
+	LOG "clearFirst = #{clearFirst}"
+
+# ---------------------------------------------------------------------------
+#     CONFIGURATION
+# ---------------------------------------------------------------------------
+
+type TCmdDesc = [string, string[]]
+type TConfig = {[ext: string]: TCmdDesc}
+hConfig: TConfig := {}
+
+if cmdSucceeds('civet', ['--version'])
+	hConfig['.civet'] = [
+		'civet',
+		['--inline-map', '-o', '.ts', '-c', '%PATH']
+		]
+
+if cmdSucceeds('coffee', ['--version'])
+	hConfig['.coffee'] = [
+		'coffee',
+		['--inline-map', '-c', '%PATH']
+		]
+
+lExt := Object.keys(hConfig)
+if (lExt.length == 0)
+	croak "No TypeScript generating functions installed"
+
+LOG "Handling #{lExt.length} TypeScript generating functions"
+extPat := '{' + (lExt.map((x) => x.substring(1)).join(',')) + '}'
+LOG "extPat is '#{extPat}'"
+
+# ---------------------------------------------------------------------------
+
+getHandler := (
+		ext: string
+		): TCmdDesc =>
+
+	if not hConfig.hasOwnProperty(ext)
+		croak "Can't handle #{ext}"
+	return hConfig[ext]
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+#
+# 1. If the '-c' flag is used, remove all:
+#    - *.ts files except:
+#         base-utils.lib.ts
+#         base-compile.cmd.ts
+#    - *.temp.* files
+#    - log files
+# 2. compile all *.civet or *.coffee files
+#      unless a newer *.ts file exists
+# 3. run all unit tests, i.e. *.test.ts files
+
+# ---------------------------------------------------------------------------
+
+LLOG := (
+		label: string
+		msg: string
+		): void =>
+
+	labelLen := 15
+	if (label.length <= labelLen)
+		spaces := ' '.repeat(labelLen-label.length)
+		LOG "#{label}#{spaces} #{msg}"
+	else
+		LOG "#{label.substring(0, labelLen)} #{msg}"
+
+# ---------------------------------------------------------------------------
+# ASYNC
+#
+# --- Throws exception if compile fails
+#     returns path if file actually compiled, else undef
+
+compileOneFile := (
+		path: string
+		): Promise<string?> =>
+
+	{ext} := parsePath path
+	if (ext == '.ts') || newerDestFileExists(path, '.ts')
+		return Promise.resolve(undef)  # --- compile not needed
+
+	[cmdName, lArgs] := getHandler ext
+	LLOG 'COMPILE', relpath(path)
+	{success} := await execCmd(cmdName, lArgs, {'%PATH': path})
+	if not success
+		croak "Compile of #{path} failed"
+	return Promise.resolve(path)
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+compileFiles := (
+		lPatterns: string | string[]
+		): string[] =>
+
+	[hCompiled, hFailed] := await procFiles(lPatterns, compileOneFile)
+	if defined(hFailed)
+		# --- check if any compilations failed
+		lBadPaths := Object.keys(hFailed)
+		if (lBadPaths.length > 0)
+			LOG "FAILED TO COMPILE:"
+			for path of lBadPaths
+				LOG "   #{path}"
+			Deno.exit()
+	return Object.keys(hCompiled).filter((x) => defined(x))
+
+# ---------------------------------------------------------------------------
+# ASYNC
+#
+# --- Throws exception if test fails
+
+runOneTest := (
+		testPath: string       # --- always *.test.ts
+		): Promise<void> =>
+
+	# --- deno test -qA src/test/base-utils.lib.test.ts
+	{success} := await execCmd 'deno', ['test', '-qA', '%PATH'],
+			{'%PATH': testPath}
+	assert success, "Test of #{testPath} failed"
+	return
+
+# ---------------------------------------------------------------------------
+#               MAIN CODE
+# ---------------------------------------------------------------------------
+
+if clearFirst
+	LOG '=====  removing TypeScript/temp/log files  ====='
+
+	removeOneFile := (path: string): Promise<string?> =>
+		try
+			await Deno.remove path
+			return Promise.resolve(path)
+		catch err
+			if not (err instanceof Deno.errors.NotFound)
+				# --- Re-throw other types of errors
+				throw err
+
+	[hSucceeded, hFailed] := await procFiles [
+		'**/*.ts'
+		'**/*.temp.*'
+		'../logs/**/*'
+		'! **/base-compile.cmd.ts'
+		'! **/base-utils.lib.ts'
+		], removeOneFile
+
+	if hFailed
+		lFailed := Object.keys(hFailed)
+		if verbose
+			for path of lFailed
+				LLOG "FAILED", path
+		else
+			LOG "   #{lFailed.length} compile fails"
+		Deno.exit()
+
+	lRemoved := Object.keys(hSucceeded)
+	if verbose
+		for path of lRemoved
+			LLOG "REMOVE", relpath(path)
+	else
+		LOG "   #{lRemoved.length} files removed"
+
+# --- Compile libs, tests and cmds
+lPaths: string[] := await compileFiles(['**/*.#{extPat}'])
+
+# --- Show compiled files
+if verbose
+	for path of lPaths
+		LLOG 'COMPILE', path
+else
+	LOG "COMPILE #{lPaths.length} files"
+
+await procFiles "**/*.test.ts", runOneTest

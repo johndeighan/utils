@@ -5,10 +5,10 @@ import {
 	hash, hashof, isEmpty, nonEmpty,
 	} from 'datatypes'
 import {
-	pass, OL, ML, o, getOptions, hasKey, keys,
+	pass, OL, ML, o, getOptions, keys,
 	} from 'llutils'
-import {LOG, DBG, DBGVALUE, ERR} from 'logger'
 import {resetOneIndent} from 'indent'
+import {LOG, DBG, DBGVALUE, ERR} from 'logger'
 import {
 	TPLLToken, TTokenGenerator, allTokensInBlock,
 	} from 'pll'
@@ -82,16 +82,18 @@ export loadSymbols := (
 				DBG "Set curLib to #{OL(str)}"
 				curLib = str
 			when 'symbol', 'guard'
-				assert defined(str), "undefined str!"
-				if (level == 0)
-					if checkFiles
-						assert isFile(str), "No such file: #{str}"
-					curLib = str
-				else if defined(curLib)
-					DBG "ADD #{str} from #{curLib}"
-					aMap.set str, curLib
+				if defined(str)
+					if (level == 0)
+						if checkFiles
+							assert isFile(str), "No such file: #{str}"
+						curLib = str
+					else if defined(curLib)
+						DBG "ADD #{str} from #{curLib}"
+						aMap.set str, curLib
+					else
+						croak "curLib empty at level > 0"
 				else
-					croak "curLib empty at level > 0"
+					croak "undefined str!"
 			else
 				croak "Unknown kind: #{kind}"
 	resetOneIndent()
@@ -123,7 +125,7 @@ export libsAndSymbols := (
 	for sym of lSymbols
 		srcLib := sourceLib(sym)
 		if defined(srcLib)
-			if hasKey(hLibs, srcLib)
+			if (srcLib in hLibs)
 				hLibs[srcLib].push sym
 			else
 				hLibs[srcLib] = [sym]

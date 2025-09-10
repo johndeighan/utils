@@ -19,14 +19,20 @@ import {TextTable} from 'text-table'
 
 export type TPLLToken = {
 	kind: string
-	str: string
+	str?: string
 	name?: string
-	value?: any
+	value?: unknown
 	}
 
-export tkEOF := {kind: 'eof', str: ''}
-export tkIndent := {kind: 'indent', str: ''}
-export tkUndent := {kind: 'undent', str: ''}
+export tkIndent := {kind: 'indent'}
+export tkUndent := {kind: 'undent'}
+export tkEOF    := {kind: 'eof'}
+
+export isKind := (tk: TPLLToken, kindStr: string) =>
+	return (tk.kind == kindStr)
+
+export tokenWith := (tk: TPLLToken, s: string) =>
+	return {...tk, str: s}
 
 # ---------------------------------------------------------------------------
 

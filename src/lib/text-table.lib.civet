@@ -18,7 +18,7 @@ import {
 
 # ---------------------------------------------------------------------------
 
-type colDesc = {
+type TColDesc = {
 	width: integer
 	format: string
 	align: TAlignment
@@ -68,7 +68,7 @@ export class TextTable
 	numCols: integer
 	lLabels: string[] = []
 
-	lCols: colDesc[] = []
+	lCols: TColDesc[] = []
 	lRows: rowDesc[] = []
 
 	constructor(
@@ -131,7 +131,7 @@ export class TextTable
 
 	# ..........................................................
 
-	accum(hCol: colDesc, amt: number)
+	accum(hCol: TColDesc, amt: number)
 
 		if defined(hCol.total)
 			hCol.total += amt
@@ -267,7 +267,7 @@ export class TextTable
 
 	getTotalWidth(lHidden: integer[] = [])
 
-		accFunc := (acc: integer, hCol: colDesc, i: integer) =>
+		accFunc := (acc: integer, hCol: TColDesc, i: integer) =>
 			if lHidden.includes(i)
 				return acc
 			else
@@ -314,8 +314,8 @@ export class TextTable
 		# --- create a filter function
 		ff := (
 			(lHidden.length == 0)
-			? (x:any) => return true
-			: (x:any, i:integer) => return not lHidden.includes(i)
+			? (x:unknown) => return true
+			: (x:unknown, i:integer) => return not lHidden.includes(i)
 			)
 
 		totalWidth := @getTotalWidth(lHidden)

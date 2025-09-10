@@ -5,621 +5,71 @@
 	"license": "MIT",
 	"exports": {
 		".": "./src/lib/utils.lib.ts",
-		"./v8-stack": "./src/lib/v8-stack.lib.ts",
-		"./unit-test": "./src/lib/unit-test.lib.ts",
 		},
 
 	"tasks": {
-		"cleanup": "
-			   civet --inline-map -o .ts -c src/cmd/cleanup.cmd.civet
-			&& deno install -fgA -n cleanup --no-config --import-map import_map.json src/cmd/cleanup.cmd.ts
-			&& cleanup
+		"compile:base-utils": "
+			   echo COMPILE LIB: base-utils
+			&& civet --inline-map -o .ts -c src/lib/base-utils.lib.civet
+			&& deno check src/lib/base-utils.lib.ts
 			",
 
-		// --------------------------------------------------------------------
+		"install:buildlib": "
+			   deno task compile:base-utils
 
-		"build:unicode": "
-			   echo compile: unicode
-			&& civet --inline-map -o .ts -c src/lib/unicode.lib.civet
-			&& echo check: unicode
-			&& deno check -q src/lib/unicode.lib.ts
-			",
-
-		"buildandtest:unicode": "
-			   echo compile: unicode
-			&& civet --inline-map -o .ts -c src/lib/unicode.lib.civet
-			&& echo check: unicode
-			&& deno check -q src/lib/unicode.lib.ts
-			&& civet --inline-map -o .ts -c src/test/unicode.lib.test.civet
-			&& echo test: unicode
-			&& deno test -qA --reporter dot src/test/unicode.lib.test.ts
-			",
-
-		"test:unicode": "
-			   civet --inline-map -o .ts -c src/test/unicode.lib.test.civet
-			&& echo test: unicode
-			&& deno test -A src/test/unicode.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:datatypes": "
-			   echo compile: datatypes
-			&& civet --inline-map -o .ts -c src/lib/datatypes.lib.civet
-			&& echo check: datatypes
-			&& deno check -q src/lib/datatypes.lib.ts
-			",
-
-		"buildandtest:datatypes": "
-			   echo compile: datatypes
-			&& civet --inline-map -o .ts -c src/lib/datatypes.lib.civet
-			&& echo check: datatypes
-			&& deno check -q src/lib/datatypes.lib.ts
-			&& civet --inline-map -o .ts -c src/test/datatypes.lib.test.civet
-			&& echo test: datatypes
-			&& deno test -qA --reporter dot src/test/datatypes.lib.test.ts
-			",
-
-		"test:datatypes": "
-			   civet --inline-map -o .ts -c src/test/datatypes.lib.test.civet
-			&& echo test: datatypes
-			&& deno test -A src/test/datatypes.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:typescript": "
-			   echo compile: typescript
-			&& civet --inline-map -o .ts -c src/lib/typescript.lib.civet
-			&& echo check: typescript
-			&& deno check -q src/lib/typescript.lib.ts
-			",
-
-		"buildandtest:typescript": "
-			   echo compile: typescript
-			&& civet --inline-map -o .ts -c src/lib/typescript.lib.civet
-			&& echo check: typescript
-			&& deno check -q src/lib/typescript.lib.ts
-			&& civet --inline-map -o .ts -c src/test/typescript.lib.test.civet
-			&& echo test: typescript
-			&& deno test -qA --reporter dot src/test/typescript.lib.test.ts
-			",
-
-		"test:typescript": "
-			   civet --inline-map -o .ts -c src/test/typescript.lib.test.civet
-			&& echo test: typescript
-			&& deno test -A src/test/typescript.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:llutils": "
-			   echo compile: llutils
-			&& civet --inline-map -o .ts -c src/lib/llutils.lib.civet
-			&& echo check: llutils
-			&& deno check -q src/lib/llutils.lib.ts
-			",
-
-		"buildandtest:llutils": "
-			   echo compile: llutils
-			&& civet --inline-map -o .ts -c src/lib/llutils.lib.civet
-			&& echo check: llutils
-			&& deno check -q src/lib/llutils.lib.ts
-			&& civet --inline-map -o .ts -c src/test/llutils.lib.test.civet
-			&& echo test: llutils
-			&& deno test -qA --reporter dot src/test/llutils.lib.test.ts
-			",
-
-		"test:llutils": "
-			   civet --inline-map -o .ts -c src/test/llutils.lib.test.civet
-			&& echo test: llutils
-			&& deno test -A src/test/llutils.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:indent": "
-			   echo compile: indent
-			&& civet --inline-map -o .ts -c src/lib/indent.lib.civet
-			&& echo check: indent
-			&& deno check -q src/lib/indent.lib.ts
-			",
-
-		"buildandtest:indent": "
-			   echo compile: indent
-			&& civet --inline-map -o .ts -c src/lib/indent.lib.civet
-			&& echo check: indent
-			&& deno check -q src/lib/indent.lib.ts
-			&& civet --inline-map -o .ts -c src/test/indent.lib.test.civet
-			&& echo test: indent
-			&& deno test -qA --reporter dot src/test/indent.lib.test.ts
-			",
-
-		"test:indent": "
-			   civet --inline-map -o .ts -c src/test/indent.lib.test.civet
-			&& echo test: indent
-			&& deno test -A src/test/indent.lib.src/test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:log-levels": "
-			   echo compile: log-levels
-			&& civet --inline-map -o .ts -c src/lib/log-levels.lib.civet
-			&& echo check: log-levels
-			&& deno check -q src/lib/log-levels.lib.ts
-			",
-
-		"buildandtest:log-levels": "
-			   echo compile: log-levels
-			&& civet --inline-map -o .ts -c src/lib/log-levels.lib.civet
-			&& echo check: log-levels
-			&& deno check -q src/lib/log-levels.lib.ts
-			&& civet --inline-map -o .ts -c src/test/log-levels.lib.test.civet
-			&& echo test: log-levels
-			&& deno test -qA --reporter dot src/test/log-levels.lib.test.ts
-			",
-
-		"test:log-levels": "
-			   civet --inline-map -o .ts -c src/test/log-levels.lib.test.civet
-			&& echo test: log-levels
-			&& deno test -A src/test/log-levels.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:log-formatter": "
-			   echo compile: log-formatter
-			&& civet --inline-map -o .ts -c src/lib/log-formatter.lib.civet
-			&& echo check: log-formatter
-			&& deno check -q src/lib/log-formatter.lib.ts
-			",
-
-		"buildandtest:log-formatter": "
-			   echo compile: log-formatter
-			&& civet --inline-map -o .ts -c src/lib/log-formatter.lib.civet
-			&& echo check: log-formatter
-			&& deno check -q src/lib/log-formatter.lib.ts
-			&& civet --inline-map -o .ts -c src/test/log-formatter.lib.test.civet
-			&& echo test: log-formatter
-			&& deno test -qA --reporter dot src/test/log-formatter.lib.test.ts
-			",
-
-		"test:log-formatter": "
-			   civet --inline-map -o .ts -c src/test/log-formatter.lib.test.civet
-			&& echo test: log-formatter
-			&& deno test -A src/test/log-formatter.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:logger": "
-			   echo compile: logger
-			&& civet --inline-map -o .ts -c src/lib/logger.lib.civet
-			&& echo check: logger
-			&& deno check -q src/lib/logger.lib.ts
-			",
-
-		"buildandtest:logger": "
-			   echo compile: logger
-			&& civet --inline-map -o .ts -c src/lib/logger.lib.civet
-			&& echo check: logger
-			&& deno check -q src/lib/logger.lib.ts
-			&& civet --inline-map -o .ts -c src/test/logger.lib.test.civet
-			&& echo test: logger
-			&& deno test -qA --reporter dot src/test/logger.lib.test.ts
-			",
-
-		"test:logger": "
-			   civet --inline-map -o .ts -c src/test/logger.lib.test.civet
-			&& echo test: logger
-			&& deno test -A src/test/logger.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:ast-walker": "
-			   echo compile: ast-walker
-			&& civet --inline-map -o .ts -c src/lib/ast-walker.lib.civet
-			&& echo check: ast-walker
-			&& deno check -q src/lib/ast-walker.lib.ts
-			",
-
-		"buildandtest:ast-walker": "
-			   echo compile: ast-walker
-			&& civet --inline-map -o .ts -c src/lib/ast-walker.lib.civet
-			&& echo check: ast-walker
-			&& deno check -q src/lib/ast-walker.lib.ts
-			&& civet --inline-map -o .ts -c src/test/parser/expr.grammar.civet
-			&& civet --inline-map -o .ts -c src/test/ast-walker.lib.test.civet
-			&& echo test: ast-walker
-			&& deno test -qA --reporter dot src/test/ast-walker.lib.test.ts
-			",
-
-		"test:ast-walker": "
-			   civet --inline-map -o .ts -c src/test/parser/expr.grammar.civet
-			&& civet --inline-map -o .ts -c src/test/ast-walker.lib.test.civet
-			&& echo test: ast-walker
-			&& deno test -A src/test/ast-walker.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:ast-builder": "
-			   echo compile: ast-builder
-			&& civet --inline-map -o .ts -c src/lib/ast-builder.lib.civet
-			&& echo check: ast-builder
-			&& deno check -q src/lib/ast-builder.lib.ts
-			",
-
-		"buildandtest:ast-builder": "
-			   echo compile: ast-builder
-			&& civet --inline-map -o .ts -c src/lib/ast-builder.lib.civet
-			&& echo check: ast-builder
-			&& deno check -q src/lib/ast-builder.lib.ts
-			&& civet --inline-map -o .ts -c src/test/parser/expr.grammar.civet
-			&& civet --inline-map -o .ts -c src/test/ast-builder.lib.test.civet
-			&& echo test: ast-builder
-			&& deno test -qA --reporter dot src/test/ast-builder.lib.test.ts
-			",
-
-		"test:ast-builder": "
-			   civet --inline-map -o .ts -c src/test/parser/expr.grammar.civet
-			&& civet --inline-map -o .ts -c src/test/ast-builder.lib.test.civet
-			&& echo test: ast-builder
-			&& deno test -A src/test/ast-builder.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:parser": "
-			   echo compile: parser
-			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
-			&& echo check: parser
-			&& deno check -q src/lib/parser.lib.ts
-			",
-
-		"buildandtest:parser": "
-			   echo compile: parser
-			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
-			&& echo check: parser
-			&& deno check -q src/lib/parser.lib.ts
-			&& civet --inline-map -o .ts -c src/test/parser/expr.grammar.civet
-			&& civet --inline-map -o .ts -c src/test/parser.lib.test.civet
-			&& echo test: parser
-			&& deno test -qA --reporter dot src/test/parser.lib.test.ts
-			",
-
-		"test:parser": "
-			   civet --inline-map -o .ts -c src/test/parser.lib.test.civet
-			&& civet --inline-map -o .ts -c src/test/parser/expr.grammar.civet
-			&& echo test: parser
-			&& deno test -A src/test/parser.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:text-table": "
-			   echo compile: text-table
-			&& civet --inline-map -o .ts -c src/lib/text-table.lib.civet
-			&& echo check: text-table
-			&& deno check -q src/lib/text-table.lib.ts
-			",
-
-		"buildandtest:text-table": "
-			   echo compile: text-table
-			&& civet --inline-map -o .ts -c src/lib/text-table.lib.civet
-			&& echo check: text-table
-			&& deno check -q src/lib/text-table.lib.ts
-			&& civet --inline-map -o .ts -c src/test/text-table.lib.test.civet
-			&& echo test: text-table
-			&& deno test -qA --reporter dot src/test/text-table.lib.test.ts
-			",
-
-		"test:text-table": "
-			   civet --inline-map -o .ts -c src/test/text-table.lib.test.civet
-			&& echo test: text-table
-			&& deno test -A src/test/text-table.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:pll": "
-			   echo compile: pll
-			&& civet --inline-map -o .ts -c src/lib/pll.lib.civet
-			&& echo check: pll
-			&& deno check -q src/lib/pll.lib.ts
-			",
-
-		"buildandtest:pll": "
-			   echo compile: pll
-			&& civet --inline-map -o .ts -c src/lib/pll.lib.civet
-			&& echo check: pll
-			&& deno check -q src/lib/pll.lib.ts
-			&& civet --inline-map -o .ts -c src/test/pll.lib.test.civet
-			&& echo test: pll
-			&& deno test -qA --reporter dot src/test/pll.lib.test.ts
-			",
-
-		"test:pll": "
-			   civet --inline-map -o .ts -c src/test/pll.lib.test.civet
-			&& echo test: pll
-			&& deno test -A src/test/pll.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:nice": "
-			   echo compile: nice
-			&& civet --inline-map -o .ts -c src/lib/nice.lib.civet
-			&& echo check: nice
-			&& deno check -q src/lib/nice.lib.ts
-			",
-
-		"buildandtest:nice": "
-			   echo compile: nice
-			&& civet --inline-map -o .ts -c src/lib/nice.lib.civet
-			&& echo check: nice
-			&& deno check -q src/lib/nice.lib.ts
-			&& civet --inline-map -o .ts -c src/test/nice.lib.test.civet
-			&& echo test: nice
-			&& deno test -qA --reporter dot src/test/nice.lib.test.ts
-			",
-
-		"test:nice": "
-			   civet --inline-map -o .ts -c src/test/nice.lib.test.civet
-			&& echo test: nice
-			&& deno test -A src/test/nice.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:fsys": "
-			   echo compile: fsys
-			&& civet --inline-map -o .ts -c src/lib/fsys.lib.civet
-			&& echo check: fsys
-			&& deno check -q src/lib/fsys.lib.ts
-			",
-
-		"buildandtest:fsys": "
-			   echo compile: fsys
-			&& civet --inline-map -o .ts -c src/lib/fsys.lib.civet
-			&& echo check: fsys
-			&& deno check -q src/lib/fsys.lib.ts
-			&& civet --inline-map -o .ts -c src/test/fsys.lib.test.civet
-			&& echo test: fsys
-			&& deno test -qA --reporter dot src/test/fsys.lib.test.ts
-			",
-
-		"test:fsys": "
-			   civet --inline-map -o .ts -c src/test/fsys.lib.test.civet
-			&& echo test: fsys
-			&& deno test -A src/test/fsys.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:symbols": "
-			   echo compile: symbols
-			&& civet --inline-map -o .ts -c src/lib/symbols.lib.civet
-			&& echo check: symbols
-			&& deno check -q src/lib/symbols.lib.ts
-			",
-
-		"buildandtest:symbols": "
-			   echo compile: symbols
-			&& civet --inline-map -o .ts -c src/lib/symbols.lib.civet
-			&& echo check: symbols
-			&& deno check -q src/lib/symbols.lib.ts
-			&& civet --inline-map -o .ts -c src/test/symbols.lib.test.civet
-			&& echo test: symbols
-			&& deno test -qA --reporter dot src/test/symbols.lib.test.ts
-			",
-
-		"test:symbols": "
-			   civet --inline-map -o .ts -c src/test/symbols.lib.test.civet
-			&& echo test: symbols
-			&& deno test -A src/test/symbols.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
+			&& echo COMPILE CMD: buildlib
+			&& civet --inline-map -o .ts -c src/cmd/buildlib.cmd.civet
+			&& deno check src/cmd/buildlib.cmd.ts
 
-		"build:exec": "
-			   echo compile: exec
-			&& civet --inline-map -o .ts -c src/lib/exec.lib.civet
-			&& echo check: exec
-			&& deno check -q src/lib/exec.lib.ts
+			&& echo INSTALL CMD: buildlib
+			&& deno install -fgA -n buildlib --no-config --import-map import_map.json src/cmd/buildlib.cmd.ts
 			",
 
-		"buildandtest:exec": "
-			   echo compile: exec
-			&& civet --inline-map -o .ts -c src/lib/exec.lib.civet
-			&& echo check: exec
-			&& deno check -q src/lib/exec.lib.ts
-			&& civet --inline-map -o .ts -c src/test/exec.lib.test.civet
-			&& echo test: exec
-			&& deno test -qA --reporter dot src/test/exec.lib.test.ts
-			",
-
-		"test:exec": "
-			   civet --inline-map -o .ts -c src/test/exec.lib.test.civet
-			&& echo test: exec
-			&& deno test -A src/test/exec.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:civet": "
-			   echo compile: civet
-			&& civet --inline-map -o .ts -c src/lib/civet.lib.civet
-			&& echo check: civet
-			&& deno check -q src/lib/civet.lib.ts
-			",
-
-		"buildandtest:civet": "
-			   echo compile: civet
-			&& civet --inline-map -o .ts -c src/lib/civet.lib.civet
-			&& echo check: civet
-			&& deno check -q src/lib/civet.lib.ts
-			&& civet --inline-map -o .ts -c src/test/civet.lib.test.civet
-			&& echo test: civet
-			&& deno test -qA --reporter dot src/test/civet.lib.test.ts
-			",
-
-		"test:civet": "
-			   civet --inline-map -o .ts -c src/test/civet.lib.test.civet
-			&& echo test: civet
-			&& deno test -A src/test/civet.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:cielo": "
-			   echo compile: cielo
-			&& civet --inline-map -o .ts -c src/lib/cielo.lib.civet
-			&& echo check: cielo
-			&& deno check -q src/lib/cielo.lib.ts
-			",
-
-		"buildandtest:cielo": "
-			   echo compile: cielo
-			&& civet --inline-map -o .ts -c src/lib/cielo.lib.civet
-			&& echo check: cielo
-			&& deno check -q src/lib/cielo.lib.ts
-			&& civet --inline-map -o .ts -c src/test/cielo.lib.test.civet
-			&& echo test: cielo
-			&& deno test -qA --reporter dot src/test/cielo.lib.test.ts
-			",
-
-		"test:cielo": "
-			   civet --inline-map -o .ts -c src/test/cielo.lib.test.civet
-			&& echo test: cielo
-			&& deno test -A src/test/cielo.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:compile": "
-			   echo compile: compile
-			&& civet --inline-map -o .ts -c src/lib/compile.lib.civet
-			&& echo check: compile
-			&& deno check -q src/lib/compile.lib.ts
-			",
-
-		"buildandtest:compile": "
-			   echo compile: compile
-			&& civet --inline-map -o .ts -c src/lib/compile.lib.civet
-			&& echo check: compile
-			&& deno check -q src/lib/compile.lib.ts
-			&& civet --inline-map -o .ts -c src/test/compile.lib.test.civet
-			&& echo test: compile
-			&& deno test -qA --reporter dot src/test/compile.lib.test.ts
-			",
-
-		"test:compile": "
-			   civet --inline-map -o .ts -c src/test/compile.lib.test.civet
-			&& echo test: compile
-			&& deno test -A src/test/compile.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:utils": "
-			   echo compile: utils
-			&& civet --inline-map -o .ts -c src/lib/utils.lib.civet
-			&& echo check: utils
-			&& deno check -q src/lib/utils.lib.ts
-			",
-
-		"buildandtest:utils": "
-			   echo compile: utils
-			&& civet --inline-map -o .ts -c src/lib/utils.lib.civet
-			&& echo check: utils
-			&& deno check -q src/lib/utils.lib.ts
-			&& civet --inline-map -o .ts -c src/test/utils.lib.test.civet
-			&& echo test: utils
-			&& deno test -qA --reporter dot src/test/utils.lib.test.ts
-			",
-
-		"test:utils": "
-			   civet --inline-map -o .ts -c src/test/utils.lib.test.civet
-			&& echo test: utils
-			&& deno test -A src/test/utils.lib.test.ts
-			",
-
-		// --------------------------------------------------------------------
-
-		"build:analyze": "
-			   echo compile: analyze
-			&& civet --inline-map -o .ts -c src/lib/analyze.lib.civet
-			&& echo check: analyze
-			&& deno check -q src/lib/analyze.lib.ts
-			",
+		"install:buildcmd": "
+			   deno task compile:base-utils
 
-		"buildandtest:analyze": "
-			   echo compile: analyze
-			&& civet --inline-map -o .ts -c src/lib/analyze.lib.civet
-			&& echo check: analyze
-			&& deno check -q src/lib/analyze.lib.ts
-			&& civet --inline-map -o .ts -c src/test/analyze.lib.test.civet
-			&& echo test: analyze
-			&& deno test -qA --reporter dot src/test/analyze.lib.test.ts
-			",
+			&& echo COMPILE CMD: buildcmd
+			&& civet --inline-map -o .ts -c src/cmd/buildcmd.cmd.civet
+			&& deno check src/cmd/buildcmd.cmd.ts
 
-		"test:analyze": "
-			   civet --inline-map -o .ts -c src/test/analyze.lib.test.civet
-			&& echo test: analyze
-			&& deno test -A src/test/analyze.lib.test.ts
+			&& echo INSTALL CMD: buildcmd
+			&& deno install -fgA -n buildcmd --no-config --import-map import_map.json src/cmd/buildcmd.cmd.ts
 			",
 
-		// --------------------------------------------------------------------
+		"install:runtemp": "
+			   deno task compile:base-utils
 
-		"build:v8-stack": "
-			   echo compile: v8-stack
-			&& civet --inline-map -o .ts -c src/lib/v8-stack.lib.civet
-			&& echo check: v8-stack
-			&& deno check -q src/lib/v8-stack.lib.ts
-			",
+			&& echo COMPILE CMD: runtemp
+			&& civet --inline-map -o .ts -c src/cmd/runtemp.cmd.civet
+			&& deno check src/cmd/runtemp.cmd.ts
 
-		"buildandtest:v8-stack": "
-			   echo compile: v8-stack
-			&& civet --inline-map -o .ts -c src/lib/v8-stack.lib.civet
-			&& echo check: v8-stack
-			&& deno check -q src/lib/v8-stack.lib.ts
-			&& civet --inline-map -o .ts -c src/test/v8-stack.lib.test.civet
-			&& echo test: v8-stack
-			&& deno test -qA --reporter dot src/test/v8-stack.lib.test.ts
+			&& echo INSTALL CMD: runtemp
+			&& deno install -fgA -n runtemp --no-config --import-map import_map.json src/cmd/runtemp.cmd.ts
 			",
 
-		"test:v8-stack": "
-			   civet --inline-map -o .ts -c src/test/v8-stack.lib.test.civet
-			&& echo test: v8-stack
-			&& deno test -A src/test/v8-stack.lib.test.ts
+		"install:compile": "
+			   base-compile
+			&& civet --inline-map -o .ts -c src/cmd/compile.cmd.civet
+			&& deno install -fgA -n compile --no-config --import-map import_map.json src/cmd/compile.cmd.ts
 			",
 
-		// --------------------------------------------------------------------
-
-		"build:unit-test": "
-			   echo compile: unit-test
-			&& civet --inline-map -o .ts -c src/lib/unit-test.lib.civet
-			&& echo check: unit-test
-			&& deno check -q src/lib/unit-test.lib.ts
+		"initialize": "
+			   clear
+			&& deno task compile:base-utils
+			&& deno task install:buildlib
+			&& deno task install:buildcmd
+			&& buildcmd runtemp
 			",
 
-		"buildandtest:unit-test": "
-			   echo compile: unit-test
-			&& civet --inline-map -o .ts -c src/lib/unit-test.lib.civet
-			&& echo check: unit-test
-			&& deno check -q src/lib/unit-test.lib.ts
-			&& civet --inline-map -o .ts -c src/test/unit-test.lib.test.civet
-			&& echo test: unit-test
-			&& deno test -qA --reporter dot src/test/unit-test.lib.test.ts
+		"bootstrap": "
+			   clear
+			&& deno task initialize
+			&& buildlib all
+			&& echo SUCCESS
 			",
-
-		"test:unit-test": "
-			   civet --inline-map -o .ts -c src/test/unit-test.lib.test.civet
-			&& echo test: unit-test
-			&& deno test -A src/test/unit-test.lib.test.ts
+		"go": "
+			   base-compile
+			&& compile
 			",
 
 		// --------------------------------------------------------------------
@@ -627,130 +77,31 @@
 
 		"build:all": "
 			   clear
-			&& deno task build:datatypes
-			&& deno task build:llutils
-			&& deno task build:indent
-			&& deno task build:unicode
-			&& deno task build:log-levels
-			&& deno task build:log-formatter
-			&& deno task build:logger
-			&& deno task build:text-table
-			&& deno task build:ast-builder
-			&& deno task build:ast-walker
-			&& deno task build:parser
-			&& deno task build:pll
-			&& deno task build:nice
-			&& deno task build:fsys
-			&& deno task build:symbols
-			&& deno task build:exec
-			&& deno task build:typescript
-			&& deno task build:civet
-			&& deno task build:cielo
-			&& deno task build:compile
-			&& deno task build:utils
-			&& deno task build:analyze
-			&& deno task build:v8-stack
-			&& deno task build:unit-test
-			",
-
-		"test:all": "
-			   clear
-
-			&& civet --inline-map -o .ts -c src/test/datatypes.lib.test.civet
-			&& echo test: datatypes
-			&& deno test -qA --reporter dot src/test/datatypes.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/llutils.lib.test.civet
-			&& echo test: llutils
-			&& deno test -qA --reporter dot src/test/llutils.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/indent.lib.test.civet
-			&& echo test: indent
-			&& deno test -qA --reporter dot src/test/indent.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/unicode.lib.test.civet
-			&& echo test: unicode
-			&& deno test -qA --reporter dot src/test/unicode.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/log-levels.lib.test.civet
-			&& echo test: log-levels
-			&& deno test -qA --reporter dot src/test/log-levels.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/log-formatter.lib.test.civet
-			&& echo test: log-formatter
-			&& deno test -qA --reporter dot src/test/log-formatter.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/logger.lib.test.civet
-			&& echo test: logger
-			&& deno test -qA --reporter dot src/test/logger.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/text-table.lib.test.civet
-			&& echo test: text-table
-			&& deno test -A --reporter dot src/test/text-table.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/ast-builder.lib.test.civet
-			&& echo test: ast-builder
-			&& deno test -qA --reporter dot src/test/ast-builder.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/ast-walker.lib.test.civet
-			&& echo test: ast-walker
-			&& deno test -qA --reporter dot src/test/ast-walker.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/parser.lib.test.civet
-			&& echo test: parser
-			&& deno test -qA --reporter dot src/test/parser.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/pll.lib.test.civet
-			&& echo test: pll
-			&& deno test -qA --reporter dot src/test/pll.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/nice.lib.test.civet
-			&& echo test: nice
-			&& deno test -qA --reporter dot src/test/nice.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/fsys.lib.test.civet
-			&& echo test: fsys
-			&& deno test -qA --reporter dot src/test/fsys.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/symbols.lib.test.civet
-			&& echo test: symbols
-			&& deno test -qA --reporter dot src/test/symbols.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/exec.lib.test.civet
-			&& echo test: exec
-			&& deno test -qA --reporter dot src/test/exec.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/typescript.lib.test.civet
-			&& echo test: typescript
-			&& deno test -qA --reporter dot src/test/typescript.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/civet.lib.test.civet
-			&& echo test: civet
-			&& deno test -qA --reporter dot src/test/civet.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/cielo.lib.test.civet
-			&& echo test: cielo
-			&& deno test -qA --reporter dot src/test/cielo.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/compile.lib.test.civet
-			&& echo test: compile
-			&& deno test -qA --reporter dot src/test/compile.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/utils.lib.test.civet
-			&& echo test: utils
-			&& deno test -qA --reporter dot src/test/utils.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/analyze.lib.test.civet
-			&& echo test: analyze
-			&& deno test -qA --reporter dot src/test/analyze.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/v8-stack.lib.test.civet
-			&& echo test: v8-stack
-			&& deno test -qA --reporter dot src/test/v8-stack.lib.test.ts
-
-			&& civet --inline-map -o .ts -c src/test/unit-test.lib.test.civet
-			&& echo test: unit-test
-			&& deno test -qA --reporter dot src/test/unit-test.lib.test.ts
+			&& buildlib datatypes
+			&& buildlib llutils
+			&& buildlib indent
+			&& buildlib unicode
+			&& buildlib log-levels
+			&& buildlib log-formatter
+			&& buildlib logger
+			&& buildlib text-table
+			&& buildlib ast-builder
+			&& buildlib walker
+			&& buildlib parser
+			&& buildlib pll
+			&& buildlib pllfile
+			&& buildlib nice
+			&& buildlib fsys
+			&& buildlib symbols
+			&& buildlib exec
+			&& buildlib typescript
+			&& buildlib civet
+			&& buildlib cielo
+			&& buildlib cmd-args
+			&& buildlib automate
+			&& buildlib analyze
+			&& buildlib v8-stack
+			&& buildlib unit-test
 			",
 
 		// --------------------------------------------------------------------
@@ -764,8 +115,6 @@
 
 		"temp": "
 			   clear
-			&& civet --inline-map -o .ts -c src/lib/parser.lib.civet
-			&& civet --inline-map -o .ts -c src/test/parser/expr.grammar.civet
 			&& civet --inline-map -o .ts -c src/test/temp.civet
 			&& deno check -q src/test/temp.ts
 			&& deno run -A src/test/temp.ts
@@ -830,7 +179,13 @@
 			",
 
 		"docs:all": "
-			deno doc --html --name=@jdeighan/utils src/lib/typescript.lib.ts src/lib/datatypes.lib.ts src/lib/llutils.lib.ts src/lib/indent.lib.ts src/lib/logger.lib.ts src/lib/parser.lib.ts src/lib/text-table.lib.ts src/lib/pll.lib.ts src/lib/nice.lib.ts src/lib/fsys.lib.ts src/lib/symbols.lib.ts src/lib/exec.lib.ts src/lib/cielo.lib.ts src/lib/compile.lib.ts src/lib/utils.lib.ts src/lib/analyze.lib.ts src/lib/v8-stack.lib.ts src/lib/unit-test.lib.ts
+			deno doc --html --name=@jdeighan/utils src/lib/typescript.lib.ts src/lib/datatypes.lib.ts src/lib/llutils.lib.ts src/lib/indent.lib.ts src/lib/logger.lib.ts src/lib/parser.lib.ts src/lib/text-table.lib.ts src/lib/pll.lib.ts src/lib/nice.lib.ts src/lib/fsys.lib.ts src/lib/symbols.lib.ts src/lib/exec.lib.ts src/lib/cielo.lib.ts src/lib/cmd-args.lib.ts src/lib/analyze.lib.ts src/lib/v8-stack.lib.ts src/lib/unit-test.lib.ts
+			",
+
+		"build:cmdtester": "
+			   civet --inline-map -o .ts -c src/cmd/cmdtester.cmd.civet
+			&& deno check -q src/cmd/cmdtester.cmd.ts
+			&& deno install -fgA -n cmdtester --no-config --import-map import_map.json src/cmd/cmdtester.cmd.ts
 			",
 
 		"build:compilecmd": "
@@ -869,12 +224,6 @@
 			&& deno install -fgA -n build-dot-symbols --no-config --import-map import_map.json src/cmd/build-dot-symbols.cmd.ts
 			",
 
-		"build:cmdtester": "
-			   civet --inline-map -o .ts -c src/cmd/cmdtester.cmd.civet
-			&& deno check -q src/cmd/cmdtester.cmd.ts
-			&& deno install -fgA -n cmdtester --no-config --import-map import_map.json src/cmd/cmdtester.cmd.ts
-			",
-
 		"build:cmds": "
 			   deno task build:compilecmd
 			&& deno task build:runtemp
@@ -884,15 +233,6 @@
 			&& deno task build:builddotsymbols
 			",
 
-		"bootstrap": "
-			   clear
-			&& deno task cleanup
-			&& deno task build:all
-			&& deno task build:cmds
-			&& deno task test:all
-			&& deno task docs:all
-			&& echo SUCCESS
-			",
 		},
 
 	"importMap": "import_map.json"

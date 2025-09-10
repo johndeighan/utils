@@ -2,11 +2,11 @@
 
 import {
 	undef, defined, notdefined, assert, croak, array,
-	isString, isArray, isArrayOfStrings, isHash,
+	isString, isArray, isArrayOfStrings, hash, isHash,
 	integer, isInteger,
 	} from 'datatypes'
 import {
-	rtrim, countChars, escapeStr,
+	rtrim, countChars, escapeStr, getOptions,
 	blockToArray, arrayToBlock, toArray, toBlock,
 	} from 'llutils'
 
@@ -101,20 +101,37 @@ export splitLine := (line: string): lineDesc =>
 export function indented(
 		input: string,
 		level?: number
+		hOptions?: hash
 		): string
 export function indented(
 		input: string[],
 		level?: number
+		hOptions?: hash
 		): string[]
 export function indented(
 		input: string | string[],
-		level: number=1
+		level: number = 1
+		hOptions: hash = {}
 		): string | string[] {
-	if notdefined(oneIndent)
-		oneIndent = '\t'
+
+	# --- Because there's a global named oneIndent,
+	#     we have to put the option in a new variable, i.e. 'ind'
+	type opt = {
+		oneIndent: string?
+		}
+	{oneIndent: ind} := getOptions<opt> hOptions, {
+		oneIndent: undef
+		}
+
+	useIndent: string := (
+		  defined(ind) ? ind
+		: defined(oneIndent) ? oneIndent
+		: '\t'
+		)
+
 	lLines: string[] := isArray(input) ? input : input.split('\n')
 	lNewLines: string[] := for line of lLines
-		oneIndent.repeat(level) + line
+		useIndent.repeat(level) + line
 	return isArray(input) ? lNewLines : lNewLines.join('\n')
 	}
 
@@ -134,22 +151,22 @@ export undented := (input: string | string[]): string | string[] =>
 
 	let toRemove: string?  = undef
 	let nToRemove: number = 0
-	lNewLines := lLines.map((line) =>
-		line = rtrim(line)
-		if (line == '')
-			return ''
+	lNewLines: string[] := []
+	for line of lLines
+		trimmed := rtrim(line)
+		if (trimmed == '')
+			lNewLines.push ''
 		else if notdefined(toRemove)
-			[_, prefix, rest] := line.match(/^(\s*)(.*)$/) || ['','','']
+			[_, prefix, rest] := trimmed.match(/^(\s*)(.*)$/) || ['','','']
 			if (prefix.length == 0)
-				return line
+				lNewLines.push trimmed
 			else
 				toRemove = prefix
 				nToRemove = prefix.length
-				return rest
+				lNewLines.push rest
 		else
 			assert (line.indexOf(toRemove)==0),
 				"can't remove #{escapeStr(toRemove)} from #{escapeStr(line)}"
-			return line.substr(nToRemove)
-		)
+			lNewLines.push trimmed.substr(nToRemove)
 
 	return isString(input) ? arrayToBlock(lNewLines) : lNewLines

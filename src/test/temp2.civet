@@ -1,53 +1,13 @@
 # temp2.civet
 
-import {
-	undef, defined, notdefined,
-	} from 'datatypes'
-import {
-	escapeStr,
-	} from 'llutils'
-import {
-	setLogLevel, LOG, pushLogLevel, popLogLevel,
-	} from 'logger'
-import {
-	getParser, ALL, ANY,
-	} from 'parser'
-
-# setLogLevel 'debug'
-let parse = getParser(/a/)
+import {undef, defined, notdefined} from 'datatypes'
+import {LOG, DBG} from 'logger'
+import {findSrcFile} from 'fsys'
+import {compileCivetFiles} from 'civet'
+import {execCmds} from 'exec'
 
 # ---------------------------------------------------------------------------
 
-test := (str: string): void =>
-
-	try
-		parse(str)
-		LOG "#{escapeStr(str)}"
-	catch err
-		LOG "FAIL #{escapeStr(str)}"
-	return
-
-# ---------------------------------------------------------------------------
-
-reIdent := ///^
-	[a-zA-Z_$]
-	[a-zA-Z0-9_$]*
-	///
-reIdent.toString = () => 'reIdent'
-
-reNumber := ///^
-	[-+]?
-	\d+
-	(?:
-		\.
-		\d+
-		([eE][-+]?\d+)?
-		)?
-	///
-reNumber.toString = () => 'reNumber'
-
-reString := ///^
-	(?: ' ([^']*) ' ) | (?: " ([^"]*) " )
-	///
-reString.toString = () => 'reString'
-
+LOG "Hello"
+lResults := await compileCivetFiles(['datatypes','llutils'])
+console.dir lResults

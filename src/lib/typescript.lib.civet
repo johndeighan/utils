@@ -9,32 +9,125 @@ import {
 	getPreEmitDiagnostics, flattenDiagnosticMessageText,
 	getLineAndCharacterOfPosition, forEachChild,
 	} from "npm:typescript"
+import {blue} from "@std/fmt/colors"
 
-import {hash, isHash} from 'datatypes'
-import {truncStr, hasKey, getOptions} from 'llutils'
-import {DBG, LOGVALUE} from 'logger'
-import {TNodeInfo, getAstWalker} from 'ast-walker'
+import {
+	undef, defined, notdefined, integer, TStringGenerator,
+	hash, hashof, isHash, TFilterFunc, isString,
+	isEmpty, nonEmpty,
+	} from 'datatypes'
+import {
+	truncStr, getOptions, spaces, o, OL, words,
+	stringify,
+	} from 'llutils'
+import {indented} from 'indent'
+import {
+	LOG, DBG, LOGVALUE, INDENT, UNDENT, DBGVALUE,
+	} from 'logger'
+import {slurp, barf, barfTempFile} from 'fsys'
+import {toNice, TMapFunc} from 'nice'
+import {getCmdOutputSync} from 'exec'
+import {getNeededImportStmts} from 'symbols'
 
 decoder := new TextDecoder("utf-8")
 
 # ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+type TExportDesc = {
+	name: string
+	kind?: string
+	}
+
+# ---------------------------------------------------------------------------
+
+export allExportsIn := (
+		tsCode: string
+		): Generator<TExportDesc, void, void> ->
+
+	yield {name: 'dummy'}
+	return
+
+# ---------------------------------------------------------------------------
+
+export allExportsInFile := (
+		path: string
+		): Generator<TExportDesc, void, void> ->
+
+	yield* allExportsIn(slurp(path))
+	return
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+type TImportDesc = {
+	name: string
+	kind?: string
+	}
+
+# ---------------------------------------------------------------------------
+
+export allImportsIn := (
+		tsCode: string
+		): Generator<TImportDesc, void, void> ->
+
+	yield {name: 'dummy'}
+	return
+
+# ---------------------------------------------------------------------------
+
+export allImportsInFile := (
+		path: string
+		): Generator<TImportDesc, void, void> ->
+
+	yield* allImportsIn(slurp(path))
+	return
+
+# ---------------------------------------------------------------------------
 
 /**
- * getCode(str) - return contents of file if str is a file path
- *    else return str
+ * type checks TypeScript code, and returns
+ * an array of diagnostic messages if errors are found
  */
 
-export getCode := (str: string): string =>
+export typeCheck := (
+		tsCode: string
+		): string[]? =>
 
-	if ((str.indexOf('\n') == -1)
-			&& str.match(/\.[A-Za-z0-9]+$/)
-			&& existsSync(str)
-			&& statSync(str).isFile()
-			)
-		data := Deno.readFileSync(str)
-		return decoder.decode(data)
+	# --- We must place the TypeScript file at the project root
+	#     so that paths gotten from .symbols resolve correctly
+
+	path := "./_typecheck_.ts"
+	barf path, tsCode
+	hResult := getCmdOutputSync 'deno', [
+			'check',
+			'--import-map', 'import_map.json',
+			path
+			]
+	{success, code, stdout, stderr} := hResult
+	if success && (code == 0)
+		return []
+	else if defined(stderr)
+		return [stderr]
 	else
-		return str
+		return ['Unknown error']
+
+# ---------------------------------------------------------------------------
+
+export kindStr := (i: number): string =>
+
+	return SyntaxKind[i]
+
+# ---------------------------------------------------------------------------
+
+export tsMapFunc: TMapFunc := (
+		key: string
+		val: unknown
+		): unknown =>
+
+	if (key == 'kind') && (typeof val == 'number')
+		return kindStr(val)
+	return val
 
 # ---------------------------------------------------------------------------
 
@@ -43,51 +136,26 @@ export getCode := (str: string): string =>
  */
 
 export ts2ast := (
-		str: string,
+		tsCode: string,
 		hOptions: hash = {}
 		): SourceFile =>
 
 	type opt = {
-		addNames: boolean
+		fileName: string
 		}
-	{addNames} := getOptions<opt> hOptions, {
-		addNames: true
+	{fileName} := getOptions<opt> hOptions, {
+		fileName: 'temp.ts'
 		}
 
-	tsCode := getCode str
-	hAst := createSourceFile("temp.ts", tsCode, ScriptTarget.Latest)
-	filter := (x: any) =>
+	hAst := createSourceFile(fileName, tsCode, ScriptTarget.Latest)
+	filter: TFilterFunc := (x: unknown) =>
 		return (
 			   (typeof x == 'object')
 			&& (x != null)
-			&& hasKey(x, 'kind')
+			&& ('kind' in x)
 			&& (typeof x.kind == 'number')
 			)
-	if addNames
-		walker := getAstWalker(hAst, filter)
-		for item of walker()
-			{node} := item
-			if (typeof node == 'object') && (node != null) && ('kind' in node)
-				{kind} := node
-				if (typeof kind == 'number')
-					item.kindStr = SyntaxKind[kind]
 	return hAst
-
-# ---------------------------------------------------------------------------
-
-/**
- * ts2js() - convert TypeScript code to JavaScript code
- */
-
-export ts2js := (str: string): string =>
-
-	tsCode := getCode str
-	hOptions := {
-		compilerOptions: {
-			module: ModuleKind.ES2022
-			}
-		}
-	return transpileModule(tsCode, hOptions).outputText.trim()
 
 # ---------------------------------------------------------------------------
 
@@ -95,12 +163,6 @@ export ast2ts := (node: SourceFile): string =>
 
 	printer := createPrinter {newLine: NewLineKind.LineFeed}
 	return printer.printNode EmitHint.Unspecified, node, node
-
-# ---------------------------------------------------------------------------
-
-export ast2js := (node: SourceFile): string =>
-
-	return ts2js(ast2ts(node))
 
 # ---------------------------------------------------------------------------
 
@@ -130,36 +192,144 @@ export typeCheckFile = typeCheckFiles   # --- synonym
 
 # ---------------------------------------------------------------------------
 
-type TNodePrinter = (src: SourceFile, n: Node, depth: number) => string
-
-pprintNode := (
-		source: SourceFile,
-		node: Node,
-		depth: number
+export pprintAst := (
+		hAst: SourceFile
+		hOptions: hash = {}
 		): string =>
 
-	kind := SyntaxKind[node.kind]
-	text := node.getText(source).replaceAll('\n', '\\n')
-	pre := ' '.repeat(3 * depth)
-	return "#{pre}#{kind} - '#{truncStr(text, 32)}'"
+	return toNice hAst, {
+		ignoreEmptyKeys: true
+		mapFunc: tsMapFunc
+		lExclude: words(
+			'pos end id flags modifierFlagsCache'
+			'transformFlags hasExtendedUnicodeEscape'
+			'numericLiteralFlags setExternalModuleIndicator'
+			'languageVersion languageVariant jsDocParsingMode'
+			'hasNoDefaultLib'
+			)
+		}
 
 # ---------------------------------------------------------------------------
 
-export pprintAST := (
-		source: SourceFile,
-		pprint: TNodePrinter = pprintNode
+export checkType := (
+		value: unknown
+		typeStr: string
+		expectSuccess: boolean = true
+		): string[] =>
+
+	DBG "CALL checkType():", INDENT
+
+	tsCode := getTsCode typeStr, stringify(value)
+	DBGVALUE 'tsCode', tsCode
+
+	# --- check if we need to import the type
+	importCode := getImportCode(typeStr)
+	DBGVALUE 'importCode', importCode
+
+	code := "#{importCode}\n#{tsCode}"
+	lDiagnostics := typeCheck(code)
+	if expectSuccess && nonEmpty(lDiagnostics)
+		LOG "typeCheck FAILED:"
+		LOG "CODE:"
+		LOG code
+		LOGVALUE 'lDiagnostics', lDiagnostics
+	else if not expectSuccess && isEmpty(lDiagnostics)
+		LOG "typeCheck SUCCEEDED:"
+		LOG "CODE:"
+		LOG code
+	DBG UNDENT
+	return lDiagnostics || []
+
+# ---------------------------------------------------------------------------
+# --- We need to add ':unknown' to any function parameters
+#     that don't have an explicit type
+
+export getTsCode := (
+		typeStr: string
+		valueStr: string
 		): string =>
 
-	lLines: string[] := []
+	DBGVALUE 'typeStr', typeStr
+	DBGVALUE 'valueStr', valueStr
+	result := splitFuncStr(valueStr)
+	if defined(result)
+		[lParms, body] := result
+		addType := (parm: string) =>
+			if (parm.indexOf(':') >= 0)
+				return parm
+			else
+				return "#{parm}: unknown"
+		parmStr := lParms.map(addType).join(', ')
+		return "const x: #{typeStr} = (#{parmStr}) => #{body}"
+	else
+		return "const x: #{typeStr} = #{valueStr}"
 
-	traverse := (node: Node, depth=0): void =>
-		line := pprint(source, node, depth)
-		lLines.push line
-		forEachChild node, (childNode) => traverse(childNode, depth + 1)
-		return
+# ---------------------------------------------------------------------------
 
-	traverse source
-	return lLines.join('\n')
+type splitResult = [string[], string]
+
+export splitFuncStr := (
+		valueStr: string
+		): splitResult? =>
+
+	if lMatches := valueStr.match(///^
+			\(
+			([^\)]*)
+			\) \s* [\=\-]\>
+			\s*
+			(.*)
+			$///)
+		[_, strParms, strBody] := lMatches
+		if isEmpty(strParms)
+			return [[], strBody]
+		else
+			return [
+				strParms.split(',').map((x) => x.trim())
+				strBody
+				]
+	else
+		return undef
+
+# ---------------------------------------------------------------------------
+
+export getImportCode := (
+		typeStr: string
+		): string =>
+
+	DBG "CALL getImportCode()"
+	lSymbols := getSymbolsFromType(typeStr)
+	DBGVALUE 'lSymbols', lSymbols
+	if nonEmpty(lSymbols)
+		lStmts := getNeededImportStmts(lSymbols)
+		DBGVALUE 'lStmts', lStmts
+		return lStmts.join('\n')
+	else
+		return ''
+
+# ---------------------------------------------------------------------------
+
+export getSymbolsFromType := (typeStr: string): string[] =>
+
+	if lMatches := typeStr.match(///^
+			([A-Za-z][A-Za-z0-9+]*)
+			(?:
+				\<
+				([A-Za-z][A-Za-z0-9+]*)
+				\>
+				)?
+			$///)
+		[_, type, subtype] := lMatches
+		return nonEmpty(subtype) ? [type, subtype] : [type]
+	else if lMatches := typeStr.match(///^
+			\( \)                         # ()
+			\s*
+			\= \>                         # =>
+			\s*
+			([A-Za-z][A-Za-z0-9+]*)       # an identifier
+			$///)
+		return [lMatches[1]]
+	else
+		return []
 
 # ---------------------------------------------------------------------------
 

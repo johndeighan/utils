@@ -1,7 +1,5 @@
 # datatypes.lib.test.civet
 
-import {DBG} from 'logger'
-import {getCmdArgs} from 'utils'
 import {
 	lMark, rMark, hide, unhide,
 	deepEqual, undef, defined, notdefined,
@@ -17,9 +15,11 @@ import {
 	isFunction, isObject, isRegExp,
 	isEmpty, nonEmpty,
 	isClass, className, isPromise, isClassInstance, isIterable,
-	jsType, isSymbol, symbolName, functionName, functionDef,
+	isSymbol, symbolName, functionName, functionDef,
 	classDef, regexpDef, hashLike,
 	} from 'datatypes'
+import {DBG} from 'logger'
+import {getCmdArgs} from 'cmd-args'
 import {
 	equal, truthy, falsy, fails, succeeds, isType, notType,
 	} from 'unit-test'
@@ -93,7 +93,7 @@ falsy  notdefined('abc')
 
 DBG "type TFilterFunc"
 
-isType 'TFilterFunc', (x: any) => return true
+isType 'TFilterFunc', (x: unknown) => return true
 
 DBG "type TAssertFunc"
 
@@ -107,32 +107,6 @@ DBG "assert()"
 
 succeeds () => assert 2+2 == 4
 fails    () => assert 2+2 == 5
-
-DBG "jsType(x)"
-
-equal jsType(42), 'integer'
-equal jsType(3.14), 'number'
-equal jsType('abc'), 'string'
-equal jsType(''), 'string'
-equal jsType(undef), 'undef'
-equal jsType(null), 'null'
-equal jsType(true), 'boolean'
-equal jsType([]), 'array'
-equal jsType([1,2]), 'array'
-equal jsType({}), 'hash'
-equal jsType({a: 1}), 'hash'
-equal jsType(Symbol()), 'symbol'
-equal jsType(Symbol('abc')), 'symbol'
-
-(() =>
-	class TempClass
-		var: string = ''
-
-		constructor(str: string)
-			@var = str
-	equal jsType(TempClass), 'class'
-	equal jsType(new TempClass('x')), 'instance'
-	)()
 
 DBG "isSymbol()"
 
@@ -376,11 +350,11 @@ DBG "isObject(x)"
 truthy isObject({})
 falsy  isObject(42)
 truthy isObject({a:1, b:2})
-truthy isObject([1, 2])
+falsy  isObject([1, 2])
 
 DBG "isFunction(x)"
 
-truthy isFunction((x: any) => return 42)
+truthy isFunction((x: unknown) => return 42)
 falsy  isFunction(42)
 
 DBG "isEmpty(x)"

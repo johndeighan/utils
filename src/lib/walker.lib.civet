@@ -1,0 +1,67 @@
+# walker.lib.civet
+
+import {
+	undef, defined, notdefined, integer,
+	isArray, isObject, isPrimitive,
+	} from 'datatypes'
+import {DBG} from 'logger'
+
+# ---------------------------------------------------------------------------
+
+type TIndex = string | number
+
+export type TNodeInfo<T> = {
+	node: T
+	level: integer
+	parent: T?
+	index?: TIndex
+	}
+
+# ---------------------------------------------------------------------------
+
+export class Walker<T extends object = object>
+
+	# --- Keep track of nodes visited to avoid infinite loops
+	setVisited: WeakSet<T> = new WeakSet<T>()
+
+	# --- No constructor needed
+
+	useNode(x: unknown): boolean
+
+		# --- false for null, array, RegExp, String, Number, Boolean
+		return isObject(x)
+
+	isNode(x: unknown): x is T
+
+		return @useNode x
+
+	filter(h: TNodeInfo<T>): boolean
+
+		# --- filter() is only called if isNode(h.node) is true
+		return true
+
+	walk(
+			item: unknown
+			parent: T? = undef
+			level: number = 0
+			index: (string | number)? = undef
+			): Generator<TNodeInfo<T>, void, void>
+
+		if notdefined(item) || isPrimitive(item)
+			return
+
+		if @isNode item
+			DBG "NODE"
+			yield {
+				node: item
+				parent
+				level
+				}
+		if isArray(item)
+			DBG "ARRAY"
+			for x,i of item
+				yield* @walk x, (@isNode(item) ? item : parent), level+1, i
+		else if isObject item
+			DBG "OBJECT"
+			for [key, x] of Object.entries(item)
+				yield* @walk x, (@isNode(item) ? item : parent), level+1, key

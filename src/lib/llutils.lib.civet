@@ -19,14 +19,6 @@ import {
 llutilsLoadTime: integer := Date.now()
 
 # ---------------------------------------------------------------------------
-# --- Should be called like:
-#        require := getImportSync(import.meta.url)
-
-export getImportSync := (url: string): Function =>
-
-	return createRequire(url)
-
-# ---------------------------------------------------------------------------
 
 export sinceLoad := (datetime: Date | integer = Date.now()) =>
 
@@ -81,7 +73,7 @@ export truncStr := (str: string, len: number) =>
  */
 
 export stringify := (
-	x: any,
+	x: unknown,
 	hOptions: hash={}
 	level: number=0
 	): string =>
@@ -98,26 +90,9 @@ export stringify := (
 		trunc: 0
 		}
 
-	typeStr := typeof x
-	result := switch typeStr
+	result: string := switch typeof x
 		when 'undefined'
 			'undefined'
-		when 'object'
-			if (x == null)
-				'null'
-			else if Array.isArray(x)
-				lParts := stringify(item, hOptions, level+1) for item of x
-				if oneLine
-					'[' + lParts.join(', ') + ']'
-				else
-					'[\n' + lParts.join(',\n') + '\n]'
-			else
-				lParts := for key,val in x
-					"#{key}: #{stringify(val, hOptions, level+1)}"
-				if oneLine
-					'{' + lParts.join(', ') + '}'
-				else
-					'{\n' + lParts.join(',\n') + '\n}'
 		when 'boolean'
 			x ? 'true' : 'false'
 		when 'number'
@@ -131,8 +106,28 @@ export stringify := (
 				"Symbol(\"#{x.description}\")"
 			else
 				"Symbol()"
+		when 'object'
+			if (x == null)
+				'null'
+			else if isArray(x)
+				lParts := stringify(item, hOptions, level+1) for item of x
+				if oneLine
+					'[' + lParts.join(', ') + ']'
+				else
+					'[\n' + lParts.join(',\n') + '\n]'
+			else if isHash(x)
+				lParts := for key,val in x
+					"#{key}: #{stringify(val, hOptions, level+1)}"
+				if oneLine
+					'{' + lParts.join(', ') + '}'
+				else
+					'{\n' + lParts.join(',\n') + '\n}'
+			else
+				"<unknown>"
 		when 'function'
 			functionDef(x)
+		else
+			croak "Can't stringify #{OL(x)}"
 
 	if isInteger(trunc) && (trunc > 0)
 		return truncStr(result, trunc)
@@ -145,7 +140,7 @@ export stringify := (
  * JSON stringifies x on one line
  */
 
-export OL := (x: any): string =>
+export OL := (x: unknown): string =>
 
 	if (x == undef)
 		return 'undef'
@@ -165,7 +160,7 @@ export OL := (x: any): string =>
 
 # ---------------------------------------------------------------------------
 
-export ML := (x: any): string =>
+export ML := (x: unknown): string =>
 
 	if (x == undef)
 		return 'undef'
@@ -303,32 +298,27 @@ export removeEmptyKeys := (h: hash): hash =>
 export keys := (obj: hash, hOptions: hash={}): string[] =>
 
 	type opt = {
-		lExcept: string[]
+		lExcept: string | string[]
 		}
 	{lExcept} := getOptions<opt> hOptions, {
 		lExcept: []
 		}
 
+	lRealExcept := isString(lExcept) ? [lExcept] : lExcept
 	lKeys: string[] := []
 	for key of Object.keys(obj)
-		if not lExcept.includes(key)
+		if not lRealExcept.includes(key)
 			lKeys.push key
 	return lKeys
 
 # ---------------------------------------------------------------------------
 
-/**
- * returns true if either `h` is not defined, or if `h` is
- * a hash that includes all the keys provided
- */
+export hasKey := (obj: unknown, ...lKeys: string[]) =>
 
-export hasKey := (h: hash, ...lKeys: string[]): boolean =>
-
-	if notdefined(h)
+	if (typeof obj != 'object') || (obj == null)
 		return false
 	for key of lKeys
-		assert isString(key), "key not a string: #{OL(key)}"
-		if not h.hasOwnProperty(key)
+		if not obj.hasOwnProperty(key)
 			return false
 	return true
 
@@ -468,7 +458,7 @@ export allLinesInBlock := (
 
 export type TBlockSpec = string | string[]
 
-export isBlockSpec := (x: any): x is TBlockSpec =>
+export isBlockSpec := (x: unknown): x is TBlockSpec =>
 
 	return isString(x) || isArrayOfStrings(x)
 
@@ -810,9 +800,12 @@ export centered := (
 
 export type TAlignment = 'l'|'c'|'r'|'left'|'center'|'right'
 
-export isAlignment := (x: any): x is TAlignment =>
+export isAlignment := (x: unknown): x is TAlignment =>
 
-	return ['l','c','r','left','center','right'].includes(x)
+	return (
+		   (typeof x == 'string')
+		&& ['l','c','r','left','center','right'].includes(x)
+		)
 
 export alignString := (
 	str: string,
@@ -976,7 +969,7 @@ export randomLabel := (): string =>
 
 # ---------------------------------------------------------------------------
 
-export require := getImportSync(import.meta.url)
+export require := createRequire(import.meta.url)
 
 # ---------------------------------------------------------------------------
 

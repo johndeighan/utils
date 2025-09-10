@@ -1,18 +1,17 @@
 npm:typescript
 	createSourceFile ScriptTarget SourceFile Node SyntaxKind forEachChild
-analyze
-	symbolKind isSymbolKind symbolDesc isSymbolDesc testDesc parseExportLine
-	allUnitTestsIn mergeAnalyses dumpSymbols
+typescript
+	typeCheck checkType getTsCode splitFuncStr getImportCode getSymbolsFromType
 cielo
 	cielo2civet cielo2civetFile
 civet
 	civet2ast pprintAST
-compile
+automate
 	TTesterFunc TCompilerFunc isCompilerFunc TPostProcessor isPostProcessor
 	isCompilerInfo TCompilerConfig isConfigHash hDefaultConfig
 	installCmd uninstallCmd getCompilerInfo getPostProcessor TCompileStatus
-	compileFile getCompilerGlobPattern allCompilableFiles runUnitTestsFor
-	userConfigPath hCompilerConfig
+	compileFile runUnitTestsFor runAllUnitTests
+	hCompilerConfig
 	TCompilerInfo TCompileResult TUnitTestResult
 datatypes
 	TFilterFunc TStringifier TStringParser TAssertFunc
@@ -21,8 +20,8 @@ datatypes
 	isBoolean isNumber isPrimitive integer isInteger intArray
 	isArrayOfStrings regexp isRegExp isObject isFunction isEmpty nonEmpty
 	rMark hide unhide stringify
-ast-walker
-	TNodeInfo NodeGenerator
+walker
+	TNodeInfo TNodeTester TNodeFilter Walker
 exec
 	mkstr getCmdLine TExecCmdResult getProcOpt execCmd execCmdSync cmdSucceeds
 fsys
@@ -31,6 +30,7 @@ fsys
 	TPathDesc pathSubDirs myself slurp barf newerDestFileExists mkDir rmFile
 	mkDirsForFile clearDir removeFilesMatching removeFilesExcept TFsChangeType
 	FileEventHandler TWatcherCallbackFunc watchFile watchFiles allTokensInFile
+pllfile
 	setDirTree fileOpsTable TFileOp TFsCallbackFunc
 indent
 	oneIndent resetOneIndent indentLevel lineDesc splitLine indented undented
@@ -60,10 +60,9 @@ text-table
 pll
 	TPLLToken EOFToken TTokenGenerator allTokensIn allTokensInBlock tokenTable
 unit-test
-	equal truthy falsy fails succeeds matches like listLike includes
-	getSymbolsFromType getImportCode splitFuncStr getTsCode checkType isType
-utils
+	equal truthy falsy fails succeeds matches like listLike includes isType
+cmd-options
 	range normalizeStr removeLines logLevelFromArgs getCmdArgs getOptionInfo
 	helpStr
 v8-stack
-	stackFrame getV8Stack getV8StackStr getMyCaller getMyOutsideCaller
+	TStackFrame getV8Stack getV8StackStr getMyCaller getMyOutsideCaller

@@ -1,22 +1,19 @@
 # cielo.lib.civet
 
+import {pathToFileURL} from "node:url"
+
 import {
 	undef, defined, notdefined, assert, croak, hash, isHash,
 	} from 'datatypes'
+import {pass, keys, OL, ML, require} from 'llutils'
 import {
-	pass, keys, hasKey, hasKeys, OL, ML, require,
-	} from 'llutils'
+	DBG, LOG, WARN, ERR, DBGVALUE, DBGLABELED,
+	pushLogLevel, popLogLevel,
+	} from 'logger'
 import {
 	isFile, fileExt, withExt, slurp, barf, barfTempFile,
 	parsePath,
 	} from 'fsys'
-import {
-	DBG, LOG, WARN, ERR, DBGVALUE,
-	pushLogLevel, popLogLevel,
-	} from 'logger'
-import {
-	execCmdSync,
-	} from 'exec'
 import {civet2ts, civet2tsFile} from 'civet'
 
 # ---------------------------------------------------------------------------
@@ -77,22 +74,19 @@ export cielo2tsFile := (
 
 # ---------------------------------------------------------------------------
 
-export configFromFile := (aPath: string): hash =>
+export configFromFile := (orgPath: string): hash =>
 
-	{path, type, purpose, ext} := parsePath(aPath)
+	{path, type, purpose, ext} := parsePath(orgPath)
 	assert (type == 'file'), "Not a file: #{OL(path)}"
 	assert (purpose == 'config'), "Not a config file: #{OL(path)}"
-	DBG "GET CONFIG: path = #{OL(path)}"
+	DBGLABELED "GET CONFIG", "path = #{OL(path)}"
 
-	srcPath := (
-		if (ext == '.civet')
-			civet2tsFile path
-		else
-			path
-		)
+	srcPath := (ext == '.civet') ? civet2tsFile(path) : path
 	assert (fileExt(srcPath) == '.ts'),
 		"config not a .ts or .civet file: #{OL(path)}"
 	DBGVALUE 'srcPath', srcPath
+	url := pathToFileURL(srcPath)
+	DBGVALUE 'url', url
 	hImported := require(srcPath)
 	DBGVALUE 'hImported', hImported
 	hResult := hImported?.default || hImported

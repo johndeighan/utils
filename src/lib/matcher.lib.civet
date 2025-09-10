@@ -1,0 +1,292 @@
+# matcher.lib.civet
+
+import {
+	undef, defined, notdefined, assert, croak,
+	} from 'datatypes'
+import {pass} from 'llutils'
+import {LOG, DBG} from 'logger'
+
+export $DIGITS = '0123456789'
+export $LOWER = 'abcdefghijklmnopqrstuvwxyz'
+export $UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+export $LETTERS = $LOWER + $UPPER
+export $WS = ' \t'
+
+# ---------------------------------------------------------------------------
+
+export type MatcherNodeKind =
+	'm_string'   |
+	'm_regexp'   |
+	'm_set'      |
+	'm_any_char' |
+	'm_while'    |
+	'm_any'      |
+	'm_all'      |
+	'm_rule'     |
+	'm_seq'
+
+export type TRuleSet = {
+	[key: string]: MatcherNode
+	}
+
+export abstract class MatcherNode
+
+	kind: MatcherNodeKind
+
+	# ..........................................................
+
+	constructor(kind: MatcherNodeKind)
+		@kind = kind
+
+	# ..........................................................
+	# --- Return a new position in bigstr
+
+	abstract match(
+			bigstr: string
+			pos: number
+			hRules: TRuleSet?
+			): number
+
+	# ..........................................................
+
+	check(
+			bigstr: string
+			pos: number
+			trying: string
+			): void
+		len := bigstr.length
+		assert (pos < len),
+			"at end trying #{trying}, pos = #{pos}, len = #{len}"
+		return
+
+# ---------------------------------------------------------------------------
+
+export class MatchRule extends MatcherNode
+
+	name: string
+
+	constructor(@name: string)
+		super('m_rule')
+
+	override match(
+			bigstr: string
+			pos: number
+			hRules: TRuleSet? = undef
+			): number
+		@check bigstr, pos,
+			"match rule #{@name} in #{bigstr} at #{pos}"
+		if defined(hRules) && hRules.hasOwnProperty(@name)
+			return hRules[@name].match(bigstr, pos, hRules)
+		croak "No such rule: #{@name}"
+		return 0
+
+# ---------------------------------------------------------------------------
+
+export class MatchString extends MatcherNode
+
+	mstr: string
+
+	constructor(@mstr: string)
+		super('m_string')
+
+	override match(
+			bigstr: string
+			pos: number
+			hRules: TRuleSet? = undef
+			): number
+		@check bigstr, pos,
+			"match string #{@mstr} in #{bigstr} at #{pos}"
+		if (bigstr.indexOf(@mstr, pos) != pos)
+			croak "#{@mstr} not found at #{pos} in #{bigstr}"
+		return pos + @mstr.length
+
+# ---------------------------------------------------------------------------
+
+export class MatchRegExp extends MatcherNode
+
+	reStr: string
+	re: RegExp
+
+	constructor(@reStr: string)
+		super('m_regexp')
+		@re := new RegExp(@reStr, "g")
+
+	override match(
+			bigstr: string
+			pos: number
+			hRules: TRuleSet? = undef
+			): number
+		@check bigstr, pos,
+			"match RegExp #{@reStr} in #{bigstr} at #{pos}"
+		@re.lastIndex = pos
+		if not @re.test(bigstr)
+			croak "RegExp #{@reStr} not found at #{pos} in #{bigstr}"
+		return @re.lastIndex
+
+# ---------------------------------------------------------------------------
+
+export class MatchCharSet extends MatcherNode
+
+	set: string
+
+	constructor(@set: string)
+		super('m_set')
+
+	override match(
+			bigstr: string
+			pos: number
+			hRules: TRuleSet? = undef
+			): number
+		@check bigstr, pos,
+			"match set #{@set} in #{bigstr} at #{pos}"
+		ch := bigstr[pos]
+		if (@set.indexOf(ch) == -1)
+			croak "char #{ch} not found in #{bigstr} at #{pos}"
+		return pos + 1
+
+# ---------------------------------------------------------------------------
+
+export class MatchAnyChar extends MatcherNode
+
+	constructor()
+		super('m_any_char')
+
+	override match(
+			bigstr: string
+			pos: number
+			hRules: TRuleSet? = undef
+			): number
+		@check bigstr, pos,
+			"match any char in #{bigstr} at #{pos}"
+		return pos + 1
+
+# ---------------------------------------------------------------------------
+
+export class MatchAll extends MatcherNode
+
+	lChildren: MatcherNode[]
+
+	constructor(@lChildren: MatcherNode[] = [])
+		super('m_all')
+
+	addChild(child: MatcherNode)
+		@lChildren.push child
+		return
+
+	override match(
+			bigstr: string
+			pos: number
+			hRules: TRuleSet? = undef
+			): number
+		@check bigstr, pos,
+			"match all"
+		for child of @lChildren
+			pos = child.match(bigstr, pos, hRules)
+		return pos
+
+# ---------------------------------------------------------------------------
+
+export class MatchAny extends MatcherNode
+
+	lChildren: MatcherNode[]
+
+	constructor(@lChildren: MatcherNode[] = [])
+		super('m_any')
+
+	addChild(child: MatcherNode)
+		@lChildren.push child
+		return
+
+	override match(
+			bigstr: string
+			pos: number
+			hRules: TRuleSet? = undef
+			): number
+		@check bigstr, pos,
+			"match any"
+		for child of @lChildren
+			try
+				pos = child.match(bigstr, pos, hRules)
+				return pos
+			catch err
+				pass()
+		croak "Can't find any of #{@lChildren.length} children in #{bigstr} at #{pos}"
+		return 13
+
+# ---------------------------------------------------------------------------
+
+export class MatchWhile extends MatcherNode
+
+	min: number
+	max: number
+	greedy: boolean
+	ast: MatcherNode
+	sep: MatcherNode?
+
+	constructor(
+			@ast: MatcherNode
+			range: [number, number] = [0, Infinity]
+			@greedy = true
+			@sep: MatcherNode? = undef
+			)
+		super('m_while')
+		[@min, @max] := range
+		assert (@min != Infinity), "min can't be Infinity"
+
+	override match(
+			bigstr: string
+			pos: number
+			hRules: TRuleSet? = undef
+			): number
+		@check bigstr, pos, "match while"
+
+		# --- First, make sure the ast matches
+		#     at least min times
+		# --- Any exception here throws an exception
+
+		if (@min > 0)
+			for i of [0...@min]
+				if (i > 0) && defined(@sep)
+					pos = @sep.match(bigstr, pos, hRules)
+				pos = @ast.match(bigstr, pos, hRules)
+
+		# --- Then, if greedy, continue matching
+		#     as long as max times is not reached
+		# --- Any exception here termintes the loop,
+		#     but does not propagate
+
+		if @greedy
+			n := @min
+			while (n < @max)
+				try
+					newpos := (
+						  ((n > 0) && defined(@sep))
+						?  @sep.match(bigstr, pos, hRules)
+						: pos
+						)
+					pos = @ast.match(bigstr, newpos, hRules)
+				catch err
+					break
+
+		return pos
+
+# ---------------------------------------------------------------------------
+
+export matchString := (
+		ast: MatcherNode
+		bigstr: string
+		hRules: TRuleSet? = undef
+		pos: number = 0
+		): void =>
+	endpos := ast.match(bigstr, pos, hRules)
+	if (endpos < bigstr.length)
+		croak "Parse stopped at pos #{pos}"
+	return
+
+# ---------------------------------------------------------------------------
+
+export digitMatcher = new MatchCharSet($DIGITS)
+export letterMatcher = new MatchCharSet($LETTERS)
+export wsMatcher = new MatchWhile(
+	new MatchCharSet($WS)
+	)

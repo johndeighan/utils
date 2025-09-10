@@ -5,7 +5,7 @@ import {
 	LOG, LOGVALUE, DBG, DBGVALUE,
 	} from 'logger'
 
-hArgs := getCmdArgs()
+[hArgs, lNonOptions] := getCmdArgs()
 
 # ---------------------------------------------------------------------------
 

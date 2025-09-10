@@ -21,7 +21,8 @@ export type voidFunc = () => void
 export type TFilterFunc = (item: unknown) => boolean
 export type TStringifier = (item: unknown) => string
 export type TStringParser = (str: string) => unknown
-export type TAssertFunc = (cond: boolean, msg?: string) => void
+
+export type TStringGenerator = Generator<string, void, void>
 
 # ---------------------------------------------------------------------------
 
@@ -79,65 +80,19 @@ export croak := (msg: string): never =>
  * thrown with the given `msg`
  */
 
+export type TAssertFunc = (
+		cond: unknown,
+		msg?: string
+		) => asserts cond
+
 export assert: TAssertFunc := (
-		cond: boolean,
-		msg: string="An error occurred"
-		): asserts cond =>
+		cond: unknown,
+		msg: string = "An error occurred"
+		) =>
 
-	if !cond
-		croak(msg)
+	if not cond
+		throw new Error(msg)
 	return
-
-# ---------------------------------------------------------------------------
-# --- general JavaScript function to get the type of a value
-
-export jsType := (x: unknown): string =>
-
-	if (typeof x == 'undefined')
-		return 'undef'
-
-	if (typeof x == 'bigint')
-		return 'integer'
-
-	if (typeof x == 'number')
-		return (
-			  Number.isNaN(x)    ? 'NaN'
-			: Number.isFinite(x) ? (Number.isInteger(x) ? 'integer' : 'number')
-			: ((x < 0) ? 'neginfinity' : 'infinity')
-			)
-
-	if (typeof x == 'function')
-		# --- If it's a function whose source code starts with
-		#     the "class" keyword, it's a class
-		str := x.toString()
-		if str.startsWith('class')
-			# --- get name with className(x)
-			#     get definition with classDef(x)
-			return 'class'
-		else
-			return 'function' # get name with functionName(x)
-
-	if (typeof x == 'object')
-		if (x == null)
-			return 'null'
-		if Array.isArray(x)
-			return 'array'
-		if (x instanceof String)
-			return 'string'
-		if (x instanceof Boolean)
-			return 'boolean'
-		if (x instanceof Number)
-			return Number.isInteger(x) ? 'integer' : 'number'
-		if (x instanceof RegExp)
-			# --- get definition with regexpDef(x)
-			return 'regexp'
-		className := x?.constructor?.name
-		if (className == 'Object')
-			return 'hash'
-		else
-			return 'instance'  # get class name with x.constructor.name
-	else
-		return (typeof x)
 
 # ---------------------------------------------------------------------------
 
@@ -236,7 +191,11 @@ export interface hashof<T>
 
 export isHash := (x: unknown): x is hash =>
 
-	return (jsType(x) == 'hash')
+	return (
+		   (x != null)
+		&& not Array.isArray(x)
+		&& (x?.constructor?.name == 'Object')
+		)
 
 # ---------------------------------------------------------------------------
 
@@ -266,6 +225,10 @@ export hashLike := (h: hash, hPat: hash): boolean =>
 export isString := (x: unknown): x is string =>
 
 	return (typeof x == 'string') || (x instanceof String)
+
+export assertIsString := (x: unknown): asserts x is string =>
+
+	assert isString(x), "Not a string: #{typeof x}"
 
 # ---------------------------------------------------------------------------
 
@@ -320,13 +283,19 @@ export isNumber := (x: unknown): x is number =>
 
 export isPrimitive := (x: unknown): boolean =>
 
-	return isString(x) || isNumber(x) || isBoolean(x)
+	return isString(x) || isNumber(x) || isBoolean(x) || isSymbol(x)
 
 # ---------------------------------------------------------------------------
 
 export isNonPrimitive := (x: unknown): boolean =>
 
-	return (x != null) && (typeof x == 'object')
+	return (
+		   (typeof x == 'object')
+		&& (x != null)
+		&& not (x instanceof String)
+		&& not (x instanceof Number)
+		&& not (x instanceof Boolean)
+		)
 
 # ---------------------------------------------------------------------------
 
@@ -405,7 +374,15 @@ export isRegExp := (item: unknown): item is regexp =>
 
 export isObject := (x: unknown): x is object =>
 
-	return (typeof x == 'object') && (x != null)
+	return (
+		  (typeof x == 'object')
+		&& (x != null)
+		&& not Array.isArray(x)
+		&& (x not instanceof RegExp)
+		&& (x not instanceof String)
+		&& (x not instanceof Number)
+		&& (x not instanceof Boolean)
+		)
 
 # ---------------------------------------------------------------------------
 
@@ -414,7 +391,7 @@ export isObject := (x: unknown): x is object =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isFunction)
  */
 
-export isFunction := (item: unknown): boolean =>
+export isFunction := (item: unknown): item is Function =>
 
 	return (typeof item == 'function')
 
@@ -438,7 +415,7 @@ export isEmpty := (x: unknown): boolean =>
 		return (x.match(/^\s*$/) != null)
 	if isArray(x)
 		return (x.length == 0)
-	if isHash(x)
+	if (typeof x == 'object')
 		return (Object.keys(x).length == 0)
 	else
 		return false
@@ -510,17 +487,20 @@ export isClassInstance := (
 		lReqKeys: string[]=[]
 		): boolean =>
 
-	if isHash(x)
-		if isArray(x) || isPromise(x)
-			return false
-		if notdefined(x?.constructor?.name)
-			return false
+	if (typeof x != 'object') || isArray(x) || isPromise(x)
+		return false
+
+	if notdefined(x?.constructor?.name)
+		return false
+
+	if isHash(x) && (x != null)
 		for key of lReqKeys
 			let type = undef
 			if lMatches := key.match(///^ (\&) (.*) $///)
 				[_, type, key] := lMatches
+
 			if (key in x)
-				item: any := x[key]
+				item: unknown := x[key]
 				if nonEmpty(item)
 					if (type == '&') && (typeof item != 'function')
 						return false
@@ -528,16 +508,15 @@ export isClassInstance := (
 					return false
 			else
 				return false
-		return true
-	else
-		return false
+	return true
 
 # ---------------------------------------------------------------------------
 
 export isIterable := (x: unknown): boolean =>
 
-	if isHash(x)
-		return (typeof x[Symbol.iterator] == 'function')
+	if (typeof x == 'object') && (x != null)
+#		return (typeof x[Symbol.iterator] == 'function')
+		return Symbol.iterator in x
 	return false
 
 # ---------------------------------------------------------------------------

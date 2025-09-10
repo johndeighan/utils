@@ -1,7 +1,7 @@
 # log-levels.lib.test.civet
 
 import {DBG} from 'logger'
-import {getCmdArgs} from 'utils'
+import {getCmdArgs} from 'cmd-args'
 import {
 	TLogLevel, getLogLevel, isLogLevel, isInactiveLevel,
 	setLogLevel, pushLogLevel, popLogLevel, resetLogLevel,
@@ -10,6 +10,8 @@ import {
 	equal, truthy, falsy, succeeds, fails, matches,
 	isType, notType,
 	} from 'unit-test'
+
+# ---------------------------------------------------------------------------
 
 DBG "getLogLevel()"
 

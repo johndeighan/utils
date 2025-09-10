@@ -1,7 +1,7 @@
 # indent.lib.test.civet
 
 import {DBG} from 'logger'
-import {getCmdArgs} from 'utils'
+import {getCmdArgs} from 'cmd-args'
 import {
 	undef, defined, notdefined, assert, deepEqual,
 	} from 'datatypes'

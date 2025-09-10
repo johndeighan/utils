@@ -28,19 +28,13 @@ import {
 	integer, hash, voidFunc,
 	} from 'datatypes'
 import {
-	OL, ML, getOptions, removeEmptyKeys, pass, hasKey,
+	OL, ML, getOptions, removeEmptyKeys, pass,
 	spaces, sinceLoadStr, sleep, relpath,
-	getImportSync, require,
 	} from 'llutils'
 import {
-	pushLogLevel, popLogLevel, DBG, DBGVALUE, ERR,
-	INDENT, UNDENT,
+	pushLogLevel, popLogLevel, LOG, DBG, ERR,
+	INDENT, UNDENT, DBGVALUE, DBGLABELED,
 	} from 'logger'
-import {TextTable} from 'text-table'
-import {indented} from 'indent'
-import {
-	TPLLToken, allTokensInBlock, tokenTable,
-	} from 'pll'
 
 export {relpath}
 
@@ -52,7 +46,7 @@ export {relpath}
 #     importing ESM modules
 
 Deno := globalThis.Deno
-type FsEvent = Deno.FsEvent
+export type FsEvent = Deno.FsEvent
 
 # --- not exported
 decoder := new TextDecoder('utf-8')
@@ -271,10 +265,12 @@ export parsePath := (path: string): TPathInfo =>
  * 	{abc,123} comma-separated list of literals to match
  */
 
+export type TFileFilterFunc = (hInfo: TPathInfo) => boolean
+
 export allFilesMatching := (
-	pattern: string='**',
-	hOptions: hash={}
-	): Generator<any, void, void> ->
+		pattern: string='**',
+		hOptions: hash={}
+		): Generator<TPathInfo, void, void> ->
 
 	type opt = {
 		root: string?
@@ -282,7 +278,7 @@ export allFilesMatching := (
 		includeDirs: boolean
 		followSymlinks: boolean
 		canonicalize: boolean
-		filter: Function?
+		filter: TFileFilterFunc?
 		}
 	{
 		root,
@@ -327,13 +323,40 @@ export allFilesMatching := (
 			DBG "   - no filter"
 			yield hFile
 		else
-			result: any? := filter(hFile)
-			if notdefined(result)
-				DBG "   - excluded by filter"
-			else
+			if filter(hFile)
 				DBG "   - allowed by filter"
-				yield result
+				yield hFile
+			else
+				DBG "   - excluded by filter"
 	return
+
+# ---------------------------------------------------------------------------
+# returns full path to file
+
+export findSrcFile := (
+		fileName: string
+		hOptions: hash={}
+		): string? =>
+
+	type opt = {
+		root: string?
+		}
+	{root} := getOptions<opt> hOptions, {
+		root: './src'
+		}
+
+	lFiles := Array.from(allFilesMatching("**/#{fileName}", {root}))
+	DBGVALUE 'lFiles', lFiles
+	switch lFiles.length
+		when 1
+			{path} := lFiles[0]
+			assert isFile(path), "Not a file: #{OL(path)}"
+			return path
+		when 0
+			return undef
+		else
+			croak "Multiple files with name #{OL(fileName)}"
+			return ''
 
 # ---------------------------------------------------------------------------
 # ASYNC GENERATOR
@@ -490,6 +513,11 @@ export barfTempFile := (
 	barf tempFilePath, contents
 	return tempFilePath
 
+# ---------------------------------------------------------------------------
+
+export isExt := (str: string): boolean =>
+
+	return /^\.[A-Za-z0-9_]+$/.test(str)
 
 # ---------------------------------------------------------------------------
 
@@ -498,7 +526,9 @@ export newerDestFileExists := (
 	destPath: string
 	): boolean =>
 
-	assert isFile(srcPath), "No such file: #{OL(srcPath)} (newerDestFileExists)"
+	if isExt(destPath)
+		destPath = withExt(srcPath, destPath)
+	assert isFile(srcPath), "No such file: #{OL(srcPath)}"
 	if not existsSync(destPath)
 		return false
 	srcModTime := statSync(srcPath).mtimeMs
@@ -622,13 +652,13 @@ export removeFilesExcept := (
 		return
 
 	# --- truthy return means remove it
-	filter := (hFile: TPathInfo): TPathInfo? =>
+	filter := (hFile: TPathInfo) =>
 		{type, relPath} := hFile
 		if (type != 'file')
 			return undef
 		removeFile := not lKeep.includes(relPath)
 		DBG "filter(#{relPath}): removeFile = #{removeFile}"
-		return removeFile ? hFile : undef
+		return removeFile
 
 	h: hash := {filter, debug}
 	for {relPath} of allFilesMatching(pattern, h)
@@ -639,14 +669,12 @@ export removeFilesExcept := (
 # ---------------------------------------------------------------------------
 
 /**
- * type TFsCallbackFunc - a function taking FsEvent and optionally
- * returns a function reference to be called on file changes
+ * type TFsEventHandler
+ *    - a function taking (kind, path)
+ *   - optionally returns boolean to indicate stop watching
  */
 
-export type TFsEventHandler = (evt: FsEvent) => void
-export type TFsHandlers = {
-	[path: string]: {[kind in `${FsEvent["kind"]}`]: TFsEventHandler}
-	}
+export type TFsEventHandler = (kind: string, path: string) => void | boolean
 
 /**
  * class FileEventHandler
@@ -657,63 +685,45 @@ export type TFsHandlers = {
  * [unit tests](../test/fs.test.civet#:~:text=%23%20%2D%2D%2D%20class%20FileEventHandler)
  */
 
-export type TFsCallbackFunc = (change: FsEvent) => void
-
 export class FileEventHandler
 
-	callback: TFsCallbackFunc
-
-	# --- Create the debounced version only once
-	#     path => eventType => debounced handler
-	hHandlers: TFsHandlers = {}
-
+	handler: TFsEventHandler   # --- debounced handler
 	onStop: () => void = pass
-	ms: number
+
+	# ..........................................................
 
 	constructor(
-			@callback: TFsCallbackFunc  # --- fsEvent => void
+			callback: TFsEventHandler
 			hOptions: hash={}
 			)
 
 		type opt = {
 			onStop: voidFunc
-			ms: number
+			debounceBy: number
 			}
 		{
 			onStop: @onStop
-			ms: @ms
+			debounceBy
 			} := getOptions<opt> hOptions, {
 				onStop: pass
-				ms: 200
+				debounceBy: 200
 				}
+		@handler := debounce(callback, debounceBy)
 		DBG "FileEventHandler constructor() called"
 
-	# --- Calls a voidFunc
-	#     but is debounced by @ms ms
+	# ..........................................................
+	# --- Calls a voidFunc, but is debounced by @ms ms
 
 	handle(fsEvent: FsEvent): void
 		{kind, paths} := fsEvent
-		DBG "HANDLE: [#{sinceLoadStr()}] #{kind} #{paths}"
+		DBG "HANDLE: [#{sinceLoadStr()}] #{kind} #{OL(paths)}"
 
 		for path of paths
-			dHandler := @hHandlers?.[path]?.[kind]
-			if defined(dHandler)
-				dHandler(fsEvent)
-			else
-				func := (evt: FsEvent) =>
-					@callback(evt)
-					return
-
-				dfunc := debounce(func, @ms)
-				dfunc(fsEvent)
-				@hHandlers[path][kind] = dfunc
-
+			@handler(kind, path)
 		return
 
 # ---------------------------------------------------------------------------
 # ASYNC
-
-export type TWatcherCallbackFunc = (fsEvent: FsEvent) => boolean
 
 /**
  * a function that watches for changes one or more files or directories
@@ -729,28 +739,30 @@ export type TWatcherCallbackFunc = (fsEvent: FsEvent) => boolean
 
 export watchFile := (
 	path: string | string[],
-	watcherCB: TWatcherCallbackFunc,
+	watcherCB: TFsEventHandler,
 	hOptions: hash={}
 	): void ->
 
-	# --- ms is milliseconds to debounce by, default is 200
-	{ms} := getOptions<{ms: number}> hOptions, {ms: 200}
+	# --- debounceBy is milliseconds to debounce by, default is 200
+	{debounceBy} := getOptions<{debounceBy: number}> hOptions, {
+		debounceBy: 200
+		}
 
-	DBG "WATCH: #{JSON.stringify(path)}"
+	DBG "WATCH: #{OL(path)}"
 	watcher := Deno.watchFs(path)
 
 	let doStop: boolean = false
 
-	fsCallback: TFsCallbackFunc := (fsEvent) =>
-		result := watcherCB(fsEvent)
+	fsCallback: TFsEventHandler := (kind, path) =>
+		result := watcherCB(kind, path)
 		DBG "FCB: result = #{result}"
 		if result
 			watcher.close()
 		return
 
-	handler := new FileEventHandler(fsCallback, {ms})
+	handler := new FileEventHandler(fsCallback, {debounceBy})
 
-	for await fsEvent of watcher
+	for await fsEvent: FsEvent of watcher
 		DBG "watcher event fired"
 		if doStop
 			DBG "doStop = #{doStop}, Closing watcher"
@@ -760,222 +772,6 @@ export watchFile := (
 			handler.handle(fsEvent)
 
 export watchFiles := watchFile
-
-# ---------------------------------------------------------------------------
-
-export allTokensInFile := (
-		path: string
-		): Generator<TPLLToken, void, void> ->
-
-	for tok of allTokensInBlock(slurp(path))
-		yield tok
-	return
-
-# ---------------------------------------------------------------------------
-# --- Uses a recursive descent parser
-
-export type TFileOp = {
-	funcName: 'mkDir' | 'barf'
-	path: string
-	contents?: string
-	}
-
-export setDirTree := (
-		currentDir: string,
-		contents: string,
-		hOptions: hash = {}
-		): TFileOp[] =>
-
-	# --- Extract options
-	type opt = {
-		debug: boolean
-		clear: boolean
-		scaffold: boolean
-		}
-	{debug, clear, scaffold} := getOptions<opt> hOptions, {
-		debug: false
-		clear: false
-		scaffold: false
-		}
-
-	if not debug
-		pushLogLevel 'info'
-	let level: integer = 0
-
-	dbgEnter := (name: string, ...lArgs: any[]) =>
-		strArgs := (
-			for arg of lArgs
-				OL(arg)
-			).join(', ')
-		DBG "#{'   '.repeat(level)}-> #{name}(#{strArgs})"
-		level += 1
-		return
-
-	dbgExit := (name: string, ...lArgs: any[]) =>
-		strArgs := (
-			for arg of lArgs
-				OL(arg)
-			).join(', ')
-		level -= 1
-		DBG "#{'   '.repeat(level)}<- #{name}(#{strArgs})"
-		return
-
-	dbg := (line: string) =>
-		DBG "#{'   '.repeat(level)}-- #{OL(line)}"
-		return
-
-	# --- In unit tests, we just return calls made
-	lFileOps: TFileOp[] := []
-
-	# ..........................................................
-
-	doMakeDir := (
-			dirPath: string
-			): void =>
-
-		assert isString(dirPath), "dirPath not a string: #{OL(dirPath)}"
-		path := relpath(dirPath)
-		if scaffold
-			lFileOps.push {
-				funcName: 'mkDir'
-				path
-				}
-		else
-			# --- if clear option set, clear dir if it exists
-			mkDir path, clear
-		return
-
-	# ..........................................................
-
-	doBarf := (
-			filePath: string,
-			contents: string
-			): void =>
-
-		path := relpath(filePath)
-		if scaffold
-			lFileOps.push {
-				funcName: "barf"
-				path
-				contents
-				}
-		else
-			barf path, contents
-		return
-
-	# ..........................................................
-
-	fileHandler := (
-			filePath: string,
-			lTokens: TPLLToken[]
-			): void =>
-
-		dbgEnter 'fileHandler', filePath
-		contents := if (lTokens[0].kind == 'indent')
-			lTokens.shift()
-			lLines := []
-			let level = 0
-			# @ts-ignore
-			while (level > 0) || (lTokens[0].kind != 'undent')
-				tok := lTokens.shift()
-				if notdefined(tok)
-					croak "No 'undent' in clock"
-				else
-					switch tok.kind
-						when 'indent'
-							level += 1
-						when 'undent'
-							level -= 1
-							assert (level >= 0), "Negative level in setDirTree()"
-						else
-							line := indented(tok.str, level)
-							if isString(line)    # --- ALWAYS SUCCEEDS
-								dbg line
-								lLines.push line
-
-			# --- HERE: (level == 0) AND (lTokens[0].kind == 'undent')
-			assert (level == 0), "after file contents, level = #{OL(level)}"
-			assert (lTokens[0].kind == 'undent'),
-					"UNDENT expected after contents, got #{OL(lTokens[0])}"
-			lTokens.shift()
-			lLines.join('\n')
-		else
-			''
-		doBarf filePath, contents
-		dbgExit 'fileHandler', filePath
-		return
-
-	dirHandler := (
-			dirPath: string,
-			lTokens: TPLLToken[]
-			): void =>
-
-		dbgEnter 'dirHandler', dirPath
-		doMakeDir dirPath
-		if (lTokens.length > 0) && (lTokens[0].kind == 'indent')
-			lTokens.shift()
-			blockHandler(dirPath, lTokens)
-			# @ts-ignore
-			assert (lTokens[0].kind == 'undent'), "Missing UNDENT in dirHandler"
-			lTokens.shift()
-		dbgExit 'dirHandler', dirPath
-		return
-
-	blockHandler := (dirPath: string, lTokens: TPLLToken[]) =>
-		dbgEnter 'blockHandler', dirPath
-		while (lTokens.length > 0) && (lTokens[0].kind != 'undent')
-			tok: TPLLToken := lTokens[0]
-			lTokens.shift()
-			{kind, str} := tok
-			switch kind
-				when 'indent'
-					croak "Unexpected INDENT"
-				else
-					if str.startsWith('/')
-						dirHandler "#{dirPath}#{tok.str}", lTokens
-					else
-						fileHandler "#{dirPath}/#{tok.str}", lTokens
-		dbgExit 'blockHandler'
-		return
-
-	# ..........................................................
-
-	ptype := getPathType(currentDir)
-	assert (ptype == 'dir') || (ptype == 'missing'),
-			"currentDir is a #{ptype}"
-
-	# --- Clear the directory if it exists
-	doMakeDir currentDir
-
-	lTokens := Array.from(allTokensInBlock(contents))
-	DBG tokenTable(lTokens)
-
-	blockHandler(currentDir, lTokens)
-	assert (lTokens.length == 0),
-			"Tokens remaining after parse: #{OL(lTokens)}"
-	if not debug
-		popLogLevel()
-	return lFileOps
-
-# ---------------------------------------------------------------------------
-
-export fileOpsTable := (lFileOps: TFileOp[]): string =>
-
-	tt := new TextTable("l l")
-	tt.fullsep()
-	tt.title 'FILE OPS'
-	tt.fullsep()
-	for {funcName, path, contents} of lFileOps
-		switch funcName
-			when 'mkDir'
-				tt.data ['mkdir', path]
-			when 'barf'
-				tt.data ['barf', path]
-				if contents
-					for line of contents.split('\n')
-						tt.data ['', line.replace('\t', spaces(3))]
-	tt.fullsep()
-	return tt.asString()
 
 # ---------------------------------------------------------------------------
 

@@ -1,16 +1,14 @@
 # exec.lib.test.civet
 
-import {
-	isEmpty, nonEmpty,
-	} from 'datatypes'
+import {isEmpty, nonEmpty} from 'datatypes'
 import {DBG} from 'logger'
 import {o} from 'llutils'
-import {getCmdArgs} from 'utils'
-import {setDirTree} from 'fsys'
+import {getCmdArgs} from 'cmd-args'
+import {setDirTree} from 'pllfile'
 import {
-	mkstr, getCmdLine, getProcOpt, typeCheck,
-	execCmd, execCmdSync, cmdSucceeds,
-	TExecResult,
+	mkstr, getCmdLine,
+	execCmd, execCmdSync, getCmdOutput, getCmdOutputSync,
+	cmdSucceeds, TExecResult,
 	} from 'exec'
 import {
 	equal, like, succeeds, fails, truthy, falsy,
@@ -24,7 +22,7 @@ setup := (): void =>
 
 	DBG "setDirTree()"
 
-	setDirTree 'test/exec', """
+	setDirTree 'src/test/exec', """
 		bad.civet
 			str: string := undef
 
@@ -51,23 +49,10 @@ DBG "getCmdLine()"
 
 equal getCmdLine('dothis', ['-a', 'willy']), 'dothis -a willy'
 
-DBG "getProcOpt()"
-
-like getProcOpt(['-h'], true), {
-	args: ['-h']
-	stdout: 'piped'
-	stderr: 'piped'
-	}
-
-like getProcOpt(['-h'], false), {
-	stdout: 'inherit'
-	stderr: 'inherit'
-	}
-
 DBG "execCmd()", "type TExecResult"
 
 (() =>
-	hResult := await execCmd('echo', ["Hello"], o'collect')
+	hResult := await getCmdOutput 'echo', ["Hello"]
 	equal hResult.code, 0
 	equal hResult.stdout, "Hello\n"
 	)()
@@ -77,7 +62,22 @@ DBG "execCmdSync()", "type TExecResult"
 equal execCmdSync("echo", ["Hello"]).code, 0
 
 (() =>
-	hResult := execCmdSync('echo', ["Hello"], o'collect')
+	hResult := getCmdOutputSync 'echo', ["Hello"]
+	equal hResult.code, 0
+	equal hResult.stdout, "Hello\n"
+	)()
+
+DBG "getCmdOutput()"
+
+(() =>
+	hResult := await getCmdOutput 'echo', ["Hello"]
+	equal hResult.code, 0
+	)()
+
+DBG "getCmdOutputSync()"
+
+(() =>
+	hResult := getCmdOutputSync 'echo', ["Hello"]
 	equal hResult.code, 0
 	equal hResult.stdout, "Hello\n"
 	)()
@@ -86,8 +86,3 @@ DBG "cmdSucceeds(cmdName, lArgs, hOptions)"
 
 truthy cmdSucceeds('ls')
 falsy  cmdSucceeds('nosuchcmd')
-
-DBG "typeCheck(tsCode)"
-
-truthy isEmpty(typeCheck("let s: string = 'abc';"))
-truthy nonEmpty(typeCheck("let s: string = 42;"))

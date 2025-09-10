@@ -1,0 +1,305 @@
+# matcher.lib.test.civet
+
+import {
+	MatcherNodeKind,
+	MatchString, MatchRegExp,
+	MatchCharSet, MatchAnyChar,
+	MatchAll, MatchAny, MatchWhile, MatchRule,
+	matchString, $DIGITS, $LOWER, $UPPER,
+	digitMatcher, letterMatcher, wsMatcher,
+	} from '../lib/matcher.lib.ts'
+import {
+	getCmdArgs,
+	} from '../lib/utils.lib.ts'
+import {
+	equal, like, succeeds, fails, truthy, falsy,
+	isType, notType,
+	} from '../lib/unit-test.lib.ts'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+(() =>
+	ast := new MatchString('abc')
+
+	equal ast.match('abcx', 0), 3
+	equal ast.match('xabc', 1), 4
+
+	succeeds () => matchString(ast, 'abc')
+	fails    () => matchString(ast, 'xyz')
+	fails    () => matchString(ast, 'abcd')
+	)()
+
+(() =>
+	ast := new MatchRegExp('abc')
+
+	equal ast.match('abcx', 0), 3
+	equal ast.match('xabc', 1), 4
+	equal ast.match('abcxyz', 0), 3
+	equal ast.match('xyzabcxyz', 3), 6
+
+	succeeds () => matchString(ast, 'abc')
+	fails    () => matchString(ast, 'xyz')
+	fails    () => matchString(ast, 'abcd')
+	)()
+
+(() =>
+	ast := new MatchRegExp('a+b*c?')
+
+	equal ast.match('abcx', 0), 3
+	equal ast.match('aabcx', 0), 4
+	equal ast.match('acx', 0), 2
+	equal ast.match('a', 0), 1
+
+	succeeds () => matchString(ast, 'abc')
+	succeeds () => matchString(ast, 'a')
+	succeeds () => matchString(ast, 'aaabbbc')
+	succeeds () => matchString(ast, 'aaabbb')
+	fails    () => matchString(ast, 'xyz')
+	fails    () => matchString(ast, 'abcd')
+	)()
+
+(() =>
+	ast := new MatchCharSet('abc')
+
+	equal ast.match('abc', 0), 1
+	equal ast.match('bca', 0), 1
+
+	succeeds () => matchString(ast, 'a')
+	succeeds () => matchString(ast, 'b')
+	succeeds () => matchString(ast, 'c')
+	fails    () => matchString(ast, 'xyz')
+	fails    () => matchString(ast, 'ab')
+	)()
+
+(() =>
+	ast := new MatchAnyChar()
+
+	ast.match('abc', 0), 1
+	ast.match('cba', 0), 1
+	ast.match('abcde', 3), 4
+
+	succeeds () => matchString(ast, 'a')
+	succeeds () => matchString(ast, 'x')
+	fails    () => matchString(ast, 'xyz')
+	fails    () => matchString(ast, 'ab')
+	)()
+
+(() =>
+	ast := new MatchAll([
+		new MatchAnyChar()
+		new MatchCharSet('abc')
+		])
+
+	ast.match('abcde', 0), 2
+	ast.match('abcde', 1), 3
+	fails () => ast.match('abcde', 2)
+
+	succeeds () => matchString(ast, 'xa')
+	succeeds () => matchString(ast, 'xc')
+	succeeds () => matchString(ast, '0b')
+	fails    () => matchString(ast, 'xyz')
+	fails    () => matchString(ast, 'ad')
+	)()
+
+(() =>
+	ast := new MatchAll([
+		new MatchAnyChar()
+		new MatchCharSet('abc')
+		new MatchAnyChar()
+		])
+
+	ast.match('abcde', 0), 3
+	ast.match('abcde', 1), 4
+	fails () => ast.match('abcde', 2)
+
+	succeeds () => matchString(ast, 'xa3')
+	succeeds () => matchString(ast, 'xc3')
+	succeeds () => matchString(ast, '0b3')
+	fails    () => matchString(ast, 'xyz')
+	fails    () => matchString(ast, 'ad')
+	)()
+
+(() =>
+	ast := new MatchAll([
+		new MatchString('abc')
+		new MatchString('def')
+		])
+
+	equal ast.match('abcdefg', 0), 6
+	equal ast.match('xabcdefg', 1), 7
+
+	succeeds () => matchString(ast, 'abcdef')
+	fails    () => matchString(ast, 'abcde')
+	fails    () => matchString(ast, 'abcdefg')
+	)()
+
+(() =>
+	ast := new MatchAny([
+		new MatchString('a')
+		new MatchCharSet('xyz')
+		new MatchString('mmm')
+		])
+
+	equal ast.match('aymmmx', 0), 1
+	equal ast.match('axymmm', 1), 2
+	equal ast.match('xammm', 1), 2
+
+	succeeds () => matchString(ast, 'a')
+	succeeds () => matchString(ast, 'x')
+	succeeds () => matchString(ast, 'y')
+	succeeds () => matchString(ast, 'z')
+	succeeds () => matchString(ast, 'mmm')
+	fails    () => matchString(ast, 'aa')
+	fails    () => matchString(ast, 'xy')
+	fails    () => matchString(ast, 'mm')
+	)()
+
+(() =>
+	ast := new MatchWhile(
+		new MatchString('abc')
+		[1, 3]
+		)
+
+	ast.match('hello abc', 6), 9
+
+	succeeds () => matchString(ast, 'abc')
+	succeeds () => matchString(ast, 'abcabc')
+	succeeds () => matchString(ast, 'abcabcabc')
+	fails    () => matchString(ast, 'abcabcabcabc')
+	fails    () => matchString(ast, '')
+	fails    () => matchString(ast, 'xyz')
+	)()
+
+# --- include a separator
+
+(() =>
+	ast := new MatchWhile(
+		new MatchString('abc')
+		[1, 3]
+		true
+		new MatchString(',')     # a separator
+		)
+
+	ast.match('hello abc,abc,abc xyz', 6), 17
+
+	succeeds () => matchString(ast, 'abc')
+	succeeds () => matchString(ast, 'abc,abc')
+	succeeds () => matchString(ast, 'abc,abc,abc')
+	fails    () => matchString(ast, 'abc,abc,abc,abc')
+	fails    () => matchString(ast, '')
+	fails    () => matchString(ast, 'xyz')
+	)()
+
+(() =>
+	# --- Match numbers like '10.', '99.', etc.
+
+	hRules := {
+		'number': new MatchAll([
+			digitMatcher
+			digitMatcher
+			new MatchString('.')
+			])
+		'numberex': new MatchAll([
+			new MatchRule('number')
+			digitMatcher
+			])
+		}
+
+	ast := new MatchRule('number')
+
+	equal ast.match('xy 12.45', 3, hRules), 6
+
+	succeeds () => matchString(ast, '98.', hRules)
+	fails    () => matchString(ast, 'abc', hRules)
+	fails    () => matchString(ast, 'x99.', hRules)
+	fails    () => matchString(ast, '99.x', hRules)
+
+	# --- Test embedding one rule inside another
+	ast2 := new MatchRule('numberex')
+
+	ast2.match('abc 99.9 is OK', 4, hRules), 8
+
+	succeeds () => matchString(ast2, '35.3', hRules)
+	fails    () => matchString(ast2, ' 35.3', hRules)
+	fails    () => matchString(ast2, '35.3 ', hRules)
+	)()
+
+(() =>
+	# --- Test rules
+	#     here:
+	#        'number' is like 99.2
+	#        'identifier' is a sequence of letters
+	hRules := {
+		number: new MatchAll([
+			new MatchWhile(digitMatcher)
+			new MatchString('.')
+			digitMatcher
+			])
+		identifier: new MatchWhile(letterMatcher)
+		}
+
+	ast := new MatchAll([
+		new MatchRule('identifier')
+		wsMatcher
+		new MatchString(':=')
+		wsMatcher
+		new MatchRule('number')
+		])
+
+	succeeds () => matchString(ast, 'x:=999.3', hRules)
+	succeeds () => matchString(ast, 'x := 999.3', hRules)
+	succeeds () => matchString(ast, 'x \t := \t 999.3', hRules)
+	)()
+
+(() =>
+	# --- Test recursive rule
+
+	hRules := {
+		int: new MatchAll([
+			digitMatcher
+			new MatchWhile(digitMatcher)
+			])
+		ident: new MatchAll([
+			letterMatcher
+			new MatchWhile(letterMatcher)
+			])
+		cond: new MatchAll([
+			new MatchRule('ident')
+			wsMatcher
+			new MatchString('=')
+			wsMatcher
+			new MatchRule('int')
+			])
+		stmt: new MatchAny([
+			new MatchAll([
+				new MatchRule('ident')
+				wsMatcher
+				new MatchString(':=')
+				wsMatcher
+				new MatchRule('int')
+				])
+			new MatchAll([
+				new MatchString('if')
+				wsMatcher
+				new MatchRule('cond')
+				wsMatcher
+				new MatchString('then')
+				wsMatcher
+				new MatchRule('stmt')
+				])
+			])
+		}
+
+	succeeds () => matchString(hRules.int, '22')
+	fails    () => matchString(hRules.int, '')
+	succeeds () => matchString(hRules.ident, 'Rule')
+	fails    () => matchString(hRules.ident, '')
+	succeeds () => matchString(hRules.stmt, 'x := 42', hRules)
+
+	succeeds () => matchString(hRules.cond, 'x = 13', hRules)
+	succeeds () => matchString(hRules.stmt, 'y := 42', hRules)
+	succeeds () => matchString(hRules.stmt, 'if x = 13 then y := 42', hRules)
+
+	)()

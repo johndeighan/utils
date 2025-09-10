@@ -15,15 +15,12 @@ import {
 	isEmpty, nonEmpty, hash,
 	isString, isNonEmptyString, isInteger,
 	} from 'datatypes'
+import {OL, ML, rpad, centered} from 'llutils'
+import {DBG, LOG, WARN, ERR, INDENT, UNDENT} from 'logger'
 import {
-	hasKey, OL, ML, rpad, centered,
-	} from 'llutils'
-import {
-	isFile, mkpath, fileExt, withExt, normalizePath, relpath,
+	isFile, mkpath, fileExt, withExt,
+	normalizePath, relpath,
 	} from 'fsys'
-import {
-	DBG, LOG, WARN, ERR, INDENT, UNDENT,
-	} from 'logger'
 
 install()     # from source-map-support
 width := 40

@@ -3,20 +3,41 @@
 import {SourceFile} from 'npm:typescript'
 
 import {
-	undef, defined, notdefined, hash, assert, isHash,
+	undef, defined, notdefined, hash, assert,
+	isString, isHash,
 	} from 'datatypes'
-import {
-	OL, ML, getOptions, o, require,
-	} from 'llutils'
-import {
-	DBG, DBGVALUE,
-	} from 'logger'
+import {OL, ML, getOptions, o} from 'llutils'
+import {DBG, DBGVALUE} from 'logger'
 import {
 	isFile, fileExt, withExt, slurp, barf, barfTempFile,
-	parsePath,
+	parsePath, findSrcFile,
 	} from 'fsys'
-import {execCmdSync} from 'exec'
+import {
+	TCmdDesc, TExecResult, execCmdSync, execCmd, execCmds,
+	} from 'exec'
 import {ts2ast} from 'typescript'
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export compileCivetFiles := (
+		lNames: string[]
+		purpose: string = 'lib'
+		): TExecResult[] =>
+
+	lCmds: TCmdDesc[] := []
+	for name of lNames
+		path := findSrcFile "#{name}.#{purpose}.civet"
+		assert defined(path), "No such file: #{OL(path)}"
+		if defined(path)
+			lCmds.push ['civet', [
+				'--inline-map',
+				'-o', '.ts',
+				'-c', path
+				]]
+
+	lResults := await execCmds lCmds
+	return lResults
 
 # ---------------------------------------------------------------------------
 
@@ -55,43 +76,6 @@ export civet2tsFile := (
 
 # ---------------------------------------------------------------------------
 
-export civet2jsFile := (
-		path: string
-		jsPath: string = withExt(path, '.js')
-		hOptions: hash = {}
-		): string =>
-
-	assert isFile(path), "No such file: #{OL(path)} (civet2jsFile)"
-	assert (fileExt(path) == '.civet'), "Not a civet file: #{OL(path)}"
-
-	type opt = {
-		inlineMap: boolean
-		}
-	{inlineMap} := getOptions<opt> hOptions, {
-		inlineMap: true
-		}
-	if inlineMap
-		execCmdSync 'civet', [
-			'--js'
-			'--inline-map',
-			'-o',
-			jsPath,
-			'-c',
-			path
-			]
-	else
-		execCmdSync 'civet', [
-			'--js'
-			'-o',
-			jsPath,
-			'-c',
-			path
-			]
-	assert isFile(jsPath), "File not created: #{OL(jsPath)}"
-	return jsPath
-
-# ---------------------------------------------------------------------------
-
 export civet2ts := (civetCode: string): string =>
 
 	tempFilePath := barfTempFile civetCode
@@ -101,17 +85,6 @@ export civet2ts := (civetCode: string): string =>
 
 # ---------------------------------------------------------------------------
 
-export civet2js := (civetCode: string): string =>
-
-	tempFilePath := Deno.makeTempFileSync {suffix: '.civet'}
-	jsFilePath := withExt tempFilePath, '.js'
-	barf tempFilePath, civetCode
-	civet2jsFile tempFilePath, jsFilePath, o'!inlineMap'
-	return slurp jsFilePath
-
-# ---------------------------------------------------------------------------
-
 export civet2ast := (civetCode: string): SourceFile =>
 
-	tsCode := civet2ts civetCode
-	return ts2ast(tsCode)
+	return ts2ast(civet2ts(civetCode))

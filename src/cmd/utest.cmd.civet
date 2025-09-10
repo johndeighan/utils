@@ -2,20 +2,21 @@
 
 import {undef, notdefined, assert} from 'datatypes'
 import {OL} from 'llutils'
-import {getCmdArgs} from 'utils'
+import {getCmdArgs} from 'cmd-args'
 import {relpath} from 'fsys'
 import {DBG, LOG, WARN, ERR} from 'logger'
 import {
 	runUnitTestsFor, runAllUnitTests,
-	} from 'compile'
+	} from 'automate'
 
-{_, w: watch} := getCmdArgs {
+[hArgs, lNonOptions] := getCmdArgs {
 	w: {type: 'boolean'}
 	}
+{watch} := hArgs
 
 # ---------------------------------------------------------------------------
 
-if (_.length == 0)
+if (lNonOptions.length == 0)
 	DBG "Running all unit tests"
 	for {stub, success, msg, code} of runAllUnitTests()
 		if not success
@@ -24,8 +25,8 @@ if (_.length == 0)
 			else
 				ERR "UNIT TEST FAILED: #{stub} - #{msg}"
 else
-	DBG "Running #{_.length} unit tests"
-	for stub of _
+	DBG "Running #{lNonOptions.length} unit tests"
+	for stub of lNonOptions
 		# --- NOTE: runUnitTestsFor() ensures that lib/cmd file
 		#           and unit test files are compiled
 		for {success} of runUnitTestsFor stub

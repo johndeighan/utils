@@ -4,7 +4,7 @@ import {LogRecord} from "@std/log/logger"
 import {LogLevels} from "@std/log/levels"
 
 import {DBG} from 'logger'
-import {getCmdArgs} from 'utils'
+import {getCmdArgs} from 'cmd-args'
 import {
 	getConsoleLog, clearConsoleLog,
 	getFormatter, indentLog, undentLog,

@@ -16,16 +16,16 @@ import {
 	getOptions, OL, pass, blockToArray,
 	} from 'llutils'
 import {
-	barf,
-	} from 'fsys'
-import {
 	getLogLevel, pushLogLevel, popLogLevel,
 	DBG, LOG, WARN, ERR, LOGVALUE,
-	INDENT, UNDENT,
+	INDENT, UNDENT, DBGVALUE, DBGLABELED,
 	} from 'logger'
+import {
+	barf,
+	} from 'fsys'
 
 /**
- * @module exec-utils - utilities for executing external code
+ * @module exec - utilities for executing external code
  */
 
 textDecoder := new TextDecoder()
@@ -36,17 +36,14 @@ textDecoder := new TextDecoder()
  * convert ArrayBuffer, Int8Array, etc. to a string
  */
 
-export mkstr := (item: any): string =>
+export mkstr := (item: (string | BufferSource)?): string =>
 
 	if isString(item)
 		return stripAnsiCode(item)
 	else if isArray(item)
 		return stripAnsiCode(item.join(''))
-	else if (item instanceof ArrayBuffer)
+	else
 		return stripAnsiCode(textDecoder.decode(item))
-	else if (item instanceof Int8Array)
-		return stripAnsiCode(textDecoder.decode(item))
-	return ''
 
 # ---------------------------------------------------------------------------
 
@@ -72,42 +69,9 @@ export type TExecResult = {
 	success: boolean
 	code: number
 	signal: string?
-	stdout: string?
-	stderr: string?
+	stdout?: string
+	stderr?: string
 	}
-
-# ---------------------------------------------------------------------------
-
-/**
- * get options to pass to Deno.Command constructor
- * 2nd argument determines whether stdout and stderr are
- * sent to parent process's stdout and stderr or are
- * collected to be returned to the caller
- */
-
-export getProcOpt := (
-	lArgs: string[],
-	collect: boolean
-	): Deno.CommandOptions =>
-
-	hEnv: hash := {
-		DEFAULT_LOGGER: getLogLevel()
-		}
-
-	return if collect
-		{
-			args: lArgs,
-			env: {DEFAULT_LOGGER: getLogLevel()}
-			stdout: 'piped'
-			stderr: 'piped'
-			}
-	else
-		{
-			args: lArgs,
-			env: {DEFAULT_LOGGER: getLogLevel()}
-			stdout: 'inherit'
-			stderr: 'inherit'
-			}
 
 # ---------------------------------------------------------------------------
 # ASYNC
@@ -115,68 +79,110 @@ export getProcOpt := (
 export execCmd := (
 	cmdName: string,
 	lArgs: string[] = [],
-	hOptions: hash = {}
 	): TExecResult =>
 
-	type opt = {
-		collect: boolean
-		nolog: boolean
-		}
-	{collect, nolog} := getOptions<opt> hOptions, {
-		collect: false
-		nolog: false
-		}
-	if nolog
-		pushLogLevel 'silent'
-
-	DBG "EXEC: #{OL(getCmdLine(cmdName, lArgs))}"
+	DBGLABELED "EXEC", "#{OL(getCmdLine(cmdName, lArgs))}"
 	DBG INDENT
-	hProcOpt := getProcOpt(lArgs, collect)
-	child := new Deno.Command(cmdName, hProcOpt)
+	child := new Deno.Command(cmdName, {
+		args: lArgs,
+		env: {DEFAULT_LOGGER: getLogLevel()}
+		stdout: 'inherit'
+		stderr: 'inherit'
+		})
+	{success, code, signal} := await child.output()
 	DBG UNDENT
-	{success, code, signal, stdout, stderr} := await child.output();
-	if nolog
-		popLogLevel()
 	return {
 		success
 		code
 		signal: signal || undef
-		stdout: collect ? mkstr(stdout) : undef
-		stderr: collect ? mkstr(stderr) : undef
 		}
+
+# ---------------------------------------------------------------------------
+
+export type TCmdDesc = [string, string[]]
+
+export execCmds := (
+		lCmds: TCmdDesc[]
+		): TExecResult[] =>
+
+	lPromises := for [cmdName, lArgs] of lCmds
+		execCmd cmdName, lArgs
+
+	lResults := await Promise.all(lPromises)
+	return lResults
 
 # ---------------------------------------------------------------------------
 
 export execCmdSync := (
 	cmdName: string,
 	lArgs: string[] = [],
-	hOptions: hash = {}
 	): TExecResult =>
 
-	type opt = {
-		collect: boolean
-		nolog: boolean
-		}
-	{collect, nolog} := getOptions<opt> hOptions, {
-		collect: false
-		nolog: false
-		}
-	if nolog
-		pushLogLevel 'silent'
-	DBG "EXEC SYNC: #{OL(getCmdLine(cmdName, lArgs))}"
+	DBGLABELED "EXEC SYNC", "#{OL(getCmdLine(cmdName, lArgs))}"
 	DBG INDENT
-	hProcOpt := getProcOpt(lArgs, collect)
-	child := new Deno.Command(cmdName, hProcOpt)
+	child := new Deno.Command(cmdName, {
+		args: lArgs,
+		env: {DEFAULT_LOGGER: getLogLevel()}
+		stdout: 'inherit'
+		stderr: 'inherit'
+		})
+	{success, code, signal} := child.outputSync()
 	DBG UNDENT
-	{success, code, signal, stdout, stderr} := child.outputSync()
-	if nolog
-		popLogLevel()
 	return {
 		success
 		code
 		signal: signal || undef
-		stdout: collect ? mkstr(stdout) : undef
-		stderr: collect ? mkstr(stderr) : undef
+		}
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export getCmdOutput := (
+	cmdName: string,
+	lArgs: string[] = [],
+	): TExecResult =>
+
+	DBGLABELED "EXEC(collect)", "#{OL(getCmdLine(cmdName, lArgs))}"
+	DBG INDENT
+	child := new Deno.Command(cmdName, {
+		args: lArgs,
+		env: {DEFAULT_LOGGER: getLogLevel()}
+		stdout: 'piped'
+		stderr: 'piped'
+		})
+	{success, code, signal, stdout, stderr} := await child.output()
+	DBG UNDENT
+	return {
+		success
+		code
+		signal: signal || undef
+		stdout: mkstr(stdout)
+		stderr: mkstr(stderr)
+		}
+
+# ---------------------------------------------------------------------------
+
+export getCmdOutputSync := (
+	cmdName: string,
+	lArgs: string[] = [],
+	): TExecResult =>
+
+	DBGLABELED "EXEC SYNC(collect)", "#{OL(getCmdLine(cmdName, lArgs))}"
+	DBG INDENT
+	child := new Deno.Command(cmdName, {
+		args: lArgs,
+		env: {DEFAULT_LOGGER: getLogLevel()}
+		stdout: 'piped'
+		stderr: 'piped'
+		})
+	{success, code, signal, stdout, stderr} := child.outputSync()
+	DBG UNDENT
+	return {
+		success
+		code
+		signal: signal || undef
+		stdout: mkstr(stdout)
+		stderr: mkstr(stderr)
 		}
 
 # ---------------------------------------------------------------------------
@@ -194,52 +200,13 @@ export cmdSucceeds := (
 		quiet: true
 		}
 	try
-		h := quiet ? {collect: true, nolog: true} : {}
-		execCmdSync cmdName, lArgs, h
+		if not quiet
+			pushLogLevel 'silent'
+		getCmdOutputSync cmdName, lArgs
+		if not quiet
+			popLogLevel()
 		return true
 	catch err
 		return false
-
-# ---------------------------------------------------------------------------
-
-getErrorMsgs := (stderr: string?): string[] =>
-
-	if notdefined(stderr)
-		return ['Unknown error']
-	else
-		lMsgs := (
-			for line of blockToArray(stderr)
-				if lMatches := line.match(/// \[ ERROR \] : \s* (.*)$///)
-					lMatches[1]
-				else
-					undef
-			).filter((x) => defined(x))
-		if (lMsgs.length == 0)
-			return ['Unknown error']
-		else
-			return lMsgs
-
-# ---------------------------------------------------------------------------
-
-/**
- * type checks TypeScript code, and returns
- * an array of diagnostic messages if errors are found
- */
-
-export typeCheck := (
-		tsCode: string
-		): string[]? =>
-
-	# --- We must place the TypeScript file at the project root
-	#     so that paths gotten from .symbols resolve correctly
-
-	path := "./_typecheck_.ts"
-	barf path, tsCode
-	hResult := execCmdSync 'deno', ['check', path], {collect: true}
-	{success, code, stdout, stderr} := hResult
-	if success && (code == 0)
-		return []
-	else
-		return getErrorMsgs(stderr)
 
 # ---------------------------------------------------------------------------

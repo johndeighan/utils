@@ -1,0 +1,135 @@
+# walker.lib.test.civet
+
+import {undef, hash, isArray, isHash} from 'datatypes'
+import {hasKeys} from 'llutils'
+import {DBG, setLogLevel} from 'logger'
+import {getCmdArgs} from 'cmd-args'
+import {
+	TNodeInfo, Walker,
+	} from 'walker'
+import {
+	equal, truthy, falsy, isType, notType,
+	} from 'unit-test'
+
+getCmdArgs()
+setLogLevel 'debug'
+
+# ---------------------------------------------------------------------------
+
+DBG "type TNodeInfo"
+
+isType  'TNodeInfo<number>', {node: 42, level: 1,   parent: undef}
+notType 'TNodeInfo<number>', {node: 42, level: 'a', parent: undef}
+
+# ---------------------------------------------------------------------------
+
+DBG "class Walker"
+
+(() =>
+	# --- Try a very basic hash type
+	#     A node is a hash with keys 'name' and 'gender'
+
+	type TPerson = {
+		name: string
+		gender: 'male' | 'female'
+		}
+
+	walker := new Walker<TPerson>()
+	walker.useNode = (x: unknown): boolean =>
+			return hasKeys(x, 'name', 'gender')
+
+	# --- Walk a single node
+	lStrings := for h: TNodeInfo<TPerson> of walker.walk({
+			name: 'John'
+			gender: 'male'
+			})
+		"#{h.node.name} is #{h.node.gender}"
+	equal lStrings, ['John is male']
+
+	# --- Walk an array
+	lStrings2 := for h: TNodeInfo<TPerson> of walker.walk([
+			{
+				name: 'John'
+				gender: 'male'
+				}
+			{
+				name: 'Julie'
+				gender: 'female'
+				}
+			])
+		"#{h.node.name} is #{h.node.gender}"
+	equal lStrings2, ['John is male', 'Julie is female']
+
+	# --- Walk an object
+	lStrings3 := for h: TNodeInfo<TPerson> of walker.walk({
+			first: {
+				name: 'John'
+				gender: 'male'
+				}
+			second: {
+				name: 'Julie'
+				gender: 'female'
+				}
+			})
+		"#{h.index}: #{h.node.name} is #{h.node.gender}"
+	equal lStrings3, [
+		'first: John is male',
+		'second: Julie is female'
+		]
+
+	h := {
+		friends: [
+			{name: 'John Bowling', gender: 'male'}
+			{name: 'Julie Booker', gender: 'female'}
+			]
+		name: 'John Deighan'
+		gender: 'male'
+		address: {
+			street: '1749 Main St.'
+			city: 'Blacksburg'
+			state: 'VA'
+			}
+		} as const
+
+	lNames := for h: TNodeInfo<TPerson> of walker.walk(h)
+		h.node.name
+	equal lNames, ['John Deighan', 'John Bowling', 'Julie Booker']
+
+	# --- put it in an array
+	h2 := [{
+		friends: [
+			{name: 'John Bowling', gender: 'male'}
+			{name: 'Julie Booker', gender: 'female'}
+			]
+		name: 'John Deighan'
+		gender: 'male'
+		address: {
+			street: '1749 Main St.'
+			city: 'Blacksburg'
+			state: 'VA'
+			}
+		}] as const
+
+	lNames2 := for h: TNodeInfo<TPerson> of walker.walk(h)
+		h.node.name
+	equal lNames2, ['John Deighan', 'John Bowling', 'Julie Booker']
+
+	# --- put it in a hash
+	h3 := { stuff: {
+		friends: [
+			{name: 'John Bowling', gender: 'male'}
+			{name: 'Julie Booker', gender: 'female'}
+			]
+		name: 'John Deighan'
+		gender: 'male'
+		address: {
+			street: '1749 Main St.'
+			city: 'Blacksburg'
+			state: 'VA'
+			}
+		}} as const
+
+	lNames3 := for h: TNodeInfo<TPerson> of walker.walk(h)
+		h.node.name
+	equal lNames3, ['John Deighan', 'John Bowling', 'Julie Booker']
+	)()

@@ -3,9 +3,9 @@
 import {undef} from 'datatypes'
 import {DBG} from 'logger'
 import {o} from 'llutils'
-import {getCmdArgs} from 'utils'
+import {getCmdArgs} from 'cmd-args'
 import {TextTable} from 'text-table'
-import {equal, like} from 'unit-test'
+import {equal, like, objListLike} from 'unit-test'
 
 getCmdArgs()
 
@@ -107,7 +107,7 @@ DBG "class TextTable"
 	table.data    [undef, 30, 40]
 	table.data    [undef, 130, 40]
 
-	like table.lRows, [
+	objListLike table.lRows, [
 		{
 			opcode: 'labels'
 			lRow: ['Coffee', 'Jan', 'Feb']
@@ -469,7 +469,7 @@ DBG "class TextTable"
 	table.fullsep '='
 	table.totals()
 
-	equal table.asString(o'hide=1'), """
+	equal table.asString(o'lHide=1'), """
 		  My Expenses
 		---------------
 		          Feb
@@ -484,7 +484,7 @@ DBG "class TextTable"
 		         140.00
 		"""
 
-	equal table.asString(o'hide=Jan'), """
+	equal table.asString(o'lHide=Jan'), """
 		  My Expenses
 		---------------
 		          Feb
@@ -498,7 +498,7 @@ DBG "class TextTable"
 		===============
 		         140.00
 		"""
-	equal table.asString(o'hide=1,2'), """
+	equal table.asString(o'lHide=1,2'), """
 		My Expenses
 		--------
 
@@ -513,7 +513,7 @@ DBG "class TextTable"
 
 		"""
 
-	equal table.asString(o'hide=Jan,Feb'), """
+	equal table.asString(o'lHide=Jan,Feb'), """
 		My Expenses
 		--------
 

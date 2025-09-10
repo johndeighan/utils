@@ -15,7 +15,8 @@ import {
 # ---------------------------------------------------------------------------
 
 export type TRuleFunc = (str: string, pos: number) => number
-export isRuleFunc := (x: any): x is TRuleFunc =>
+
+export isRuleFunc := (x: unknown): x is TRuleFunc =>
 	return (typeof x == 'function')
 
 export class Rule

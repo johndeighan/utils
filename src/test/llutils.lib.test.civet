@@ -1,7 +1,7 @@
 # llutils.lib.test.civet
 
 import {LOG, DBG} from 'logger'
-import {getCmdArgs} from 'utils'
+import {getCmdArgs} from 'cmd-args'
 import {
 	deepEqual, undef, functionDef, isArray, isHash,
 	} from 'datatypes'
@@ -9,7 +9,7 @@ import {
 	sinceLoad, sinceLoadStr,
 	throwsError, pass, truncStr,
 	stringify, OL, ML, o, s, t,
-	strToHash, addDefaults, getOptions,
+	strToHash, getOptions,
 	removeEmptyKeys, keys, hasKey, hasKeys, missingKeys,
 	merge, hit, sleep, spaces, tabs,
 	rtrim, countChars, wsSplit, words,
@@ -197,28 +197,34 @@ DBG "t()"
 equal t"   abc", "\tabc"
 equal t"      abc", "\t\tabc"
 
-DBG "addDefaults()"
-
-equal addDefaults({debug: true}, {force: true}), {
-	debug: true
-	force: true
-	}
-
 DBG "getOptions()"
 
-type opt = {
-	debug: boolean
-	}
-equal getOptions<opt>({debug: true}, {force: false}), {
-	debug: true
-	force: false
-	}
-equal getOptions<opt>(o'debug'), {debug: true}
-equal getOptions<opt>(o'!debug'), {debug: false}
-equal getOptions<opt>(o'debug', {force: false}), {
-	debug: true
-	force: false
-	}
+(() =>
+	type opt = {
+		debug: boolean
+		force: boolean
+		}
+	hDefs: opt := {
+		debug: false
+		force: false
+		}
+	equal getOptions<opt>({debug: true}, hDefs), {
+		debug: true
+		force: false
+		}
+	equal getOptions<opt>(o'debug', hDefs), {
+		debug: true
+		force: false
+		}
+	equal getOptions<opt>(o'!debug', hDefs), {
+		debug: false
+		force: false
+		}
+	equal getOptions<opt>(o'debug', hDefs), {
+		debug: true
+		force: false
+		}
+	)()
 
 DBG "removeEmptyKeys()"
 
@@ -227,22 +233,15 @@ equal removeEmptyKeys({a: 1, b: undef}), {a: 1}
 DBG "keys()"
 
 equal keys({a:1, b:2, c:3}), ['a','b','c']
-equal keys({a:1, b:2, c:3}, {except: 'b'}), ['a','c']
-equal keys({a:1, b:2, c:3}, o'except=b'), ['a','c']
+equal keys({a:1, b:2, c:3}, {lExcept: 'b'}), ['a','c']
+equal keys({a:1, b:2, c:3}, o'lExcept=b'), ['a','c']
 
-DBG "hasKey()"
+DBG "hasKey(), hasKeys()"
 
-truthy hasKey({a:1, b:2}, 'b')
-truthy hasKey({a:1, b:2}, 'a', 'b')
-falsy  hasKey({a:1, b:2}, 'c')
-falsy  hasKey({a:1, b:2}, 'a', 'c')
-
-DBG "hasKeys()"   # --- a synonym for hasKey()
-
-truthy hasKeys({a:1, b:2}, 'b')
+truthy hasKey({a:1, b:2}, 'a')
 truthy hasKeys({a:1, b:2}, 'a', 'b')
-falsy  hasKeys({a:1, b:2}, 'c')
-falsy  hasKeys({a:1, b:2}, 'a', 'c')
+falsy  hasKey({a:1, b:2}, 'x')
+falsy  hasKeys({a:1, b:2}, 'a', 'x')
 
 DBG "missingKeys()"
 

@@ -1,5 +1,7 @@
 # logger.lib.test.civet
 
+import {stripAnsiCode} from "@std/fmt/colors"
+
 import {
 	undef, defined, notdefined,
 	} from 'datatypes'
@@ -29,7 +31,7 @@ equal getLog('console'), ""
 	LOG "log this"
 	WARN "warn this"
 	ERR "error this"
-	equal getConsoleLog(), """
+	equal stripAnsiCode(getConsoleLog()), """
 		log this
 		warn this
 		error this

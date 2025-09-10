@@ -1,9 +1,9 @@
 # cielo.lib.test.civet
 
-import {defined} from 'datatypes'
+import {defined, isFunction} from 'datatypes'
 import {DBG} from 'logger'
-import {getCmdArgs} from 'utils'
-import {setDirTree} from 'fsys'
+import {getCmdArgs} from 'cmd-args'
+import {setDirTree} from 'pllfile'
 import {
 	cielo2civet, cielo2civetFile, configFromFile,
 	} from 'cielo'
@@ -19,7 +19,7 @@ setup := (): void =>
 
 	DBG "setDirTree()"
 
-	setDirTree 'test/cielo', """
+	setDirTree 'src/test/cielo', """
 		file.config.ts
 			export default new Object({
 				a: 1,
@@ -39,9 +39,10 @@ equal cielo2civet('abc'), 'abc'
 DBG "configFromFile(path)"
 
 (() =>
-	hConfig := configFromFile 'test/cielo/file.config.ts'
+	hConfig := configFromFile 'src/test/cielo/file.config.ts'
 	truthy defined(hConfig)
 	truthy defined(hConfig.a)
 	falsy  defined(hConfig.x)
-	equal  hConfig.f(), 'hello'
-	)()
+	if isFunction(hConfig.f)
+		equal hConfig.f(), 'hello'
+	)

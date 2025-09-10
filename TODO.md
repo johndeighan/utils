@@ -1,6 +1,28 @@
 to do
 
-Search all libs for use of type any
+work on walker lib
+ - allow specifying a class as a string
+
+use 'runtemp typescript' to discover how to find all
+exports and imports in a *.ts file
+
+Find a way to display structures while ignoring/only using
+particular keys
+
+write more unit tests for base-utils.lib.civet
+
+in temp.civet, implement an expander that
+expands all fields, truncating long ones
+
+in automate.lib.civet, work on functions
+compileFile() and runUnitTestsFor()
+
+add a function to analyze.lib.civet that
+returns a list of all library names
+in dependency order
+
+Get configFromFile() in cielo.lib.civet to
+accept a generic type to return
 
 continue compiling libs
 

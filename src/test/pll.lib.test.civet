@@ -4,8 +4,9 @@ import {undef} from 'datatypes'
 import {DBG} from 'logger'
 import {allLinesInBlock} from 'llutils'
 import {
-	TPLLToken, TTokenGenerator, allTokensIn,
-	allTokensInBlock, tokenTable,
+	TPLLToken, tokenWith, TTokenGenerator,
+	allTokensIn, allTokensInBlock, tokenTable,
+	tkIndent, tkUndent, tkEOF,
 	} from 'pll'
 import {
 	equal, iterEqual, iterLike, isType,
@@ -18,6 +19,13 @@ DBG "type TPLLToken"
 isType 'TPLLToken', {kind: 'xxx', str: 'yyy'}
 isType 'TPLLToken', {kind: 'xxx', str: 'yyy', value: undef}
 isType 'TPLLToken', {kind: 'xxx', str: 'yyy', value: 42}
+
+DBG "tokenWith"
+
+equal tokenWith(tkIndent, '\t'), {
+	kind: 'indent'
+	str: '\t'
+	}
 
 DBG "type TTokenGenerator"
 

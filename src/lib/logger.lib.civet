@@ -7,6 +7,7 @@ import {LogLevels} from "@std/log/levels"
 import {
 	ConsoleHandler, FileHandler, setup, getLogger, LogRecord,
 	} from '@std/log'
+import {blue, black} from "@std/fmt/colors"
 
 import {
 	getPrefix,
@@ -164,7 +165,7 @@ export UNDENT := Symbol('undent')
 
 # ---------------------------------------------------------------------------
 
-output := (level: TLogLevel, lItems: any[]): void =>
+output := (level: TLogLevel, lItems: unknown[]): void =>
 
 	if isInactiveLevel(level)
 		return
@@ -181,7 +182,7 @@ output := (level: TLogLevel, lItems: any[]): void =>
 				if nonEmpty(str)
 					switch level
 						when 'debug': logger.debug str
-						when 'info':  logger.info str
+						when 'info':  logger.info black(str)
 						when 'warn':  logger.warn str
 						when 'error': logger.error str
 						else pass()
@@ -190,32 +191,44 @@ output := (level: TLogLevel, lItems: any[]): void =>
 
 # ---------------------------------------------------------------------------
 
-export DBG  := (...lItems: any[]): void =>
+export DBG  := (...lItems: unknown[]): void =>
 	output 'debug', lItems
 	return
 
-export LOG  := (...lItems: any[]): void =>
+export LOG  := (...lItems: unknown[]): void =>
 	output 'info', lItems
 	return
 
-export WARN := (...lItems: any[]): void =>
+export WARN := (...lItems: unknown[]): void =>
 	output 'warn', lItems
 	return
 
-export ERR  := (...lItems: any[]): void =>
+export ERR  := (...lItems: unknown[]): void =>
 	output 'error', lItems
 	return
 
-export LOGVALUE := (label: string, value: any): void =>
+export LOGVALUE := (label: string, value: unknown): void =>
 	if isInactiveLevel('info')
 		return
 	LOG "#{label} = #{ML(value)}"
 	return
 
-export DBGVALUE := (label: string, value: any): void =>
+export LOGLABELED := (label: string, value: unknown): void =>
+	if isInactiveLevel('info')
+		return
+	LOG blue(label) + " = #{ML(value)}"
+	return
+
+export DBGVALUE := (label: string, value: unknown): void =>
 	if isInactiveLevel('debug')
 		return
-	DBG "#{label} = #{ML(value)}"
+	DBG blue(label) + " = #{ML(value)}"
+	return
+
+export DBGLABELED := (label: string, value: unknown): void =>
+	if isInactiveLevel('debug')
+		return
+	DBG blue(label) + ": #{ML(value)}"
 	return
 
 # ---------------------------------------------------------------------------

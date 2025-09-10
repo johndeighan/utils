@@ -1,38 +1,19 @@
-export type TDefined = {}
-export defined := (x: unknown): x is TDefined =>
-	return (x != undefined) && (x != null)
+import {flag} from 'base-utils'
+import {undef, hash} from 'datatypes'
+import {o} from 'llutils'
+import {Walker} from 'walker'
+import {ts2ast, pprintAst} from 'typescript'
+import {civet2ast} from 'civet'
+import {toNice} from 'nice'
+import {checkType} from 'unit-test'
 
-export interface hash
-	[key: string | symbol]: any
+# ----------------------------------------------------------------------------
 
-# ---------------------------------------------------------------------------
+console.log "...testing"
 
-export getOptions := <T extends hash>(
-		hOptions: hash={},
-		hDefaults: T
-		): T =>
-
-	return {...hDefaults, ...hOptions}
-
-# ---------------------------------------------------------------------------
-
-hOptions := {
-	anything: 42
+h := {
+	node: 42
+	level: 1
+	parent: undef
 	}
-
-# --- in my function that uses getOptions() ---
-
-type opt = {
-	oneLine: boolean
-	compress: boolean
-	trunc: number
-	lExcept: string[]
-	}
-h := getOptions<opt> hOptions, {
-	oneLine: true
-	compress: true
-	trunc: 0
-	lExcept: ['dont']
-	}
-
-console.dir h
+checkType h, "TNodeInfo<number>"

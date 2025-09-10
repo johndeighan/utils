@@ -1,0 +1,245 @@
+# pllfile.lib.civet
+
+import {
+	undef, defined, notdefined, assert, croak, isEmpty, nonEmpty,
+	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
+	isArray, isArrayOfStrings, isHash, isObject, isRegExp,
+	integer, hash, voidFunc,
+	} from 'datatypes'
+import {
+	OL, ML, getOptions, removeEmptyKeys, pass,
+	spaces, sinceLoadStr, sleep, relpath,
+	} from 'llutils'
+import {indented} from 'indent'
+import {
+	pushLogLevel, popLogLevel, LOG, DBG, ERR,
+	INDENT, UNDENT, DBGVALUE, DBGLABELED,
+	} from 'logger'
+import {TextTable} from 'text-table'
+import {slurp, barf, mkDir, getPathType} from 'fsys'
+import {
+	TPLLToken, isKind, allTokensInBlock, tokenTable,
+	} from 'pll'
+
+# ---------------------------------------------------------------------------
+
+export allTokensInFile := (
+		path: string
+		): Generator<TPLLToken, void, void> ->
+
+	for tok of allTokensInBlock(slurp(path))
+		yield tok
+	return
+
+# ---------------------------------------------------------------------------
+# --- Uses a recursive descent parser
+
+export type TFileOp = {
+	funcName: 'mkDir' | 'barf'
+	path: string
+	contents?: string
+	}
+
+export setDirTree := (
+		currentDir: string,
+		contents: string,
+		hOptions: hash = {}
+		): TFileOp[] =>
+
+	# --- Extract options
+	type opt = {
+		debug: boolean
+		clear: boolean
+		scaffold: boolean
+		}
+	{debug, clear, scaffold} := getOptions<opt> hOptions, {
+		debug: false
+		clear: false
+		scaffold: false
+		}
+
+	if not debug
+		pushLogLevel 'info'
+	let level: integer = 0
+
+	# --- return calls made
+	lFileOps: TFileOp[] := []
+
+	# ..........................................................
+
+	dbgEnter := (name: string, ...lArgs: unknown[]) =>
+		strArgs := (
+			for arg of lArgs
+				OL(arg)
+			).join(', ')
+		DBG "#{'   '.repeat(level)}-> #{name}(#{strArgs})"
+		level += 1
+		return
+
+	# ..........................................................
+
+	dbgExit := (name: string, ...lArgs: unknown[]) =>
+		strArgs := (
+			for arg of lArgs
+				OL(arg)
+			).join(', ')
+		level -= 1
+		DBG "#{'   '.repeat(level)}<- #{name}(#{strArgs})"
+		return
+
+	# ..........................................................
+
+	dbg := (line: string) =>
+		DBG "#{'   '.repeat(level)}-- #{OL(line)}"
+		return
+
+	# ..........................................................
+
+	doMakeDir := (
+			dirPath: string
+			): void =>
+
+		path := relpath(dirPath)
+		lFileOps.push {
+			funcName: 'mkDir'
+			path
+			}
+		if not scaffold
+			mkDir path, clear
+		return
+
+	# ..........................................................
+
+	doBarf := (
+			filePath: string,
+			contents: string
+			): void =>
+
+		path := relpath(filePath)
+		lFileOps.push {
+			funcName: "barf"
+			path
+			contents
+			}
+		if not scaffold
+			barf path, contents
+		return
+
+	# ..........................................................
+
+	fileHandler := (
+			filePath: string,
+			lTokens: TPLLToken[]
+			): void =>
+
+		dbgEnter 'fileHandler', filePath
+		contents := if isKind(lTokens[0], 'indent')
+			lTokens.shift()
+			lLines := []
+			let level = 0
+			# @ts-ignore
+			while (level > 0) || not isKind(lTokens[0], 'undent')
+				tok := lTokens.shift()
+				if notdefined(tok)
+					croak "No 'undent' in clock"
+				else
+					switch tok.kind
+						when 'indent'
+							level += 1
+						when 'undent'
+							level -= 1
+							assert (level >= 0), "Negative level in setDirTree()"
+						else
+							if defined(tok.str)
+								line := indented(tok.str, level)
+								dbg line
+								lLines.push line
+
+			# --- HERE: (level == 0) AND (lTokens[0].kind == 'undent')
+			assert (level == 0), "after file contents, level = #{OL(level)}"
+			assert (lTokens[0].kind == 'undent'),
+					"UNDENT expected after contents, got #{OL(lTokens[0])}"
+			lTokens.shift()
+			lLines.join('\n')
+		else
+			''
+		doBarf filePath, contents
+		dbgExit 'fileHandler', filePath
+		return
+
+	# ..........................................................
+
+	dirHandler := (
+			dirPath: string,
+			lTokens: TPLLToken[]
+			): void =>
+
+		dbgEnter 'dirHandler', dirPath
+		doMakeDir dirPath
+		if (lTokens.length > 0) && isKind(lTokens[0], 'indent')
+			lTokens.shift()
+			blockHandler(dirPath, lTokens)
+			# @ts-ignore
+			assert isKind(lTokens[0], 'undent'), "Missing UNDENT in dirHandler"
+			lTokens.shift()
+		dbgExit 'dirHandler', dirPath
+		return
+
+	# ..........................................................
+
+	blockHandler := (dirPath: string, lTokens: TPLLToken[]) =>
+		dbgEnter 'blockHandler', dirPath
+		while (lTokens.length > 0) && (lTokens[0].kind != 'undent')
+			tok: TPLLToken := lTokens[0]
+			lTokens.shift()
+			{kind, str} := tok
+			switch kind
+				when 'indent'
+					croak "Unexpected INDENT"
+				else
+					if defined(str) && str.startsWith('/')
+						dirHandler "#{dirPath}#{tok.str}", lTokens
+					else
+						fileHandler "#{dirPath}/#{tok.str}", lTokens
+		dbgExit 'blockHandler'
+		return
+
+	# ..........................................................
+
+	ptype := getPathType(currentDir)
+	assert (ptype == 'dir') || (ptype == 'missing'),
+			"currentDir is a #{ptype}"
+
+	# --- Clear the directory if it exists
+	doMakeDir currentDir
+
+	lTokens := Array.from(allTokensInBlock(contents))
+	DBG tokenTable(lTokens)
+
+	blockHandler(currentDir, lTokens)
+	assert (lTokens.length == 0),
+			"Tokens remaining after parse: #{OL(lTokens)}"
+	if not debug
+		popLogLevel()
+	return lFileOps
+
+# ---------------------------------------------------------------------------
+
+export fileOpsTable := (lFileOps: TFileOp[]): string =>
+
+	tt := new TextTable("l l")
+	tt.fullsep()
+	tt.title 'FILE OPS'
+	tt.fullsep()
+	for {funcName, path, contents} of lFileOps
+		switch funcName
+			when 'mkDir'
+				tt.data ['mkdir', path]
+			when 'barf'
+				tt.data ['barf', path]
+				if contents
+					for line of contents.split('\n')
+						tt.data ['', line.replace('\t', spaces(3))]
+	tt.fullsep()
+	return tt.asString()
+

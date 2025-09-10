@@ -1,0 +1,604 @@
+# base-utils.lib.civet
+
+import {assert} from 'jsr:@std/assert'
+import {relative, parse} from 'node:path'
+import {existsSync} from 'jsr:@std/fs'
+import {statSync} from 'node:fs'
+import {expandGlobSync} from 'jsr:@std/fs/expand-glob'
+
+export {assert}
+decode := (x: Uint8Array<ArrayBuffer>) =>
+	return new TextDecoder().decode(x)
+
+export LOG = console.log
+export DIR = console.dir
+
+export type hash
+	[key: string | symbol]: unknown
+
+# ---------------------------------------------------------------------------
+
+export type TDefined = NonNullable<unknown>
+export type TNotDefined = null | undefined
+
+export undef := undefined
+
+# ---------------------------------------------------------------------------
+
+export defined := (x: unknown): x is TDefined =>
+
+	return (x != undef) && (x != null)
+
+# ---------------------------------------------------------------------------
+
+export notdefined := (x: unknown): x is TNotDefined =>
+
+	return (x == undef) || (x == null)
+
+# ---------------------------------------------------------------------------
+
+export function assertIsDefined(
+		value: unknown
+		name: string = ''
+		): asserts value is TDefined =>
+
+	if notdefined(value)
+		throw new Error("value is not defined")
+	return
+
+# ---------------------------------------------------------------------------
+
+export function assertNotDefined(
+		value: unknown
+		name: string = ''
+		): asserts value is TNotDefined =>
+
+	if defined(value)
+		throw new Error("value is defined")
+	return
+
+# ---------------------------------------------------------------------------
+
+export croak := (msg: string): never =>
+
+	throw new Error(msg)
+
+# ---------------------------------------------------------------------------
+
+export exit := (...lMsgs: string[]): void =>
+
+	for msg of lMsgs
+		console.log msg
+	Deno.exit()
+
+# ---------------------------------------------------------------------------
+
+export checkSetup := (): void =>
+
+	rootDir: string? := Deno.env.get('PROJECT_ROOT_DIR')
+	assertIsDefined(rootDir)
+	assert existsSync(rootDir) && statSync(rootDir).isDirectory(),
+		"Please set env var PROJECT_ROOT_DIR to a valid directory"
+	return
+
+# ---------------------------------------------------------------------------
+
+export flag := (
+		ch: string
+		lCmdArgs: string[] = Deno.args
+		): boolean =>
+
+	assert (ch.length == 1), "Bad flag arg: #{ch}"
+	re := new RegExp("^-[a-z]*#{ch}[a-z]*$")
+	for str of lCmdArgs
+		if re.test(str)
+			return true
+	return false
+
+# ---------------------------------------------------------------------------
+
+export nonOption := (pos: number): string =>
+
+	for str of Deno.args
+		if not /^-/.test(str)
+			if (pos == 0)
+				return str
+			else
+				pos -= 1
+	return ''
+
+# ---------------------------------------------------------------------------
+
+export replaceInArray := (
+	lStrings: string[]
+	hReplace: {[key: string]: string}
+	): string[] =>
+
+	return for str of lStrings
+		if hReplace.hasOwnProperty(str)
+			hReplace[str]
+		else
+			str
+
+# ---------------------------------------------------------------------------
+
+export fileExt := (path: string): string =>
+
+	if lMatches := path.match(/\.[^\.]+$/)
+		return lMatches[0]
+	else
+		return ''
+
+# ---------------------------------------------------------------------------
+
+export withExt := (path: string, ext: string): string =>
+
+	lMatches := path.match /^(.*)(\.[^\.]+)$/
+	if (lMatches == null)
+		croak "Bad path: '#{path}'"
+		return ''
+	else
+		[_, headStr, orgExt] := lMatches
+		return "#{headStr}#{ext}"
+
+# ---------------------------------------------------------------------------
+
+export normalizePath := (path: string): string =>
+
+	npath := path.replaceAll('\\', '/')
+	if (npath.charAt(1) == ':')
+		return npath.charAt(0).toUpperCase() + npath.substring(1)
+	else
+		return npath
+
+# ---------------------------------------------------------------------------
+
+export relpath := (path: string): string =>
+
+	return normalizePath(relative('', path))
+
+# ---------------------------------------------------------------------------
+
+export buildFileName := (
+		stub: string
+		purpose: string?
+		ext: string
+		) =>
+
+	return (
+		purpose ? "#{stub}.#{purpose}#{ext}"
+		        : "#{stub}#{ext}"
+		)
+
+# ---------------------------------------------------------------------------
+
+export type TPathInfo = {
+	root: string
+	dir: string
+	fileName: string
+
+	stub: string
+	purpose: string?
+	ext: string
+	}
+
+export parsePath := (
+		path: string
+		): TPathInfo =>
+
+	{root, dir, base} := parse(path)
+
+	lParts := base.split('.')
+	assert (lParts.length > 2), "Bad path: #{path}"
+	return {
+		root: normalizePath(root)
+		dir: normalizePath(dir)
+		fileName: base
+
+		stub:    lParts.slice(0, -2).join('.')
+		purpose: lParts.at(-2)
+		ext:     ".#{lParts.at(-1)}"
+		}
+
+# ---------------------------------------------------------------------------
+
+export type TExecResult = {
+	success: boolean
+	code: number
+	signal?: Deno.Signal | null
+	stdout?: string
+	stderr?: string
+	}
+
+export type TReplaceHash = {
+	[key: string]: string
+	}
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export execCmd := (
+	cmdName: string
+	lCmdArgs: string[] = []
+	hReplace: TReplaceHash = {}
+	capture: boolean = false
+	): TExecResult =>
+
+	child := new Deno.Command(cmdName, {
+		args: replaceInArray(lCmdArgs, hReplace)
+		stdout: capture ? 'piped' : 'inherit'
+		stderr: capture ? 'piped' : 'inherit'
+		})
+	if capture
+		{success, code, signal, stdout, stderr} := await child.output()
+		return {
+			success, code
+			signal: signal || undef
+			stdout: decode(stdout)
+			stderr: decode(stderr)
+			}
+	else
+		{success, code, signal} := await child.output()
+		return {
+			success
+			code
+			signal: signal || undef
+			}
+
+# ---------------------------------------------------------------------------
+
+export newerDestFileExists := (
+		path: string
+		ext: string
+		): boolean =>
+
+	destPath := withExt path, ext
+	if not existsSync(destPath)
+		return false
+	srcMS := statSync(path).mtimeMs
+	destMS := statSync(destPath).mtimeMs
+	return (destMS > srcMS)
+
+# ---------------------------------------------------------------------------
+
+export cmdSucceeds := (
+		cmdName: string
+		lArgs: string[] = []
+		): boolean =>
+
+	child := new Deno.Command cmdName, {
+		args: lArgs
+		stdout: 'piped'
+		stderr: 'piped'
+		}
+	return child.outputSync().success
+
+# ---------------------------------------------------------------------------
+
+export splitPatterns := (
+		lAllPats: string | string[]
+		): [string[], string[]] =>
+
+	lPosPats: string[] := []
+	lNegPats: string[] := []
+
+	if (typeof lAllPats == 'string')
+		# --- A single string can't be a negative pattern
+		assert not lAllPats.match(/^\!/), "Bad glob pattern: #{lAllPats}"
+		lPosPats.push lAllPats
+	else
+		for pat of lAllPats
+			lMatches := pat.match(/^(\!\s*)?(.*)$/)
+			if lMatches
+				if lMatches[1]
+					lNegPats.push lMatches[2]
+				else
+					lPosPats.push lMatches[2]
+	return [lPosPats, lNegPats]
+
+# ---------------------------------------------------------------------------
+# GENERATOR
+#
+#    Use like:
+#       for path of allFilesMatching(lPats)
+#          OR
+#       lPaths := Array.from(allFilesMatching(lPats))
+#
+#    NOTE: By default, searches from ./src
+
+export allFilesMatching := (
+		lPatterns: string | string[]
+		hGlobOptions = {
+			root: './src'
+			includeDirs: false
+			}
+		): Generator<string, void, void> ->
+
+	[lPosPats, lNegPats] := splitPatterns lPatterns
+
+	setSkip := new Set<string>()
+	for pat of lNegPats
+		for {path} of expandGlobSync(pat, hGlobOptions)
+			setSkip.add path
+
+	for pat of lPosPats
+		for {path} of expandGlobSync(pat, hGlobOptions)
+			if not setSkip.has path
+				yield path
+				setSkip.add path
+	return
+
+# ---------------------------------------------------------------------------
+
+export findFile := (
+		fileName: string
+		): string? =>
+
+	lFiles := Array.from allFilesMatching("**/#{fileName}")
+	switch lFiles.length
+		when 1
+			return lFiles[0]
+		when 0
+			return undef
+		else
+			croak "Multiple files with name #{fileName}"
+			return ''
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export type TProcFunc = (path: string) => Promise<unknown>
+export type TProcResult = { [path: string]: unknown }
+
+export procFiles := (
+		lPatterns: string | string[]
+		procFunc: TProcFunc
+		): [
+			TProcResult     # paths succeeded
+			TProcResult?    # paths failed
+			] =>
+
+	# --- We need the paths for later
+	lPaths := Array.from(allFilesMatching(lPatterns))
+
+	lPromises := for path of lPaths
+		procFunc path
+	lResults := await Promise.allSettled(lPromises)
+
+	hSucceeded: TProcResult := {}
+	hFailed:    TProcResult := {}
+
+	# --- lResults are in the same order as lPaths
+	let hasFailed = false
+	for res,i of lResults
+		path := lPaths[i]
+		if (res.status == 'fulfilled')
+			hSucceeded[path] = res.value
+		else
+			hasFailed = true
+			hFailed[path] = res.reason
+
+	return [
+		hSucceeded,
+		hasFailed ? hFailed : undef
+		]
+
+# ---------------------------------------------------------------------------
+
+type TFileRunner = (
+		stub: string
+		purpose: string?
+		lArgs?: string[]
+		hOptions?: hash
+		) => Promise<void>
+
+# ---------------------------------------------------------------------------
+
+export getStringOption := (
+		hOptions: hash
+		key: string
+		defVal: string? = undef
+		): string? =>
+
+	if hOptions.hasOwnProperty key
+		val := hOptions[key]
+		assert (typeof val == 'string'), "Not a string: #{val}"
+		return val
+	else
+		return defVal
+
+# ---------------------------------------------------------------------------
+
+export getBooleanOption := (
+		hOptions: hash
+		key: string
+		defVal: boolean = false
+		): boolean =>
+
+	if hOptions.hasOwnProperty key
+		val := hOptions[key]
+		assert (typeof val == 'boolean'), "Not a boolean: #{val}"
+		return val
+	else
+		return defVal
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export tryCmd := (
+		func: TFileRunner
+		stub: string
+		purpose: string?
+		lArgs: string[] = []
+		hOptions: hash = {}
+		): void =>
+
+	try
+		await func(stub, purpose, lArgs, hOptions)
+	catch err
+		console.error err
+		if getBooleanOption hOptions, 'exitOnFail', true
+			Deno.exit()
+		return
+
+# ---------------------------------------------------------------------------
+#      RUNNERS (all ASYNC)
+#      when run using tryCmd()
+#         - false return will exit the script
+#         - false return will cause a log message
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export doCompile := (
+		stub: string
+		purpose: string?
+		): void =>
+
+	fileName := buildFileName stub, purpose, '.civet'
+	LOG "COMPILE: #{fileName}"
+
+	path := findFile fileName
+	assert path, "No such file: #{fileName}"
+
+	if newerDestFileExists path, '.ts'
+		LOG "   already compiled"
+		return
+
+	{success} := await execCmd 'civet', [
+		'--inline-map'
+		'-o', '.ts'
+		'-c', path
+		]
+	assert success, "   FAILED"
+	LOG "   OK"
+
+	# --- Type check the *.ts file
+	LOG "TYPE CHECK: #{fileName}"
+	h := await execCmd 'deno', [
+		'check',
+		withExt(path, '.ts')
+		]
+	assert h.success, "   FAILED"
+	LOG "   OK"
+	return
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export doUnitTest := (
+		stub: string
+		purpose: string?
+		lArgs: string[] = []
+		hOptions: hash = {}
+		): void =>
+
+	fileName := buildFileName stub, purpose, '.civet'
+	LOG "UNIT TEST: #{fileName}"
+
+	testPath := findFile fileName
+	if notdefined(testPath)
+		LOG "   There is no unit test for #{stub}"
+		return
+
+	if not newerDestFileExists(testPath, '.ts')
+		{success} := await execCmd 'civet', [
+			'--inline-map'
+			'-o', '.ts'
+			'-c', testPath
+			]
+		assert success, "   Compile of #{testPath} failed"
+
+	reporter := getStringOption hOptions, 'reporter', 'dot'
+	verbose := getBooleanOption hOptions, 'verbose'
+	flags := verbose ? '-A' : '-qA'
+	lStrArgs := (
+		  reporter
+		? ['test', flags, '--reporter', reporter, withExt(testPath, '.ts')]
+		: ['test', flags, withExt(testPath, '.ts')]
+		)
+	h := await execCmd 'deno', lStrArgs
+	assert h.success, "   FAILED"
+	return
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export doInstallCmd := (
+		stub: string,
+		purpose: string? = 'cmd'
+		lArgs: string[] = []
+		hOptions: hash = {}
+		): void =>
+
+	fileName := buildFileName stub, purpose, '.ts'
+	LOG "INSTALL CMD: #{fileName}"
+
+	path := findFile fileName
+	assert path, "No such file: #{fileName}"
+
+	name := (
+		   getStringOption(hOptions, 'name')
+		|| parsePath(path).stub
+		)
+	h := await execCmd 'deno', [
+		'install',
+		'-fgA',
+		'-n', name,
+		'--no-config',
+		'--import-map', 'import_map.json',
+		path
+		]
+	assert h.success, "   FAILED"
+	LOG "   OK"
+	return
+
+# ---------------------------------------------------------------------------
+# ASYNC
+
+export doRun := (
+		stub: string
+		purpose: string?
+		lArgs: string[] = []
+		hOptions: hash = {}
+		): void =>
+
+	fileName := buildFileName stub, purpose, '.ts'
+	LOG "RUN: #{fileName}"
+
+	path := findFile fileName
+	assert path, "No such file: #{fileName}"
+
+	h := (
+		  getBooleanOption(hOptions, 'debug')
+		? await execCmd 'deno', [
+			'run'
+			'-A'
+			'--inspect-brk'
+			path
+			'--'
+			lArgs...
+			]
+		: await execCmd 'deno', [
+			'run'
+			'-A'
+			path
+			'--'
+			lArgs...
+			]
+		)
+	assert h.success, "   FAILED"
+	LOG "   OK"
+	return
+
+# ---------------------------------------------------------------------------
+
+export lAllLibs := [
+	'base-utils', 'datatypes', 'llutils', 'indent', 'unicode',
+	'log-levels', 'log-formatter', 'logger', 'text-table',
+
+	'parser', 'cmd-args',
+	'exec', 'fsys', 'walker', 'pll', 'pllfile', 'nice'
+
+	'symbols', 'typescript', 'civet', 'cielo', 'automate',
+	'v8-stack', 'unit-test',
+	]

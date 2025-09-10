@@ -1,10 +1,8 @@
 # unicode.lib.test.civet
 
+import {getPrefix} from 'unicode'
 import {DBG} from 'logger'
-import {getCmdArgs} from 'utils'
-import {
-	getPrefix,
-	} from 'unicode'
+import {getCmdArgs} from 'cmd-args'
 import {
 	equal, like, succeeds, fails, truthy, falsy,
 	} from 'unit-test'

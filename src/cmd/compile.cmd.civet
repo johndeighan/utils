@@ -1,17 +1,13 @@
 # compile.cmd.civet
 
-import {assert, croak} from 'datatypes'
+import {assert, croak, isArray} from 'datatypes'
 import {pass, OL} from 'llutils'
-import {getCmdArgs} from 'utils'
+import {getCmdArgs} from 'cmd-args'
 import {watchFiles, allFilesMatching} from 'fsys'
-import {
-	DBG, LOG, WARN, ERR,
-	} from 'logger'
-import {
-	getCompilerGlobPattern, compileFile, TCompileResult,
-	} from 'compile'
+import {DBG, LOG, WARN, ERR} from 'logger'
+import {compileFile, TCompileResult} from 'automate'
 
-{_, w: watch} := getCmdArgs {
+[hArgs, lNonOptions] := getCmdArgs {
 	_: """
 		files to compile, as one of the following:
 			'<stub>.lib'  - file <stub>.lib.<ext>
@@ -24,6 +20,7 @@ import {
 	w:    "watch for and recompile files if they change"
 	}
 
+{watch} := hArgs
 let numCompiled = 0
 
 # ---------------------------------------------------------------------------
@@ -43,14 +40,11 @@ logResult := (hResult: TCompileResult): void =>
 
 # ---------------------------------------------------------------------------
 
-if (_.length == 0)
-	pattern := getCompilerGlobPattern()
+if (lNonOptions.length == 0)
 	DBG "=====  Compiling all files  ====="
-	DBG "   pattern = #{OL(pattern)}"
-	for {path} of allFilesMatching(pattern)
+	for {path} of allFilesMatching('**/*.{lib,cmd}.civet')
 		hResult := compileFile path
 		logResult hResult
-
 else
 	# --- Files can be specified as:
 	#        - <stub>.(lib|cmd)
@@ -58,7 +52,7 @@ else
 	#        - a full or relative path
 	#     Multiple files can be comma-separated
 
-	for str: string of _
+	for str of lNonOptions
 		DBG "non-option: #{OL(str)}"
 		for str: string of str.split(',')
 			if lMatches := str.match(///^
@@ -90,6 +84,6 @@ else
 LOG "(#{numCompiled} files compiled)"
 
 if watch
-	watchFiles Deno.cwd(), ({kind, path}) =>
-		console.log "EVENT: #{kind} #{path}"
+	watchFiles Deno.cwd(), (kind, path) =>
+		console.log "EVENT: #{kind} #{OL(path)}"
 		return false
