@@ -597,7 +597,7 @@ export lAllLibs := [
 	'log-levels', 'log-formatter', 'logger', 'text-table',
 
 	'parser', 'cmd-args',
-	'exec', 'fsys', 'walker', 'pll', 'pllfile', 'nice'
+	'walker', 'fsys', 'pll', 'exec', 'pllfile', 'nice'
 
 	'symbols', 'typescript', 'civet', 'cielo', 'automate',
 	'v8-stack', 'unit-test',
