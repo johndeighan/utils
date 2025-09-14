@@ -1,0 +1,30 @@
+# temp.test.civet - from civet.lib.test.civet
+
+import {getCmdArgs} from 'cmd-args'
+import {withoutSrcMap} from 'source-map'
+import {equal, setDirTree} from 'unit-test'
+import {slurp, withExt} from 'fsys'
+import {civet2ts, civet2ast} from 'civet'
+import {ts2ast} from 'typescript'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+fileName := "test-civet.civet"
+setDirTree 'src/test/civet', """
+	#{fileName}
+		x := 42
+
+	"""
+
+testPath := "src/test/civet/#{fileName}"
+
+civetCode := withoutSrcMap slurp(testPath)
+console.log civetCode
+tsCode    := withoutSrcMap civet2ts(civetCode)
+console.log tsCode
+
+ast1 := civet2ast civetCode
+ast2 := ts2ast tsCode
+equal ast1, ast2

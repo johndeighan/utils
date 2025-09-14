@@ -4,14 +4,13 @@ import {isEmpty, nonEmpty} from 'datatypes'
 import {DBG} from 'logger'
 import {o} from 'llutils'
 import {getCmdArgs} from 'cmd-args'
-import {setDirTree} from 'pllfile'
 import {
 	mkstr, getCmdLine,
 	execCmd, execCmdSync, getCmdOutput, getCmdOutputSync,
 	cmdSucceeds, TExecResult,
 	} from 'exec'
 import {
-	equal, like, succeeds, fails, truthy, falsy,
+	equal, like, succeeds, fails, truthy, falsy, setDirTree,
 	} from 'unit-test'
 
 getCmdArgs()

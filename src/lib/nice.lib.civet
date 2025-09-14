@@ -65,6 +65,9 @@ getCompareFunc := (
 				return alphaCompare(a, b)
 
 # ---------------------------------------------------------------------------
+# --- leading digit must be preceded by a single '\'
+#     leading and trailing whitespace must be replaced
+#        with \t, \n or \x20
 
 export toNiceString := (str: string): string =>
 

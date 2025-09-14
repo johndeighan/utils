@@ -4,7 +4,6 @@ import {undef, isSymbol, symbolName} from 'datatypes'
 import {s} from 'llutils'
 import {DBG} from 'logger'
 import {getCmdArgs} from 'cmd-args'
-import {setDirTree} from 'pllfile'
 import {allTokensInBlock} from 'pll'
 import {
 	toNice, fromNice, getPrimitive,
@@ -12,7 +11,7 @@ import {
 	} from 'nice'
 import {
 	equal, iterEqual, iterLike, like,
-	succeeds, fails, truthy, falsy,
+	succeeds, fails, truthy, falsy, setDirTree,
 	} from 'unit-test'
 
 getCmdArgs()
@@ -39,6 +38,7 @@ DBG "toNiceString()"
 equal toNiceString('abc'), 'abc'
 equal toNiceString('\tabc\n'), '\\tabc\\n'
 equal toNiceString('123'), '\\123'
+equal toNiceString('123').length, 4
 equal toNiceString('3.14'), '\\3.14'
 equal toNiceString('-123'), '\\-123'
 equal toNiceString('-3.14'), '\\-3.14'

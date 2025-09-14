@@ -1,22 +1,29 @@
 # runtemp.cmd.civet
 
 import {
-	undef, defined, exit, flag, findFile, tryCmd, LOG,
-	doCompile, doUnitTest, doRun,
+	undef, defined, SUCCEED, FAIL, flag, LOG,
+	findFile, tryCmd, civet2tsFile, doUnitTest, doRun,
 	} from 'base-utils'
 
 if flag('h')
-	exit "USAGE: runtemp [-d] { <stub> }"
+	# ---  -d invoked Chrome debugger
+	#      -D causes debugging output
+	SUCCEED "USAGE: runtemp [-d] [-D] { <stub> }"
 
 # ---------------------------------------------------------------------------
 
+let stub = 'temp'
 lFlags: string[] := []
-for stub of Deno.args
-	if stub.startsWith('-')
-		lFlags.push stub
+for arg of Deno.args
+	if arg.startsWith('-')
+		lFlags.push arg
+	else if arg.match /^\d+$/
+		stub = "temp#{arg}"
 	else
-		await tryCmd doCompile, stub, 'lib'
-		await tryCmd doUnitTest, stub, 'lib'
+		await tryCmd civet2tsFile, arg, 'lib'
+		await tryCmd doUnitTest, arg, 'lib'
 
-await tryCmd doCompile, 'temp', undef
-await tryCmd doRun, 'temp', undef, lFlags, {debug: flag('D')}
+await tryCmd civet2tsFile, stub, undef
+LOG '-'.repeat(40)
+await tryCmd doRun, stub, undef, lFlags, {debug: flag('d')}
+LOG '-'.repeat(40)

@@ -30,8 +30,6 @@ fsys
 	TPathDesc pathSubDirs myself slurp barf newerDestFileExists mkDir rmFile
 	mkDirsForFile clearDir removeFilesMatching removeFilesExcept TFsChangeType
 	FileEventHandler TWatcherCallbackFunc watchFile watchFiles allTokensInFile
-pllfile
-	setDirTree fileOpsTable TFileOp TFsCallbackFunc
 indent
 	oneIndent resetOneIndent indentLevel lineDesc splitLine indented undented
 llutils
@@ -49,7 +47,7 @@ log-formatter
 logger
 	getLog clearLog INDENT UNDENT
 	DBG LOG WARN ERR LOGVALUE DBGVALUE
-ast-walker
+walker
 	TNodeInfo getAstWalker
 ast-builder
 	TNodeDesc toAst ast2str
@@ -61,6 +59,7 @@ pll
 	TPLLToken EOFToken TTokenGenerator allTokensIn allTokensInBlock tokenTable
 unit-test
 	equal truthy falsy fails succeeds matches like listLike includes isType
+	setDirTree fileOpsTable TFileOp TFsCallbackFunc
 cmd-options
 	range normalizeStr removeLines logLevelFromArgs getCmdArgs getOptionInfo
 	helpStr

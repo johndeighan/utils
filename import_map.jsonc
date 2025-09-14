@@ -15,12 +15,12 @@
 		"@std/path": "jsr:@std/path@^1.0.8",
 		"@std/streams": "jsr:@std/streams@^1.0.8",
 
-		"svelte": "npm:svelte@^5.23.2",
 		"stream/web": "node:stream/web",
-		"acorn-typescript": "npm:acorn-typescript",
 
+		"svelte": "npm:svelte@^5.23.2",
+		"acorn-typescript": "npm:acorn-typescript",
+		"source-map-sync": "npm:source-map-sync@latest",
 		"glob": "npm:glob@^11.0.0",
-		"source-map-support": "npm:source-map-support@^0.5.21",
 		"@danielx/civet": "npm:@danielx/civet@^0.9.6",
 
 		"base-utils":    "file:///C:/Users/johnd/utils/src/lib/base-utils.lib.ts",
@@ -48,6 +48,7 @@
 		"cmd-args":      "file:///C:/Users/johnd/utils/src/lib/cmd-args.lib.ts",
 		"automate":      "file:///C:/Users/johnd/utils/src/lib/automate.lib.ts",
 		"analyze":       "file:///C:/Users/johnd/utils/src/lib/analyze.lib.ts",
+		"source-map":    "file:///C:/Users/johnd/utils/src/lib/source-map.lib.ts",
 		"v8-stack":      "file:///C:/Users/johnd/utils/src/lib/v8-stack.lib.ts",
 		"unit-test":     "file:///C:/Users/johnd/utils/src/lib/unit-test.lib.ts"
 		}

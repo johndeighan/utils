@@ -1,13 +1,5 @@
 # v8-stack.lib.civet
 
-/**
- * v8-stack - runtime stack utilities
- * @module
- */
-
-import {
-	install, mapSourcePosition,
-	} from 'source-map-support'
 import {sprintf} from '@std/fmt/printf'
 
 import {
@@ -21,8 +13,10 @@ import {
 	isFile, mkpath, fileExt, withExt,
 	normalizePath, relpath,
 	} from 'fsys'
+import {
+	mapSourcePos,
+	} from 'source-map'
 
-install()     # from source-map-support
 width := 40
 
 # ---------------------------------------------------------------------------
@@ -30,14 +24,14 @@ width := 40
 export type TFrameType = 'eval'|'native'|'constructor'|'method'|'function'|'script'|'unknown'
 
 export type TStackFrame = {
-	type: TFrameType    # eval | native | constructor | method | function | script | unknown
-	source: string      # source file name
+	type: TFrameType
+	fileName: string      # source file name
 	line: number
 	column: number
 	name: string        # name of function or method
 	isConstructor: boolean
 	isAsync: boolean
-	objType: string?    # --- if type == 'method'
+	objType?: string    # --- if type == 'method'
 	}
 
 # ---------------------------------------------------------------------------
@@ -73,18 +67,18 @@ export getV8Stack := (): TStackFrame[] =>
 				DBG "FRAME #{i}", INDENT
 
 				# --- Call functions on the frame
-				fileName      := frame.getFileName()
-				functionName  := frame.getFunctionName()
-				functionObj   := frame.getFunction()
-				methodName    := frame.getMethodName()
-				line          := frame.getLineNumber()
-				column        := frame.getColumnNumber()
-				isTopLevel    := frame.isToplevel()
-				isAsync       := frame.isAsync()
-				isEval        := frame.isEval()
-				isNative      := frame.isNative()
-				isConstructor := frame.isConstructor()
-				typeName      := frame.getTypeName()
+				fileName: string := frame.getFileName() || 'unknown'
+				functionName     := frame.getFunctionName()
+				functionObj      := frame.getFunction()
+				methodName       := frame.getMethodName()
+				line             := frame.getLineNumber()
+				column           := frame.getColumnNumber()
+				isTopLevel       := frame.isToplevel()
+				isAsync          := frame.isAsync()
+				isEval           := frame.isEval()
+				isNative         := frame.isNative()
+				isConstructor    := frame.isConstructor()
+				typeName         := frame.getTypeName()
 
 				DBG centered('from V8', width, '-')
 				DBG "fileName = #{OL(fileName)}"
@@ -101,9 +95,8 @@ export getV8Stack := (): TStackFrame[] =>
 				DBG "typeName = #{OL(typeName)}"
 				DBG '-'.repeat(width)
 
-				source: string := fileName
-				if defined(source) && defined(source.match(/v8-stack\.lib\.[A-Za-z0-9_]+$/))
-					DBG "SKIP: source = '#{source}'", UNDENT
+				if fileName.match(/v8-stack\.lib\.[A-Za-z0-9_]+$/)
+					DBG "SKIP: fileName = '#{fileName}'", UNDENT
 					continue
 
 				h: TStackFrame := {
@@ -116,7 +109,7 @@ export getV8Stack := (): TStackFrame[] =>
 						: isTopLevel            ? 'script'
 						:                         'unknown'
 						)
-					source
+					fileName
 					line
 					column
 					name: (
@@ -127,7 +120,7 @@ export getV8Stack := (): TStackFrame[] =>
 						)
 					isConstructor
 					isAsync
-					objType: (methodName == undef) ? undef : typeName
+					...(defined(methodName) && {objType: typeName})
 					}
 
 				# --- fix a bug in the V8 engine where calls inside a
@@ -171,19 +164,19 @@ export getV8Stack := (): TStackFrame[] =>
 
 		for h of lStack
 			DBG "before mapping, h = #{ML(h)}"
-			{source, line, column, name, type} := h
-			hNew := mapSourcePosition {
-				source
+			{fileName, line, column, name, type} := h
+			hNew := mapSourcePos {
+				path: fileName
 				line
 				column
 				}
-			newExt := fileExt(hNew.source)
-			if (newExt == fileExt(h.source))
+			newExt := fileExt(hNew.path)
+			if (newExt == fileExt(h.fileName))
 				DBG "Not mapped - returning original position"
-				h.source = relpath(h.source)
+				h.fileName = relpath(h.fileName)
 			else
-				DBG "got, hNew = #{ML(hNew)}"
-				h.source = relpath(withExt(h.source, newExt))
+				DBG "Mapped, hNew = #{ML(hNew)}"
+				h.fileName = relpath(withExt(h.fileName, newExt))
 				h.line = hNew.line
 				h.column = hNew.column
 				DBG "after mapping, h = #{ML(h)}"
@@ -196,23 +189,16 @@ export getV8Stack := (): TStackFrame[] =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * Get the runtime stack from the v8 engine as a string
- * ignores any stack frames from this module
- * files will be mapped to original source files
- * 	if a source map is available
- */
-
-export getV8StackStr := (hOptions: hash={}): string =>
+export getV8StackStr := (): string =>
 
 	lLines := getV8Stack().map((h) =>
-		{type, name, source, line, column} := h
+		{type, name, fileName, line, column} := h
 		nameStr :=
 			if name
 				sprintf("%-18s", "#{type} #{name}")
 			else
 				sprintf("%-18s", "#{type}")
-		return "[#{nameStr}] #{source}:#{line}:#{column}"
+		return "[#{nameStr}] #{fileName}:#{line}:#{column}"
 		)
 	return lLines.join('\n')
 
@@ -249,11 +235,11 @@ export getMyOutsideCaller := (): TStackFrame? =>
 		DBG "Call stack has #{lStack.length} items"
 		if (lStack.length == 0)
 			return undef
-		source := lStack[0].source
-		DBG "source = #{source}"
+		{fileName} := lStack[0]
+		DBG "fileName = #{fileName}"
 		for frame,i of lStack
-			DBG "frame[#{i}].source = #{frame.source}"
-			if (frame.source != source)
+			DBG "frame[#{i}].fileName = #{frame.fileName}"
+			if (frame.fileName != fileName)
 				return frame
 		return undef
 	catch err

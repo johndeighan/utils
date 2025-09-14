@@ -1,17 +1,17 @@
 # buildcmd.cmd.civet
 
 import {
-	exit, flag, nonOption, tryCmd,
-	doCompile, doUnitTest, doInstallCmd,
+	nonOption, FAIL, tryCmd, civet2tsFile, flag,
+	doUnitTest, doInstallCmd,
 	} from 'base-utils'
 
-stub := nonOption(0)
-if not stub
-	exit "USAGE: buildcmd <stub> [-n]"
+stub := nonOption(0) || FAIL("USAGE: buildcmd <stub> [-n]")
 
 # ---------------------------------------------------------------------------
 
-await tryCmd doCompile, stub, 'cmd'
+# --- if tryCmd fails, an exception is thrown
+
+await tryCmd civet2tsFile, stub, 'cmd'
 if not flag('n')
 	await tryCmd doUnitTest, stub, 'cmd'
 	await tryCmd doInstallCmd, stub, 'cmd'

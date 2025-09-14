@@ -1,0 +1,40 @@
+# source-map.lib.test.civet
+
+import {o} from 'llutils'
+import {getCmdArgs} from 'cmd-args'
+import {extractSourceMap, mapSourcePos} from 'source-map'
+import {
+	equal, truthy, falsy, like, objListLike, matches,
+	succeeds, fails, includesAll, isType, notType, setDirTree,
+	} from 'unit-test'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+setup := (): void =>
+
+	setDirTree 'src/test/source-map', """
+		test.temp.civet
+			import {undef} from 'datatypes'
+
+			export sum := (x: number, y: number) =>
+
+				return x + y
+		""", o'clear compile'
+	return
+
+setup()
+
+# ---------------------------------------------------------------------------
+
+equal 2+2, 4
+
+hNewPos := mapSourcePos {
+	path: "src/test/source-map/test.temp.ts"
+	line: 6
+	column: 2
+	} as const
+equal hNewPos.path, "src/test/source-map/test.temp.civet"
+equal hNewPos.line, 5
+

@@ -1,7 +1,7 @@
 # logger.lib.civet
 
 import {
-	existsSync,
+	existsSync, ensureDirSync,
 	} from '@std/fs'
 import {LogLevels} from "@std/log/levels"
 import {
@@ -36,6 +36,8 @@ export {
 	clearConsoleLog, getConsoleLog,
 	}
 export type {TLogLevel}
+
+ensureDirSync './logs'
 
 # ---------------------------------------------------------------------------
 

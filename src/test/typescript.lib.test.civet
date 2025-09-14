@@ -2,19 +2,20 @@
 
 import {SourceFile} from 'npm:typescript'
 
-import {isHash, normalizeCode} from 'datatypes'
+import {
+	undef, isHash, isEmpty, nonEmpty, normalizeCode,
+	} from 'datatypes'
 import {pass, o, s, t} from 'llutils'
 import {DBG} from 'logger'
 import {getCmdArgs} from 'cmd-args'
 import {slurp, withExt} from 'fsys'
-import {setDirTree} from 'pllfile'
 import {
-	typeCheck, splitFuncStr, getSymbolsFromType,
+	typeCheckCode, splitFuncStr, getSymbolsFromType,
 	getImportCode, getTsCode, checkType,
 	ts2ast, ast2ts, typeCheckFiles, pprintAst,
 	} from 'typescript'
 import {
-	equal, like, succeeds, fails, truthy, falsy, isType,
+	equal, like, succeeds, fails, truthy, falsy, isType, setDirTree,
 	} from 'unit-test'
 
 getCmdArgs()
@@ -37,10 +38,10 @@ setup()
 
 # ---------------------------------------------------------------------------
 
-DBG "typeCheck(tsCode)"
+DBG "typeCheckCode(tsCode)"
 
-truthy isEmpty(typeCheck("let s: string = 'abc';"))
-truthy nonEmpty(typeCheck("let s: string = 42;"))
+truthy isEmpty(typeCheckCode("let s: string = 'abc';"))
+truthy nonEmpty(typeCheckCode("let s: string = 42;"))
 
 DBG "ts2ast(tsCode)", "pprintAst(ast)"
 

@@ -56,6 +56,7 @@ export class Walker<T extends object = object>
 				node: item
 				parent
 				level
+				index
 				}
 		if isArray(item)
 			DBG "ARRAY"

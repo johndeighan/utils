@@ -141,7 +141,7 @@ export getCmdArgs := (
 			LOG helpStr(hDesc)
 		else
 			LOG "No help available"
-		Deno.exit()
+		Deno.exit(0)
 
 	hResult: TCmdArgs := {}
 	lNonOptions: string[] := []

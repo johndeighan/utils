@@ -1,6 +1,6 @@
-import {TNodeInfo} from 'ast-walker';
-const x: TNodeInfo<number> = {
-node: 42,
-level: 1,
-parent: undefined
+import {TFileOp} from 'unit-test';
+const x: TFileOp = {
+funcName: "barf",
+path: "/usr/bin/temp.txt",
+contents: "abc\ndef"
 }

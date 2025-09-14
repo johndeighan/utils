@@ -11,6 +11,7 @@ import {
 	oneIndent, indentLevel, splitLine,
 	} from 'indent'
 import {TextTable} from 'text-table'
+import {slurp} from 'fsys'
 
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
@@ -44,6 +45,8 @@ identTokenGen: TTokenGenerator := (line: string) ->
 	yield {kind: 'line', str: line}
 	return
 
+# ---------------------------------------------------------------------------
+
 export allTokensIn := (
 		iterable: Iterable<string>,
 		gen: TTokenGenerator = identTokenGen
@@ -54,14 +57,14 @@ export allTokensIn := (
 		lTypes: string[]
 		}
 	{lTypes} := getOptions<opt> hOptions, {
-		lTypes: ['indent','undent']
+		lTypes: ['indent','undent','empty']
 		}
 	let level = 0
 	for str of iterable
 		DBG "LINE: '#{escapeStr(str)}'"
 		if isEmpty(str)
 			if lTypes.includes('empty')
-				yield {kind: 'empty', str}
+				yield {kind: 'empty'}
 		else
 			# --- NOTE: If indent > 0, oneIndent will be set
 			[indent, line] := splitLine(str)
@@ -93,6 +96,16 @@ export allTokensInBlock := (
 		): Generator<TPLLToken, void, void> ->
 
 	for tok of allTokensIn(allLinesInBlock(block), gen)
+		yield tok
+	return
+
+# ---------------------------------------------------------------------------
+
+export allTokensInFile := (
+		path: string
+		): Generator<TPLLToken, void, void> ->
+
+	for tok of allTokensInBlock(slurp(path))
 		yield tok
 	return
 

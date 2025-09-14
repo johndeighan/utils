@@ -15,24 +15,28 @@ import {
 import {
 	TCmdDesc, TExecResult, execCmdSync, execCmd, execCmds,
 	} from 'exec'
+import {stripSrcMap} from 'source-map'
 import {ts2ast} from 'typescript'
 
 # ---------------------------------------------------------------------------
 # ASYNC
 
 export compileCivetFiles := (
-		lNames: string[]
+		lStubs: string[]
 		purpose: string = 'lib'
 		): TExecResult[] =>
 
 	lCmds: TCmdDesc[] := []
-	for name of lNames
-		path := findSrcFile "#{name}.#{purpose}.civet"
+	for stub of lStubs
+		path := findSrcFile "#{stub}.#{purpose}.civet"
 		assert defined(path), "No such file: #{OL(path)}"
 		if defined(path)
-			lCmds.push ['civet', [
-				'--inline-map',
-				'-o', '.ts',
+			lCmds.push ['deno', [
+				'run'
+				'-A'
+				'npm:@danielx/civet'
+				'--inline-map'
+				'-o', '.ts'
 				'-c', path
 				]]
 
@@ -51,40 +55,43 @@ export civet2tsFile := (
 	assert (fileExt(path) == '.civet'), "Not a civet file: #{OL(path)}"
 
 	type opt = {
-		inlineMap: boolean
+		nomap: boolean
 		}
-	{inlineMap} := getOptions<opt> hOptions, {
-		inlineMap: true
+	{nomap} := getOptions<opt> hOptions, {
+		nomap: false
 		}
-	if inlineMap
-		execCmdSync 'civet', [
-			'--inline-map',
-			'-o',
-			tsPath,
-			'-c',
-			path
-			]
-	else
-		execCmdSync 'civet', [
-			'-o',
-			tsPath,
-			'-c',
-			path
-			]
+
+	execCmdSync 'deno', [
+		'run'
+		'-A'
+		'npm:@danielx/civet'
+		... nomap ? [] : ['--inline-map']
+		'-o',
+		tsPath,
+		'-c',
+		path
+		]
 	assert isFile(tsPath), "File not created: #{OL(tsPath)}"
 	return tsPath
 
 # ---------------------------------------------------------------------------
 
-export civet2ts := (civetCode: string): string =>
+export civet2ts := (
+		civetCode: string
+		hOptions: hash = {}
+		): string =>
 
 	tempFilePath := barfTempFile civetCode
 	tsFilePath := withExt tempFilePath, '.ts'
-	civet2tsFile tempFilePath, tsFilePath, o'!inlineMap'
-	return slurp tsFilePath
+	civet2tsFile tempFilePath, tsFilePath, hOptions
+	contents := slurp tsFilePath
+	return contents
 
 # ---------------------------------------------------------------------------
 
 export civet2ast := (civetCode: string): SourceFile =>
 
-	return ts2ast(civet2ts(civetCode))
+	tsCode := civet2ts civetCode
+	return ts2ast tsCode
+
+# ---------------------------------------------------------------------------

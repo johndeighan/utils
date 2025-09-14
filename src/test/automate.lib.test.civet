@@ -4,7 +4,6 @@ import {defined, isHash, isFunction} from 'datatypes'
 import {o} from 'llutils'
 import {getCmdArgs} from 'cmd-args'
 import {withExt, TPathInfo} from 'fsys'
-import {setDirTree} from 'pllfile'
 import {DBG} from 'logger'
 import {execCmd, getCmdOutput} from 'exec'
 import {
@@ -18,7 +17,7 @@ import {
 	installCmd, uninstallCmd,
 	} from 'automate'
 import {
-	equal, like, succeeds, fails, truthy, falsy,
+	equal, like, succeeds, fails, truthy, falsy, setDirTree,
 	matches, isType, notType, objListLike, strListLike,
 	} from 'unit-test'
 

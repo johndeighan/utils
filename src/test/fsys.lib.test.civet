@@ -22,10 +22,9 @@ import {
 	TPathType, TPathInfo,
 	patchFirstLine, FsEvent,
 	} from 'fsys'
-import {setDirTree} from 'pllfile'
 import {
 	equal, truthy, falsy, like, objListLike, matches,
-	succeeds, fails, includesAll, isType, notType,
+	succeeds, fails, includesAll, isType, notType, setDirTree,
 	} from 'unit-test'
 
 getCmdArgs()
@@ -101,7 +100,7 @@ falsy  isFile("./src/test/fsys")
 
 DBG "isDir()"
 
-truthy isDir('test')
+truthy isDir('src/test')
 falsy isDir('nosuchdir')
 truthy isDir("./src/test/fsys")
 falsy  isDir("./src/test/fsys/dummy.txt")
@@ -117,7 +116,7 @@ DBG "getPathType()"
 equal getPathType('./deno.jsonc'), 'file'
 equal getPathType("./src/test/fsys"), 'dir'
 equal getPathType('./src/lib/notafile.txt'), 'missing'
-equal getPathType("./test"), 'dir'
+equal getPathType("./src/test"), 'dir'
 equal getPathType("./src/test/fsys.lib.test.civet"), 'file'
 equal getPathType("C:/temp/file.txt"), 'missing'
 

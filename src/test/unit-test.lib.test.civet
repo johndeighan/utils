@@ -2,13 +2,14 @@
 
 import {undef, assert, hash} from 'datatypes'
 import {DBG} from 'logger'
-import {range} from 'llutils'
+import {range, o, spaces} from 'llutils'
 import {getCmdArgs} from 'cmd-args'
 import {pathToURL} from 'fsys'
 import {
 	equal, truthy, falsy, fails, succeeds, iterEqual, iterLike,
 	like, strListLike, objListLike,
 	matches, includes, includesAll, isType, notType,
+	TFileOp, setDirTree, fileOpsTable,
 	} from 'unit-test'
 
 getCmdArgs()
@@ -121,3 +122,92 @@ isType 'TFilterFunc', (x: unknown) => return true
 DBG "notType()"
 
 notType 'string', 23
+
+DBG "setDirTree()"
+
+(() =>
+	lFileOps := setDirTree('test/t', """
+		temp.txt
+			abc
+			def
+		""", o'scaffold')
+
+	equal lFileOps, [
+			{ funcName: 'mkDir', path: 'test/t'}
+			{ funcName: 'barf',  path: 'test/t/temp.txt', contents: "abc\ndef"}
+			]
+	)()
+
+(() =>
+	lFileOps := setDirTree('test/t', """
+		dummy.txt
+			abc
+			def
+		file1.txt
+			abc
+		file2.txt
+			abc
+		file3.flags.txt
+			abc
+		/aaa
+			/bbb
+				newfile.txt
+				oldfile.txt
+				temp.txt
+			/subdir1
+		/subdir2
+		""", o'scaffold')
+
+	equal lFileOps, [
+			{ funcName: 'mkDir', path: 'test/t'}
+			{ funcName: 'barf',  path: 'test/t/dummy.txt', contents: "abc\ndef"}
+			{ funcName: 'barf',  path: 'test/t/file1.txt', contents: "abc"}
+			{ funcName: 'barf',  path: 'test/t/file2.txt', contents: "abc"}
+			{ funcName: 'barf',  path: 'test/t/file3.flags.txt', contents: "abc"}
+			{ funcName: 'mkDir', path: 'test/t/aaa'}
+			{ funcName: 'mkDir', path: 'test/t/aaa/bbb'}
+			{ funcName: 'barf',  path: 'test/t/aaa/bbb/newfile.txt', contents: ''}
+			{ funcName: 'barf',  path: 'test/t/aaa/bbb/oldfile.txt', contents: ''}
+			{ funcName: 'barf',  path: 'test/t/aaa/bbb/temp.txt', contents: ''}
+			{ funcName: 'mkDir', path: 'test/t/aaa/subdir1'}
+			{ funcName: 'mkDir', path: 'test/t/subdir2'}
+			]
+	)()
+
+DBG "type TFileOp"
+
+isType 'TFileOp', {
+	funcName: 'mkDir',
+	path: '/usr/bin'
+	}
+isType 'TFileOp', {
+	funcName: 'barf',
+	path: '/usr/bin/deighan.txt'
+	}
+isType 'TFileOp', {
+	funcName: 'barf',
+	path: '/usr/bin/temp.txt',
+	contents: 'abc\ndef'
+	}
+
+DBG "fileOpsTable()"
+
+(() =>
+	lFileOps: TFileOp[] := [
+		{funcName: 'mkDir', path: '/usr/bin'}
+		{funcName: 'barf',  path: '/usr/bin/deighan.txt'}
+		{funcName: 'barf',  path: '/usr/bin/temp.txt', contents: 'abc\ndef'}
+		]
+	block := fileOpsTable(lFileOps)
+	equal block, """
+		--------------------------
+		#{spaces(9)}FILE OPS
+		--------------------------
+		mkdir /usr/bin
+		barf  /usr/bin/deighan.txt
+		barf  /usr/bin/temp.txt
+		#{spaces(6)}abc
+		#{spaces(6)}def
+		--------------------------
+		"""
+	)()

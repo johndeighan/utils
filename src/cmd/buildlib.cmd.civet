@@ -1,25 +1,21 @@
 # buildlib.cmd.civet
 
 import {
-	undef, defined, notdefined,
-	assert, exit, flag, nonOption,
-	findFile, withExt, tryCmd, LOG,
-	doCompile, doUnitTest, lAllLibs,
+	nonOption, FAIL, lAllLibs, tryCmd, civet2tsFile, flag,
+	doUnitTest,
 	} from 'base-utils'
 
-stub := nonOption(0)
-if not stub
-	exit "USAGE: buildlib <stub> [-n]"
+stub := nonOption(0) || FAIL("USAGE: buildlib <stub> [-n]")
 
 # ---------------------------------------------------------------------------
 
 if (stub == 'all')
 	for s of lAllLibs
-		await tryCmd doCompile, s, 'lib'
+		await tryCmd civet2tsFile, s, 'lib'
 	if not flag('n')
 		for s of lAllLibs
 			await tryCmd doUnitTest, s, 'lib'
 else
-	await tryCmd doCompile, stub, 'lib'
+	await tryCmd civet2tsFile, stub, 'lib'
 	if not flag('n')
 		await tryCmd doUnitTest, stub, 'lib'

@@ -1,0 +1,86 @@
+# source-map.lib.civet
+
+import {existsSync} from 'jsr:@std/fs'
+import {RawSourceMap, SourceMapConsumer} from "npm:source-map-sync"
+
+import {
+	undef, defined, notdefined, assert, croak,
+	} from 'datatypes'
+
+hSourceMapCache := new Map<string, RawSourceMap>()
+
+# ---------------------------------------------------------------------------
+
+export stripSrcMap := (
+		contents: string
+		): [string, string?] =>
+
+	lMatches := contents.match ///^
+		(.*)             # --- source code
+		\/ \/ \# \s+
+		sourceMappingURL=data:application\/json;
+		(?: charset=utf-8; )?
+		base64,
+		(.*)             # --- encoded source map
+		$///s
+	if defined(lMatches) && (lMatches.length == 3)
+		[_, src, srcMapStr] := lMatches
+		return [src.trim(), srcMapStr.trim()]
+	else
+		pos := contents.indexOf('//# sourceMappingURL')
+		if (pos >= 0)
+			croak "Bad source map: #{contents.substring(pos)}"
+		return [contents.trim(), undef]
+
+# ---------------------------------------------------------------------------
+
+export extractSourceMap := (
+		path: string
+		): [string, RawSourceMap?] =>
+
+	if not existsSync(path)
+		croak "No such file: #{path}"
+
+	[src, srcMapStr] := stripSrcMap Deno.readTextFileSync(path)
+
+	if defined(srcMapStr)
+		sourceMap := JSON.parse(atob(srcMapStr)) as RawSourceMap
+		hSourceMapCache.set path, sourceMap
+		return [src, sourceMap]
+	else
+		return [src, undef]
+
+# ---------------------------------------------------------------------------
+
+export type TFilePos = {
+	path: string
+	line: number
+	column: number
+	}
+
+# ---------------------------------------------------------------------------
+
+export mapSourcePos := (h: TFilePos): TFilePos =>
+
+	{path, line, column} := h
+	[source, hSrcMap] := extractSourceMap(path)
+	if defined(hSrcMap)
+		consumer := new SourceMapConsumer(hSrcMap)
+		hNew := consumer.originalPositionFor({line, column})
+		if (
+				   defined(hNew)
+				&& defined(hNew.source)
+				&& defined(hNew.line)
+				&& defined(hNew.column)
+				)
+			return {
+				path:   hNew.source
+				line:   hNew.line
+				column: hNew.column
+				}
+		else
+			return h
+	else
+		return h
+
+# ---------------------------------------------------------------------------

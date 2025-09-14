@@ -6,12 +6,10 @@ import {statSync} from 'node:fs'
 
 import {
 	croak, assert, flag, checkSetup,
-	parsePath, relpath,
+	parsePath, relpath, LOG, LLOG,
 	undef, defined, notdefined, procFiles,
 	cmdSucceeds, newerDestFileExists, execCmd,
 	} from 'base-utils'
-
-LOG := console.log
 
 checkSetup()
 
@@ -35,14 +33,27 @@ hConfig: TConfig := {}
 
 if cmdSucceeds('civet', ['--version'])
 	hConfig['.civet'] = [
-		'civet',
-		['--inline-map', '-o', '.ts', '-c', '%PATH']
+		'deno',
+		[
+			'run'
+			'-A'
+			'npm:@danielx/civet'
+			'--inline-map',
+			'-o', '.ts',
+			'-c', '%PATH'
+			]
 		]
 
 if cmdSucceeds('coffee', ['--version'])
 	hConfig['.coffee'] = [
-		'coffee',
-		['--inline-map', '-c', '%PATH']
+		'deno',
+		[
+			'run'
+			'-A'
+			'npm:@danielx/civet'
+			'--inline-map',
+			'-c', '%PATH'
+			]
 		]
 
 lExt := Object.keys(hConfig)
@@ -75,20 +86,6 @@ getHandler := (
 # 2. compile all *.civet or *.coffee files
 #      unless a newer *.ts file exists
 # 3. run all unit tests, i.e. *.test.ts files
-
-# ---------------------------------------------------------------------------
-
-LLOG := (
-		label: string
-		msg: string
-		): void =>
-
-	labelLen := 15
-	if (label.length <= labelLen)
-		spaces := ' '.repeat(labelLen-label.length)
-		LOG "#{label}#{spaces} #{msg}"
-	else
-		LOG "#{label.substring(0, labelLen)} #{msg}"
 
 # ---------------------------------------------------------------------------
 # ASYNC
@@ -126,7 +123,7 @@ compileFiles := (
 			LOG "FAILED TO COMPILE:"
 			for path of lBadPaths
 				LOG "   #{path}"
-			Deno.exit()
+			Deno.exit(99)
 	return Object.keys(hCompiled).filter((x) => defined(x))
 
 # ---------------------------------------------------------------------------
@@ -175,7 +172,7 @@ if clearFirst
 				LLOG "FAILED", path
 		else
 			LOG "   #{lFailed.length} compile fails"
-		Deno.exit()
+		Deno.exit(99)
 
 	lRemoved := Object.keys(hSucceeded)
 	if verbose

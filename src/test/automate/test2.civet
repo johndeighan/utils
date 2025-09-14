@@ -1,3 +1,4 @@
 # test2.civet
+
 LOG := (str) => console.log str
 LOG "Hello, World!"

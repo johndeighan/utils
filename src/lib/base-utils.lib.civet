@@ -7,16 +7,103 @@ import {statSync} from 'node:fs'
 import {expandGlobSync} from 'jsr:@std/fs/expand-glob'
 
 export {assert}
+decoder := new TextDecoder()
 decode := (x: Uint8Array<ArrayBuffer>) =>
-	return new TextDecoder().decode(x)
+	return decoder.decode(x)
 
-export LOG = console.log
-export DIR = console.dir
+# ---------------------------------------------------------------------------
+
+export checkSetup := (): void =>
+
+	rootDir: string? := Deno.env.get('PROJECT_ROOT_DIR')
+	assertIsDefined(rootDir)
+	assert existsSync(rootDir) && statSync(rootDir).isDirectory(),
+		"Please set env var PROJECT_ROOT_DIR to a valid directory"
+	return
+
+# ---------------------------------------------------------------------------
+
+export FAIL := (errMsg: string, n: number = 99): never =>
+
+	console.log errMsg
+	Deno.exit(n)
+
+# ---------------------------------------------------------------------------
+
+export SUCCEED := (msg: string? = undef): never =>
+
+	if defined(msg)
+		console.log msg
+	Deno.exit(0)
+
+# ---------------------------------------------------------------------------
+#             cmd-args
+# ---------------------------------------------------------------------------
+
+export flag := (
+		ch: string
+		lCmdArgs: string[] = Deno.args
+		): boolean =>
+
+	assert (ch.length == 1), "Bad flag arg: #{ch}"
+	re := new RegExp("^-[a-z]*#{ch}[a-z]*$")
+	for str of lCmdArgs
+		if re.test(str)
+			return true
+	return false
+
+# ---------------------------------------------------------------------------
+
+export nonOption := (pos: number): string? =>
+
+	for str of Deno.args
+		if not /^-/.test(str)
+			if (pos == 0)
+				return str
+			else
+				pos -= 1
+	return undef
+
+
+# ---------------------------------------------------------------------------
+#             logger
+# ---------------------------------------------------------------------------
+
+export LOG := console.log
+
+export DBG := (msg: string): void =>
+	if flag('D')
+		LOG msg
+	return
+
+# ---------------------------------------------------------------------------
+
+LLOG := (
+		label: string
+		msg: string
+		): void =>
+
+	labelLen := 15
+	if (label.length <= labelLen)
+		spaces := ' '.repeat(labelLen-label.length)
+		LOG "#{label}#{spaces} #{msg}"
+	else
+		LOG "#{label.substring(0, labelLen)} #{msg}"
+	return
+
+# ---------------------------------------------------------------------------
+
+ILOG := (msg: string): void =>
+
+	LOG "   #{msg}"
+	return
+
+# ---------------------------------------------------------------------------
+#             datatypes
+# ---------------------------------------------------------------------------
 
 export type hash
 	[key: string | symbol]: unknown
-
-# ---------------------------------------------------------------------------
 
 export type TDefined = NonNullable<unknown>
 export type TNotDefined = null | undefined
@@ -64,49 +151,6 @@ export croak := (msg: string): never =>
 	throw new Error(msg)
 
 # ---------------------------------------------------------------------------
-
-export exit := (...lMsgs: string[]): void =>
-
-	for msg of lMsgs
-		console.log msg
-	Deno.exit()
-
-# ---------------------------------------------------------------------------
-
-export checkSetup := (): void =>
-
-	rootDir: string? := Deno.env.get('PROJECT_ROOT_DIR')
-	assertIsDefined(rootDir)
-	assert existsSync(rootDir) && statSync(rootDir).isDirectory(),
-		"Please set env var PROJECT_ROOT_DIR to a valid directory"
-	return
-
-# ---------------------------------------------------------------------------
-
-export flag := (
-		ch: string
-		lCmdArgs: string[] = Deno.args
-		): boolean =>
-
-	assert (ch.length == 1), "Bad flag arg: #{ch}"
-	re := new RegExp("^-[a-z]*#{ch}[a-z]*$")
-	for str of lCmdArgs
-		if re.test(str)
-			return true
-	return false
-
-# ---------------------------------------------------------------------------
-
-export nonOption := (pos: number): string =>
-
-	for str of Deno.args
-		if not /^-/.test(str)
-			if (pos == 0)
-				return str
-			else
-				pos -= 1
-	return ''
-
 # ---------------------------------------------------------------------------
 
 export replaceInArray := (
@@ -168,6 +212,19 @@ export buildFileName := (
 	return (
 		purpose ? "#{stub}.#{purpose}#{ext}"
 		        : "#{stub}#{ext}"
+		)
+
+# ---------------------------------------------------------------------------
+
+export buildTestFileName := (
+		stub: string
+		purpose: string?
+		ext: string
+		) =>
+
+	return (
+		purpose ? "#{stub}.#{purpose}.test#{ext}"
+		        : "#{stub}.test#{ext}"
 		)
 
 # ---------------------------------------------------------------------------
@@ -315,6 +372,12 @@ export allFilesMatching := (
 		): Generator<string, void, void> ->
 
 	[lPosPats, lNegPats] := splitPatterns lPatterns
+	if flag('D')
+		LOG "PATTERNS:"
+		for pat of lPosPats
+			ILOG "POS: #{pat}"
+		for pat of lNegPats
+			ILOG "NEG: #{pat}"
 
 	setSkip := new Set<string>()
 	for pat of lNegPats
@@ -324,15 +387,14 @@ export allFilesMatching := (
 	for pat of lPosPats
 		for {path} of expandGlobSync(pat, hGlobOptions)
 			if not setSkip.has path
+				DBG "PATH: #{path}"
 				yield path
 				setSkip.add path
 	return
 
 # ---------------------------------------------------------------------------
 
-export findFile := (
-		fileName: string
-		): string? =>
+export findFile := (fileName: string): string? =>
 
 	lFiles := Array.from allFilesMatching("**/#{fileName}")
 	switch lFiles.length
@@ -438,7 +500,7 @@ export tryCmd := (
 	catch err
 		console.error err
 		if getBooleanOption hOptions, 'exitOnFail', true
-			Deno.exit()
+			Deno.exit(99)
 		return
 
 # ---------------------------------------------------------------------------
@@ -449,22 +511,25 @@ export tryCmd := (
 # ---------------------------------------------------------------------------
 # ASYNC
 
-export doCompile := (
+export civet2tsFile := (
 		stub: string
 		purpose: string?
 		): void =>
 
 	fileName := buildFileName stub, purpose, '.civet'
-	LOG "COMPILE: #{fileName}"
+	LLOG 'COMPILE', fileName
 
 	path := findFile fileName
 	assert path, "No such file: #{fileName}"
 
 	if newerDestFileExists path, '.ts'
-		LOG "   already compiled"
+		ILOG "already compiled"
 		return
 
-	{success} := await execCmd 'civet', [
+	{success} := await execCmd 'deno', [
+		'run'
+		'-A'
+		'npm:@danielx/civet'
 		'--inline-map'
 		'-o', '.ts'
 		'-c', path
@@ -487,21 +552,26 @@ export doCompile := (
 
 export doUnitTest := (
 		stub: string
-		purpose: string?
+		purpose: string?      # purpose of the file being tested
 		lArgs: string[] = []
 		hOptions: hash = {}
 		): void =>
 
-	fileName := buildFileName stub, purpose, '.civet'
-	LOG "UNIT TEST: #{fileName}"
+	fileName := buildTestFileName stub, purpose, '.civet'
+	LLOG "UNIT TEST", fileName
 
 	testPath := findFile fileName
 	if notdefined(testPath)
-		LOG "   There is no unit test for #{stub}"
+		ILOG "There is no unit test for #{fileName}"
 		return
+	DBG "TEST FILE: #{relpath(testPath)}"
 
 	if not newerDestFileExists(testPath, '.ts')
-		{success} := await execCmd 'civet', [
+		LLOG 'COMPILE', relpath(testPath)
+		{success} := await execCmd 'deno', [
+			'run'
+			'-A'
+			'npm:@danielx/civet'
 			'--inline-map'
 			'-o', '.ts'
 			'-c', testPath
@@ -545,7 +615,7 @@ export doInstallCmd := (
 		'-fgA',
 		'-n', name,
 		'--no-config',
-		'--import-map', 'import_map.json',
+		'--import-map', 'import_map.jsonc',
 		path
 		]
 	assert h.success, "   FAILED"
@@ -597,8 +667,8 @@ export lAllLibs := [
 	'log-levels', 'log-formatter', 'logger', 'text-table',
 
 	'parser', 'cmd-args',
-	'walker', 'fsys', 'pll', 'exec', 'pllfile', 'nice'
+	'walker', 'fsys', 'pll', 'exec', 'nice'
 
 	'symbols', 'typescript', 'civet', 'cielo', 'automate',
-	'v8-stack', 'unit-test',
+	'source-map', 'v8-stack', 'unit-test',
 	]

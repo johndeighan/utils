@@ -4,7 +4,6 @@ import {undef, assert, croak} from 'datatypes'
 import {o} from 'llutils'
 import {DBG} from 'logger'
 import {relpath} from 'fsys'
-import {setDirTree} from 'pllfile'
 import {getCmdArgs} from 'cmd-args'
 import {execCmd, execCmdSync} from 'exec'
 import {
@@ -12,7 +11,7 @@ import {
 	getMyOutsideCaller, getV8StackStr,
 	} from 'v8-stack'
 import {
-	equal, like, succeeds, isType, notType, objListLike,
+	equal, like, succeeds, isType, notType, objListLike, setDirTree,
 	} from 'unit-test'
 
 getCmdArgs()
@@ -114,7 +113,7 @@ DBG "type TStackFrame"
 
 isType 'TStackFrame', {
 	type: 'function'
-	source: 'temp.civet'
+	fileName: 'temp.civet'
 	line: 5
 	column: 5
 	name: 'func'
@@ -123,11 +122,13 @@ isType 'TStackFrame', {
 	objType: undefined
 	}
 
-DBG "getV8Stack()"
+DBG "getV8Stack(), getV8StackStr"
 
 (() ->
 	let stack1: TStackFrame[] = []
 	let stack2: TStackFrame[] = []
+	let stack1Str: string = ''
+	let stack2Str: string = ''
 
 	main := () =>
 		func1()
@@ -135,35 +136,38 @@ DBG "getV8Stack()"
 
 	func1 := () ->
 		stack1 = getV8Stack()
+		stack1Str = getV8StackStr()
 		return
 
 	func2 := () ->
 		stack2 = getV8Stack()
+		stack2Str = getV8StackStr()
 		return
 
 	main()
+
 	objListLike stack1, [
 		{
 			type: 'function'
 			name: 'func1'
-			source: 'src/test/v8-stack.lib.test.civet'
+			fileName: 'src/test/v8-stack.lib.test.civet'
 			line: 136
 			}
 		{
 			type: 'function'
 			name: 'main'
-			source: 'src/test/v8-stack.lib.test.civet'
+			fileName: 'src/test/v8-stack.lib.test.civet'
 			line: 132
 			}
 		{
 			type: 'function'
 			name: '<anon>'
-			source: 'src/test/v8-stack.lib.test.civet'
+			fileName: 'src/test/v8-stack.lib.test.civet'
 			line: 143
 			}
 		{
 			type: 'script'
-			source: 'src/test/v8-stack.lib.test.civet'
+			fileName: 'src/test/v8-stack.lib.test.civet'
 			line: 195
 			}
 		]
@@ -172,62 +176,40 @@ DBG "getV8Stack()"
 		{
 			type: 'function'
 			name: 'func2'
-			source: 'src/test/v8-stack.lib.test.civet'
+			fileName: 'src/test/v8-stack.lib.test.civet'
 			line: 140
 			}
 		{
 			type: 'function'
 			name: 'main'
-			source: 'src/test/v8-stack.lib.test.civet'
+			fileName: 'src/test/v8-stack.lib.test.civet'
 			line: 133
 			}
 		{
 			type: 'function'
 			name: '<anon>'
-			source: 'src/test/v8-stack.lib.test.civet'
+			fileName: 'src/test/v8-stack.lib.test.civet'
 			line: 143
 			}
 		{
 			type: 'script'
-			source: 'src/test/v8-stack.lib.test.civet'
+			fileName: 'src/test/v8-stack.lib.test.civet'
 			line: 195
 			}
 		]
-	)()
 
-# ---------------------------------------------------------------------------
-
-DBG "getV8StackStr()"
-
-(() ->
-	let stack1: string = ''
-	let stack2: string = ''
-
-	main := () ->
-		func1()
-		func2()
-
-	func1 := () ->
-		stack1 = getV8StackStr()
-		return
-
-	func2 := () ->
-		stack2 = getV8StackStr()
-		return
-
-	main()
-	equal stack1, """
-		[function func1    ] src/test/v8-stack.lib.test.civet:211:11
-		[function main     ] src/test/v8-stack.lib.test.civet:207:2
-		[function <anon>   ] src/test/v8-stack.lib.test.civet:218:1
-		[script            ] src/test/v8-stack.lib.test.civet:232:2
+	equal stack1Str, """
+		[function func1    ] src/test/v8-stack.lib.test.civet:139:14
+		[function main     ] src/test/v8-stack.lib.test.civet:134:2
+		[function <anon>   ] src/test/v8-stack.lib.test.civet:147:1
+		[script            ] src/test/v8-stack.lib.test.civet:214:2
 		"""
 
-	equal stack2, """
-		[function func2    ] src/test/v8-stack.lib.test.civet:215:11
-		[function main     ] src/test/v8-stack.lib.test.civet:208:2
-		[function <anon>   ] src/test/v8-stack.lib.test.civet:218:1
-		[script            ] src/test/v8-stack.lib.test.civet:232:2
+	equal stack2Str, """
+		[function func2    ] src/test/v8-stack.lib.test.civet:144:14
+		[function main     ] src/test/v8-stack.lib.test.civet:135:2
+		[function <anon>   ] src/test/v8-stack.lib.test.civet:147:1
+		[script            ] src/test/v8-stack.lib.test.civet:214:2
 		"""
 	)()
 
@@ -254,12 +236,12 @@ DBG "getMyCaller()"
 	like caller1, {
 		type: 'function'
 		name: 'main'
-		source: 'src/test/v8-stack.lib.test.civet'
+		fileName: 'src/test/v8-stack.lib.test.civet'
 		}
 	like caller2, {
 		type: 'function'
 		name: 'main'
-		source: 'src/test/v8-stack.lib.test.civet'
+		fileName: 'src/test/v8-stack.lib.test.civet'
 		}
 	)()
 
@@ -286,7 +268,7 @@ DBG "getMyCaller()"
 	like hCaller, {
 		type: 'function'
 		name: 'main'
-		source: 'src/test/v8-stack.lib.test.civet'
+		fileName: 'src/test/v8-stack.lib.test.civet'
 		}
 
 	)()
@@ -294,12 +276,13 @@ DBG "getMyCaller()"
 # ---------------------------------------------------------------------------
 
 (() ->
-	await execCmd 'civet', [
+	await execCmd 'deno', [
+		'run'
+		'-A'
+		'npm:@danielx/civet'
 		'--inline-map'
-		'-o'
-		'.ts'
-		'-c'
-		'src/test/v8-stack/v8-module.civet'
+		'-o', '.ts'
+		'-c', 'src/test/v8-stack/v8-module.civet'
 		]
 	{getBoth} := await import('./v8-stack/v8-module.ts')
 	let lCallers1: (TStackFrame?)[] = []
@@ -349,10 +332,10 @@ DBG "getMyCaller()"
 		return await getV8StackStr()
 
 	equal await func1(), """
-		[function func2    ] src/test/v8-stack.lib.test.civet:349:15
-		[function func1    ] src/test/v8-stack.lib.test.civet:346:15
-		[function <anon>   ] src/test/v8-stack.lib.test.civet:351:13
-		[script            ] src/test/v8-stack.lib.test.civet:358:2
+		[function func2    ] src/test/v8-stack.lib.test.civet:332:15
+		[function func1    ] src/test/v8-stack.lib.test.civet:329:15
+		[function <anon>   ] src/test/v8-stack.lib.test.civet:334:13
+		[script            ] src/test/v8-stack.lib.test.civet:341:2
 		"""
 
 	)()
@@ -368,9 +351,9 @@ DBG "getMyCaller()"
 		return 2 * 2
 
 	equal await func1(), """
-		[function func1    ] src/test/v8-stack.lib.test.civet:365:15
-		[function <anon>   ] src/test/v8-stack.lib.test.civet:370:13
-		[script            ] src/test/v8-stack.lib.test.civet:375:2
+		[function func1    ] src/test/v8-stack.lib.test.civet:348:15
+		[function <anon>   ] src/test/v8-stack.lib.test.civet:353:13
+		[script            ] src/test/v8-stack.lib.test.civet:358:2
 		"""
 	)()
 
@@ -395,12 +378,12 @@ DBG "getMyCaller()"
 	like caller1, {
 		type: 'function'
 		name: 'main'
-		source: 'src/test/v8-stack.lib.test.civet'
+		fileName: 'src/test/v8-stack.lib.test.civet'
 		}
 	like caller2, {
 		type: 'function'
 		name: 'main'
-		source: 'src/test/v8-stack.lib.test.civet'
+		fileName: 'src/test/v8-stack.lib.test.civet'
 		}
 	)()
 

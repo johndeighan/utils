@@ -22,7 +22,7 @@
 			&& deno check src/cmd/buildlib.cmd.ts
 
 			&& echo INSTALL CMD: buildlib
-			&& deno install -fgA -n buildlib --no-config --import-map import_map.json src/cmd/buildlib.cmd.ts
+			&& deno install -fgA -n buildlib --no-config --import-map import_map.jsonc src/cmd/buildlib.cmd.ts
 			",
 
 		"install:buildcmd": "
@@ -33,7 +33,7 @@
 			&& deno check src/cmd/buildcmd.cmd.ts
 
 			&& echo INSTALL CMD: buildcmd
-			&& deno install -fgA -n buildcmd --no-config --import-map import_map.json src/cmd/buildcmd.cmd.ts
+			&& deno install -fgA -n buildcmd --no-config --import-map import_map.jsonc src/cmd/buildcmd.cmd.ts
 			",
 
 		"install:runtemp": "
@@ -44,13 +44,13 @@
 			&& deno check src/cmd/runtemp.cmd.ts
 
 			&& echo INSTALL CMD: runtemp
-			&& deno install -fgA -n runtemp --no-config --import-map import_map.json src/cmd/runtemp.cmd.ts
+			&& deno install -fgA -n runtemp --no-config --import-map import_map.jsonc src/cmd/runtemp.cmd.ts
 			",
 
 		"install:compile": "
 			   base-compile
 			&& deno run -A npm:@danielx/civet --inline-map -o .ts -c src/cmd/compile.cmd.civet
-			&& deno install -fgA -n compile --no-config --import-map import_map.json src/cmd/compile.cmd.ts
+			&& deno install -fgA -n compile --no-config --import-map import_map.jsonc src/cmd/compile.cmd.ts
 			",
 
 		"initialize": "
@@ -72,96 +72,6 @@
 			&& compile
 			",
 
-		// --------------------------------------------------------------------
-		// --------------------------------------------------------------------
-
-		"build:all": "
-			   clear
-			&& buildlib datatypes
-			&& buildlib llutils
-			&& buildlib indent
-			&& buildlib unicode
-			&& buildlib log-levels
-			&& buildlib log-formatter
-			&& buildlib logger
-			&& buildlib text-table
-			&& buildlib ast-builder
-			&& buildlib walker
-			&& buildlib parser
-			&& buildlib pll
-			&& buildlib pllfile
-			&& buildlib nice
-			&& buildlib fsys
-			&& buildlib symbols
-			&& buildlib exec
-			&& buildlib typescript
-			&& buildlib civet
-			&& buildlib cielo
-			&& buildlib cmd-args
-			&& buildlib automate
-			&& buildlib analyze
-			&& buildlib v8-stack
-			&& buildlib unit-test
-			",
-
-		// --------------------------------------------------------------------
-		// --------------------------------------------------------------------
-
-		"cmd": "
-			   deno run -A npm:@danielx/civet --inline-map -o .ts -c src/test/cmd.civet
-			&& deno check -q src/test/cmd.ts
-			&& deno run -A src/test/cmd.ts
-			",
-
-		"temp": "
-			   clear
-			&& deno run -A npm:@danielx/civet --inline-map -o .ts -c src/test/temp.civet
-			&& deno check -q src/test/temp.ts
-			&& deno run -A src/test/temp.ts
-			",
-
-		"debug": "
-			   clear
-			&& deno run -A npm:@danielx/civet -o .ts --inline-map -c src/test/temp.civet
-			&& deno check -q src/test/temp.ts
-			&& deno run -A --inspect-brk src/test/temp.ts
-			",
-
-		"temp2": "
-			   clear
-			&& deno run -A npm:@danielx/civet -o .ts --inline-map -c src/lib/parser.lib.civet
-			&& deno run -A npm:@danielx/civet -o .ts -c src/test/temp2.civet
-			&& deno check -q src/test/temp2.ts
-			&& deno run -A src/test/temp2.ts
-			",
-
-		"debug2": "
-			   clear
-			&& deno run -A npm:@danielx/civet -o .ts --inline-map -c src/lib/parser.lib.civet
-			&& deno run -A npm:@danielx/civet -o .ts -c src/test/temp2.civet
-			&& deno check -q src/test/temp2.ts
-			&& deno run -A --inspect-brk src/test/temp2.ts
-			",
-
-		"temp3": "
-			   clear
-			&& deno run -A npm:@danielx/civet -o .ts -c src/test/temp3.civet
-			&& deno check -q src/test/temp3.ts
-			&& deno run -A src/test/temp3.ts
-			",
-
-		"debug3": "
-			   clear
-			&& deno run -A npm:@danielx/civet --inline-map -o .ts -c src/test/temp3.civet
-			&& deno check -q src/test/temp3.ts
-			&& deno run -A --inspect-brk src/test/temp3.ts
-			",
-
-		"templib": "
-			   deno run -A npm:@danielx/civet -o .ts -c src/lib/temp.lib.civet
-			&& deno check -q src/lib/temp.lib.ts
-			",
-
 		"test:temp": "
 			   clear
 			&& deno run -A npm:@danielx/civet --inline-map -o .ts -c src/test/temp.test.civet
@@ -177,63 +87,7 @@
 			&& echo unit test: temp
 			&& deno test -A --reporter dot src/test/temp.test.ts
 			",
-
-		"docs:all": "
-			deno doc --html --name=@jdeighan/utils src/lib/typescript.lib.ts src/lib/datatypes.lib.ts src/lib/llutils.lib.ts src/lib/indent.lib.ts src/lib/logger.lib.ts src/lib/parser.lib.ts src/lib/text-table.lib.ts src/lib/pll.lib.ts src/lib/nice.lib.ts src/lib/fsys.lib.ts src/lib/symbols.lib.ts src/lib/exec.lib.ts src/lib/cielo.lib.ts src/lib/cmd-args.lib.ts src/lib/analyze.lib.ts src/lib/v8-stack.lib.ts src/lib/unit-test.lib.ts
-			",
-
-		"build:cmdtester": "
-			   deno run -A npm:@danielx/civet --inline-map -o .ts -c src/cmd/cmdtester.cmd.civet
-			&& deno check -q src/cmd/cmdtester.cmd.ts
-			&& deno install -fgA -n cmdtester --no-config --import-map import_map.json src/cmd/cmdtester.cmd.ts
-			",
-
-		"build:compilecmd": "
-			   deno run -A npm:@danielx/civet --inline-map -o .ts -c src/cmd/compile.cmd.civet
-			&& deno check -q src/cmd/compile.cmd.ts
-			&& deno install -fgA -n compile --no-config --import-map import_map.json src/cmd/compile.cmd.ts
-			",
-
-		"build:runtemp": "
-			   deno run -A npm:@danielx/civet --inline-map -o .ts -c src/cmd/runtemp.cmd.civet
-			&& deno check -q src/cmd/runtemp.cmd.ts
-			&& deno install -fgA -n runtemp --no-config --import-map import_map.json src/cmd/runtemp.cmd.ts
-			",
-
-		"build:utest": "
-			   deno run -A npm:@danielx/civet --inline-map -o .ts -c src/cmd/utest.cmd.civet
-			&& deno check -q src/cmd/utest.cmd.ts
-			&& deno install -fgA -n utest --no-config --import-map import_map.json src/cmd/utest.cmd.ts
-			",
-
-		"build:coverage": "
-			   deno run -A npm:@danielx/civet --inline-map -o .ts -c src/cmd/coverage.cmd.civet
-			&& deno check -q src/cmd/coverage.cmd.ts
-			&& deno install -fgA -n coverage --no-config --import-map import_map.json src/cmd/coverage.cmd.ts
-			",
-
-		"build:listexportscmd": "
-			   deno run -A npm:@danielx/civet --inline-map -o .ts -c src/cmd/list-exports.cmd.civet
-			&& deno check -q src/cmd/list-exports.cmd.ts
-			&& deno install -fgA -n list-exports --no-config --import-map import_map.json src/cmd/list-exports.cmd.ts
-			",
-
-		"build:builddotsymbols": "
-			   deno run -A npm:@danielx/civet --inline-map -o .ts -c src/cmd/build-dot-symbols.cmd.civet
-			&& deno check -q src/cmd/build-dot-symbols.cmd.ts
-			&& deno install -fgA -n build-dot-symbols --no-config --import-map import_map.json src/cmd/build-dot-symbols.cmd.ts
-			",
-
-		"build:cmds": "
-			   deno task build:compilecmd
-			&& deno task build:runtemp
-			&& deno task build:utest
-			&& deno task build:coverage
-			&& deno task build:listexportscmd
-			&& deno task build:builddotsymbols
-			",
-
 		},
-
-	"importMap": "import_map.json"
+	"nodeModulesDir": "auto",
+	"importMap": "import_map.jsonc",
 	}
