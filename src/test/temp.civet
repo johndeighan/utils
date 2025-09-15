@@ -1,40 +1,24 @@
 # temp.civet
 
+import {Node} from 'npm:typescript'
+
 import {
-	undef, defined, notdefined, LOG, FAIL, SUCCEED, findFile,
+	undef, defined, notdefined, LOG, FAIL, SUCCEED,
+	buildFileName, findFile, centered,
 	} from 'base-utils'
-import {o} from 'llutils'
-import {withExt} from 'fsys'
+import {o, hasKeys} from 'llutils'
 import {getCmdArgs} from 'cmd-args'
-import {getSourceMap, mapSourcePos} from 'source-map'
-import {setDirTree} from 'unit-test'
+import {civet2ast} from 'civet'
+import {astAsString} from 'typescript'
+import {TNodeInfo, Walker} from 'walker'
 
 getCmdArgs()
 
 # ---------------------------------------------------------------------------
 
-fileName := 'source-map-test.civet'
+ast := civet2ast """
+	x := 42
+	y := 13
+	"""
 
-setDirTree 'src/test/temporary', """
-	#{fileName}
-		import {undef} from 'datatypes'
-
-		export sum := (x: number, y: number) =>
-
-			return x + y
-	""", o'clear compile'
-
-path := findFile withExt(fileName, '.ts')
-if defined path
-	smap := getSourceMap path
-	if notdefined smap
-		FAIL "Source Map NOT FOUND"
-
-	newPos := mapSourcePos {
-		path
-		line: 6
-		column: 2
-		}
-	console.log newPos
-else
-	FAIL "File #{fileName} not found"
+console.dir ast

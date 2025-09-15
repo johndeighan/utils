@@ -45,6 +45,10 @@ equal toNiceString('-3.14'), '\\-3.14'
 equal toNiceString('134 Main St.'), '\\134 Main St.'
 equal toNiceString('.inf.'), '\\.inf.'
 equal toNiceString('.text'), '\\.text'
+equal toNiceString('label: 42'), '\\label: 42'
+equal toNiceString(' xxx '), '\\x20xxx\\x20'
+equal toNiceString('  xxx  '), '\\x20\\x20xxx\\x20\\x20'
+equal toNiceString('func1 = (str: string)'), 'func1 = (str: string)'
 
 # ---------------------------------------------------------------------------
 

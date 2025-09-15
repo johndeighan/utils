@@ -534,8 +534,13 @@ export civet2tsFile := (
 		'-o', '.ts'
 		'-c', path
 		]
-	assert success, "   FAILED"
-	LOG "   OK"
+	if success
+		ILOG "OK"
+	else
+		ILOG "FAILED"
+		if existsSync withExt(fileName, '.ts')
+			Deno.removeSync withExt(fileName, '.ts')
+		croak "Compile of #{fileName} failed"
 
 	# --- Type check the *.ts file
 	LOG "TYPE CHECK: #{fileName}"
@@ -543,8 +548,13 @@ export civet2tsFile := (
 		'check',
 		withExt(path, '.ts')
 		]
-	assert h.success, "   FAILED"
-	LOG "   OK"
+
+	if h.success
+		ILOG "OK"
+	else
+		ILOG "FAILED"
+		Deno.removeSync withExt(fileName, '.ts')
+		croak "Type Check of #{fileName} failed"
 	return
 
 # ---------------------------------------------------------------------------
@@ -633,7 +643,7 @@ export doRun := (
 		): void =>
 
 	fileName := buildFileName stub, purpose, '.ts'
-	LOG "RUN: #{fileName}"
+	LOG centered("RUN: #{fileName}", 64, '-')
 
 	path := findFile fileName
 	assert path, "No such file: #{fileName}"
@@ -657,8 +667,41 @@ export doRun := (
 			]
 		)
 	assert h.success, "   FAILED"
-	LOG "   OK"
 	return
+
+# ---------------------------------------------------------------------------
+
+export sep := (
+		width: number = 40
+		char: string = '-'
+		): string =>
+
+	return char.repeat(width)
+
+# ---------------------------------------------------------------------------
+# --- valid options:
+#        char - char to use on left and right
+#        buffer - num spaces around text when char <> ' '
+
+export centered := (
+	text: string,
+	width: number,
+	char: string = ' ',
+	numBuffer: number = 2
+	): string =>
+
+	totSpaces := width - text.length
+	if (totSpaces <= 0)
+		return text
+	numLeft := Math.floor(totSpaces / 2)
+	numRight := totSpaces - numLeft
+	if (char == ' ')
+		return ' '.repeat(numLeft) + text + ' '.repeat(numRight)
+	else
+		buf := ' '.repeat(numBuffer)
+		left := char.repeat(numLeft - numBuffer)
+		right := char.repeat(numRight - numBuffer)
+		return left + buf + text + buf + right
 
 # ---------------------------------------------------------------------------
 

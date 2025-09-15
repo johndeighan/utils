@@ -764,13 +764,6 @@ export lpad := (str: string, len: number, ch: string=' '): string =>
 #        char - char to use on left and right
 #        buffer - num spaces around text when char <> ' '
 
-/**
- * pads the given string on both the left and right
- * with the given character, to the given length
- * but with the given number of buffer chars surrounding
- * the text
- */
-
 export centered := (
 	text: string,
 	width: number,

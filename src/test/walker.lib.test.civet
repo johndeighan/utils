@@ -26,50 +26,133 @@ notType 'TNodeInfo<number>', {node: 42, level: 'a', parent: undef}
 DBG "class Walker"
 
 (() =>
-	# --- Try a very basic hash type
-	#     A node is a hash with keys 'name' and 'gender'
+	# --- Try a very simple class
 
-	type TPerson = {
+	type TGender = 'male' | 'female'
+
+	class Person
 		name: string
-		gender: 'male' | 'female'
-		}
+		gender: TGender
+		constructor(@name: string, @gender: TGender)
 
-	walker := new Walker<TPerson>()
-	walker.useNode = (x: unknown): boolean =>
-			return hasKeys(x, 'name', 'gender')
+	walker := new Walker<Person>('Person')
+
 
 	# --- Walk a single node
-	lStrings := for h: TNodeInfo<TPerson> of walker.walk({
-			name: 'John'
-			gender: 'male'
-			})
+	lStrings := for h of walker.walk(new Person('John', 'male'))
 		"#{h.node.name} is #{h.node.gender}"
 	equal lStrings, ['John is male']
 
 	# --- Walk an array
-	lStrings2 := for h: TNodeInfo<TPerson> of walker.walk([
-			{
-				name: 'John'
-				gender: 'male'
-				}
-			{
-				name: 'Julie'
-				gender: 'female'
-				}
+	lStrings2 := for h of walker.walk([
+			new Person('John', 'male')
+			new Person('Julie', 'female')
 			])
 		"#{h.node.name} is #{h.node.gender}"
 	equal lStrings2, ['John is male', 'Julie is female']
 
 	# --- Walk an object
-	lStrings3 := for h: TNodeInfo<TPerson> of walker.walk({
-			first: {
-				name: 'John'
-				gender: 'male'
-				}
-			second: {
-				name: 'Julie'
-				gender: 'female'
-				}
+	lStrings3 := for h of walker.walk({
+			first: new Person('John', 'male')
+			second: new Person('Julie', 'female')
+			})
+		"#{h.index}: #{h.node.name} is #{h.node.gender}"
+	equal lStrings3, [
+		'first: John is male',
+		'second: Julie is female'
+		]
+
+	h := {
+		friends: [
+			new Person('John Bowling', 'male')
+			new Person('Julie Booker', 'female')
+			]
+		name: 'John Deighan'
+		gender: 'male'
+		address: {
+			street: '1749 Main St.'
+			city: 'Blacksburg'
+			state: 'VA'
+			}
+		} as const
+
+	lNames := for h: TNodeInfo<Person> of walker.walk(h)
+		h.node.name
+	equal lNames, ['John Bowling', 'Julie Booker']
+
+	# --- put it in an array
+	h2 := [{
+		friends: [
+			new Person('John Bowling', 'male')
+			new Person('Julie Booker', 'female')
+			]
+		name: 'John Deighan'
+		gender: 'male'
+		address: {
+			street: '1749 Main St.'
+			city: 'Blacksburg'
+			state: 'VA'
+			}
+		}] as const
+
+	lNames2 := for h: TNodeInfo<Person> of walker.walk(h)
+		h.node.name
+	equal lNames2, ['John Bowling', 'Julie Booker']
+
+	# --- put it in a hash
+	h3 := { stuff: {
+		friends: [
+			new Person('John Bowling', 'male')
+			new Person('Julie Booker', 'female')
+			]
+		name: 'John Deighan'
+		gender: 'male'
+		address: {
+			street: '1749 Main St.'
+			city: 'Blacksburg'
+			state: 'VA'
+			}
+		}} as const
+
+	lNames3 := for h: TNodeInfo<Person> of walker.walk(h)
+		h.node.name
+	equal lNames3, ['John Bowling', 'Julie Booker']
+	)()
+
+# --- NOTE: In the above, the nodes must be Person objects,
+#           not just hashes with the keys 'name' and 'gender'
+# --- However, if you just want to check for those keys,
+#        you can overried the isNode() method
+
+(() =>
+	# --- A node is a hash with keys 'name' and 'gender'
+
+	type Person = {
+		name: string
+		gender: 'male' | 'female'
+		}
+
+	walker := new Walker<Person>()
+	walker.isNode = (x: object): x is Person =>
+		return hasKeys(x, 'name', 'gender')
+
+	# --- Walk a single node
+	lStrings := for h of walker.walk({name: 'John', gender: 'male'})
+		"#{h.node.name} is #{h.node.gender}"
+	equal lStrings, ['John is male']
+
+	# --- Walk an array
+	lStrings2 := for h of walker.walk([
+			{name: 'John', gender: 'male'}
+			{name: 'Julie', gender: 'female'}
+			])
+		"#{h.node.name} is #{h.node.gender}"
+	equal lStrings2, ['John is male', 'Julie is female']
+
+	# --- Walk an object
+	lStrings3 := for h of walker.walk({
+			first: {name: 'John', gender: 'male'}
+			second: {name: 'Julie', gender: 'female'}
 			})
 		"#{h.index}: #{h.node.name} is #{h.node.gender}"
 	equal lStrings3, [
@@ -91,7 +174,7 @@ DBG "class Walker"
 			}
 		} as const
 
-	lNames := for h: TNodeInfo<TPerson> of walker.walk(h)
+	lNames := for h: TNodeInfo<Person> of walker.walk(h)
 		h.node.name
 	equal lNames, ['John Deighan', 'John Bowling', 'Julie Booker']
 
@@ -110,7 +193,7 @@ DBG "class Walker"
 			}
 		}] as const
 
-	lNames2 := for h: TNodeInfo<TPerson> of walker.walk(h)
+	lNames2 := for h: TNodeInfo<Person> of walker.walk(h)
 		h.node.name
 	equal lNames2, ['John Deighan', 'John Bowling', 'Julie Booker']
 
@@ -129,7 +212,7 @@ DBG "class Walker"
 			}
 		}} as const
 
-	lNames3 := for h: TNodeInfo<TPerson> of walker.walk(h)
+	lNames3 := for h: TNodeInfo<Person> of walker.walk(h)
 		h.node.name
 	equal lNames3, ['John Deighan', 'John Bowling', 'Julie Booker']
 	)()

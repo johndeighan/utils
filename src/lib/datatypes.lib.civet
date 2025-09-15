@@ -372,7 +372,7 @@ export isRegExp := (item: unknown): item is regexp =>
  * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isObject)
  */
 
-export isObject := (x: unknown): x is object =>
+export isObject := (x: unknown): x is TObject =>
 
 	return (
 		  (typeof x == 'object')

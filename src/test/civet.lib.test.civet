@@ -7,7 +7,7 @@ import {o, s} from 'llutils'
 import {getCmdArgs} from 'cmd-args'
 import {DBG} from 'logger'
 import {slurp, withExt} from 'fsys'
-import {ts2ast, pprintAst} from 'typescript'
+import {ts2ast, astAsString} from 'typescript'
 import {
 	civet2tsFile, civet2ts, civet2ast,
 	} from 'civet'
@@ -64,9 +64,9 @@ DBG "civet2ast(code)"
 # isType 'SourceFile', ast1
 # isType 'SourceFile', ast2
 
-DBG "pprintAst(hAST)"
+DBG "astAsString(hAST)"
 
-equal pprintAst(ts2ast('x := 42')), s"""
+equal astAsString(ts2ast('x := 42')), s"""
 	kind: SourceFile
 	statements:
 		-

@@ -161,7 +161,7 @@ export typeCheckFile = typeCheckFiles   # --- synonym
 
 # ---------------------------------------------------------------------------
 
-export pprintAst := (
+export astAsString := (
 		hAst: SourceFile
 		hOptions: hash = {}
 		): string =>

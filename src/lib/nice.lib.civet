@@ -71,11 +71,32 @@ getCompareFunc := (
 
 export toNiceString := (str: string): string =>
 
-	escaped := escapeStr(str, o'style=C')
-	if str.match(/^[\d.-]/) || str.match(/^\S+:/)
-		return "\\#{escaped}"
-	else
-		return escaped
+	# --- escape TABs and NEWLINEs
+
+	str1 := escapeStr(str, o'style=C')
+
+	# --- precede with '/' if starts with digit, '.' or '-'
+
+	str2 := str1.match(/^[\d.-]/) ? "\\#{str1}" : str1
+	str3 := str2.match(/^\S+:/) ? "\\#{str2}" : str2
+
+	# --- check for leading or trailing spaces
+	#     (TABs and NEWLINEs have already been escaped)
+	#     (regex always matches)
+
+	lMatches := str3.match ///^
+			(\x20+)?
+			(.*?)
+			(\x20+)?
+			$///
+	if defined(lMatches)
+		[_, pre, mid, post] := lMatches
+		return (
+			(defined(pre) ? '\\x20'.repeat(pre.length) : '')
+			+ mid
+			+ (defined(post) ? '\\x20'.repeat(post.length) : '')
+			)
+	return str2
 
 # ---------------------------------------------------------------------------
 

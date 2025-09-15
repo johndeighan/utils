@@ -12,7 +12,7 @@ import {slurp, withExt} from 'fsys'
 import {
 	typeCheckCode, splitFuncStr, getSymbolsFromType,
 	getImportCode, getTsCode, checkType,
-	ts2ast, ast2ts, typeCheckFiles, pprintAst,
+	ts2ast, ast2ts, typeCheckFiles, astAsString,
 	} from 'typescript'
 import {
 	equal, like, succeeds, fails, truthy, falsy, isType, setDirTree,
@@ -43,10 +43,10 @@ DBG "typeCheckCode(tsCode)"
 truthy isEmpty(typeCheckCode("let s: string = 'abc';"))
 truthy nonEmpty(typeCheckCode("let s: string = 42;"))
 
-DBG "ts2ast(tsCode)", "pprintAst(ast)"
+DBG "ts2ast(tsCode)", "astAsString(ast)"
 
 ast := ts2ast(slurp('src/test/typescript/test2.ts'))
-equal pprintAst(ast), s"""
+equal astAsString(ast), s"""
 	kind: SourceFile
 	statements:
 		-
