@@ -10,7 +10,7 @@ import {OL, ML, getOptions, o} from 'llutils'
 import {DBG, DBGVALUE} from 'logger'
 import {
 	isFile, fileExt, withExt, slurp, barf, barfTempFile,
-	parsePath, findSrcFile,
+	parsePath, findSrcFile, rmFile,
 	} from 'fsys'
 import {
 	TCmdDesc, TExecResult, execCmdSync, execCmd, execCmds,

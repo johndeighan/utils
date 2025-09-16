@@ -1,8 +1,5 @@
 to do
 
-get walker unit tests working
-currently fails on line 47
-
 use 'runtemp typescript' to discover how to find all
 exports and imports in a *.ts file
 

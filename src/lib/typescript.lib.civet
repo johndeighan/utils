@@ -14,7 +14,7 @@ import {blue} from "@std/fmt/colors"
 import {
 	undef, defined, notdefined, integer, TStringGenerator,
 	hash, hashof, isHash, TFilterFunc, isString,
-	isEmpty, nonEmpty,
+	isEmpty, nonEmpty, TConstructor,
 	} from 'datatypes'
 import {
 	truncStr, getOptions, spaces, o, OL, words,
@@ -29,6 +29,7 @@ import {toNice, TMapFunc} from 'nice'
 import {getCmdOutputSync} from 'exec'
 import {stripSrcMap} from 'source-map'
 import {getNeededImportStmts} from 'symbols'
+import {Walker} from 'walker'
 
 decoder := new TextDecoder("utf-8")
 
@@ -63,7 +64,7 @@ export allExportsInFile := (
 
 type TImportDesc = {
 	name: string
-	kind?: string
+	source: string
 	}
 
 # ---------------------------------------------------------------------------
@@ -72,7 +73,7 @@ export allImportsIn := (
 		tsCode: string
 		): Generator<TImportDesc, void, void> ->
 
-	yield {name: 'dummy'}
+	yield {name: 'dummy', source: 'dummy'}
 	return
 
 # ---------------------------------------------------------------------------
@@ -89,17 +90,6 @@ export allImportsInFile := (
 export kindStr := (i: number): string =>
 
 	return SyntaxKind[i]
-
-# ---------------------------------------------------------------------------
-
-export tsMapFunc: TMapFunc := (
-		key: string
-		val: unknown
-		): unknown =>
-
-	if (key == 'kind') && (typeof val == 'number')
-		return kindStr(val)
-	return val
 
 # ---------------------------------------------------------------------------
 
@@ -158,6 +148,17 @@ export typeCheckFiles := (
 	return lMsgs
 
 export typeCheckFile = typeCheckFiles   # --- synonym
+
+# ---------------------------------------------------------------------------
+
+export tsMapFunc: TMapFunc := (
+		key: string
+		val: unknown
+		): unknown =>
+
+	if (key == 'kind') && (typeof val == 'number')
+		return kindStr(val)
+	return val
 
 # ---------------------------------------------------------------------------
 
@@ -408,3 +409,21 @@ hDefConfig: CompilerOptions := {
 	"useDefineForClassFields": true,
 	"useUnknownInCatchVariables": true
 	}
+
+# ---------------------------------------------------------------------------
+
+export getNodeObjectConstructorFunc := (): TConstructor<Node> =>
+
+	hAst := ts2ast "let x = 42;"
+	obj := hAst.statements[0]    # --- this is a NodeObject
+	return obj.constructor as TConstructor<Node>
+
+nodeConstructor := getNodeObjectConstructorFunc()
+
+# ---------------------------------------------------------------------------
+
+export class AstWalker extends Walker<Node>
+
+	constructor()
+
+		super(nodeConstructor)

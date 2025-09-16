@@ -2,7 +2,7 @@
 
 import {
 	nonOption, FAIL, lAllLibs, tryCmd, civet2tsFile, flag,
-	doUnitTest,
+	doUnitTest, defined,
 	} from 'base-utils'
 
 stub := nonOption(0) || FAIL("USAGE: buildlib <stub> [-n]")
@@ -19,3 +19,12 @@ else
 	await tryCmd civet2tsFile, stub, 'lib'
 	if not flag('n')
 		await tryCmd doUnitTest, stub, 'lib'
+
+	let n = 1
+	let xstub = nonOption(1)
+	while defined xstub
+		await tryCmd civet2tsFile, xstub, 'lib'
+		if not flag('n')
+			await tryCmd doUnitTest, xstub, 'lib'
+		n += 1
+		xstub = nonOption(n)

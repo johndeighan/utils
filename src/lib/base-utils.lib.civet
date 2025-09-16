@@ -11,6 +11,10 @@ decoder := new TextDecoder()
 decode := (x: Uint8Array<ArrayBuffer>) =>
 	return decoder.decode(x)
 
+export DIR := console.dir
+
+export type TConstructor<T> = new (...args: any[]) => T
+
 # ---------------------------------------------------------------------------
 
 export checkSetup := (): void =>
@@ -163,6 +167,16 @@ export replaceInArray := (
 			hReplace[str]
 		else
 			str
+
+# ---------------------------------------------------------------------------
+#             fsys
+# ---------------------------------------------------------------------------
+
+export rmFile := (path: string): void =>
+
+	if existsSync path
+		Deno.removeSync path
+	return
 
 # ---------------------------------------------------------------------------
 
@@ -538,8 +552,7 @@ export civet2tsFile := (
 		ILOG "OK"
 	else
 		ILOG "FAILED"
-		if existsSync withExt(fileName, '.ts')
-			Deno.removeSync withExt(fileName, '.ts')
+		rmFile withExt(fileName, '.ts')
 		croak "Compile of #{fileName} failed"
 
 	# --- Type check the *.ts file
@@ -553,7 +566,7 @@ export civet2tsFile := (
 		ILOG "OK"
 	else
 		ILOG "FAILED"
-		Deno.removeSync withExt(fileName, '.ts')
+		rmFile withExt(fileName, '.ts')
 		croak "Type Check of #{fileName} failed"
 	return
 
@@ -672,7 +685,7 @@ export doRun := (
 # ---------------------------------------------------------------------------
 
 export sep := (
-		width: number = 40
+		width: number = 64
 		char: string = '-'
 		): string =>
 

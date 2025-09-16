@@ -35,7 +35,7 @@ DBG "class Walker"
 		gender: TGender
 		constructor(@name: string, @gender: TGender)
 
-	walker := new Walker<Person>('Person')
+	walker := new Walker<Person>(Person)
 
 
 	# --- Walk a single node

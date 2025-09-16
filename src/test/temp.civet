@@ -3,22 +3,33 @@
 import {Node} from 'npm:typescript'
 
 import {
-	undef, defined, notdefined, LOG, FAIL, SUCCEED,
-	buildFileName, findFile, centered,
+	undef, defined, notdefined, LOG, DIR, FAIL, SUCCEED,
+	buildFileName, findFile, sep, centered, TConstructor,
 	} from 'base-utils'
-import {o, hasKeys} from 'llutils'
+import {o, hasKey, hasKeys} from 'llutils'
 import {getCmdArgs} from 'cmd-args'
 import {civet2ast} from 'civet'
-import {astAsString} from 'typescript'
-import {TNodeInfo, Walker} from 'walker'
+import {
+	astAsString, kindStr, AstWalker,
+	} from 'typescript'
 
 getCmdArgs()
 
 # ---------------------------------------------------------------------------
 
-ast := civet2ast """
-	x := 42
+hAst := civet2ast """
+	export x := 42
+	export f := (i: number): string =>
+		return i.toString()
 	y := 13
 	"""
 
-console.dir ast
+LOG astAsString(hAst)
+
+walker := new AstWalker()
+
+# --- Attempt to list out all exports
+LOG sep()
+for {node} of walker.walk(hAst)
+	kind := kindStr(node.kind)
+	LOG kind

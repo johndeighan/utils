@@ -5,9 +5,7 @@ import deepEqual from 'npm:fast-deep-equal'
 
 export {deepEqual}
 
-/**
- * @module datatypes - TypeScript datatype checking
- */
+export type TConstructor<T> = new (...args: any[]) => T
 
 # ---------------------------------------------------------------------------
 

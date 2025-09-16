@@ -9,9 +9,8 @@ import {
 	} from '@std/log'
 import {blue, black} from "@std/fmt/colors"
 
-import {
-	getPrefix,
-	} from 'unicode'
+import {rmFile} from 'base-utils'
+import {getPrefix} from 'unicode'
 import {
 	undef, defined, notdefined, hash, isString, nonEmpty,
 	croak, assert,
@@ -237,7 +236,7 @@ export DBGLABELED := (label: string, value: unknown): void =>
 
 export removeLogFile := (): void =>
 
-	Deno.removeSync logFileName
+	rmFile logFileName
 	return
 
 # ---------------------------------------------------------------------------
