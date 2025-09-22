@@ -22,21 +22,25 @@ import {
 	} from '@std/path'
 
 import {
+	slurp,
+	} from 'base-utils'
+import {
 	undef, defined, notdefined, assert, croak, isEmpty, nonEmpty,
 	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
 	isArray, isArrayOfStrings, isHash, isObject, isRegExp,
 	integer, hash, voidFunc,
 	} from 'datatypes'
 import {
-	OL, ML, getOptions, removeEmptyKeys, pass,
+	getOptions, removeEmptyKeys, pass,
 	spaces, sinceLoadStr, sleep, relpath,
 	} from 'llutils'
+import {OL, ML} from 'to-nice'
 import {
 	pushLogLevel, popLogLevel, LOG, DBG, ERR,
 	INDENT, UNDENT, DBGVALUE, DBGLABELED,
 	} from 'logger'
 
-export {relpath}
+export {slurp, relpath}
 
 /**
  * @module fs - file system utilities
@@ -458,23 +462,6 @@ export myself := (url: string): string =>
 
 # ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
-
-/**
- * read a file into a string
- */
-
-export slurp := (path: string): string =>
-
-	assert isFile(path), "No such file: #{resolve(path)} (slurp)"
-	data := Deno.readFileSync path
-	return decoder.decode(data).replaceAll('\r', '')
-
-# ---------------------------------------------------------------------------
-
-/**
- * write a string to a file
- * will ensure that all necessary directories exist
- */
 
 export barf := (
 		path: string,

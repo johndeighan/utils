@@ -1,9 +1,0 @@
-# civet.cmd.civet
-
-import {nonOption} from 'base-utils'
-
-# ---------------------------------------------------------------------------
-
-fileName := nonOption(0)
-
-fileName := "#{stub}

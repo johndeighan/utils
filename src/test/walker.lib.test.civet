@@ -1,25 +1,13 @@
 # walker.lib.test.civet
 
-import {undef, hash, isArray, isHash} from 'datatypes'
-import {hasKeys} from 'llutils'
-import {DBG, setLogLevel} from 'logger'
+import {undef, hash} from 'datatypes'
+import {hasKey, hasKeys} from 'llutils'
+import {DBG} from 'logger'
 import {getCmdArgs} from 'cmd-args'
-import {
-	TNodeInfo, Walker,
-	} from 'walker'
-import {
-	equal, truthy, falsy, isType, notType,
-	} from 'unit-test'
+import {Walker} from 'walker'
+import {equal, truthy, falsy, isType, notType} from 'unit-test'
 
 getCmdArgs()
-setLogLevel 'debug'
-
-# ---------------------------------------------------------------------------
-
-DBG "type TNodeInfo"
-
-isType  'TNodeInfo<number>', {node: 42, level: 1,   parent: undef}
-notType 'TNodeInfo<number>', {node: 42, level: 'a', parent: undef}
 
 # ---------------------------------------------------------------------------
 
@@ -35,31 +23,35 @@ DBG "class Walker"
 		gender: TGender
 		constructor(@name: string, @gender: TGender)
 
-	walker := new Walker<Person>(Person)
+	class PersonWalker extends Walker<Person>
+		override isNode = (x: object): x is Person =>
+			return x instanceof Person
 
+	walker := new PersonWalker()
 
 	# --- Walk a single node
-	lStrings := for h of walker.walk(new Person('John', 'male'))
-		"#{h.node.name} is #{h.node.gender}"
+	person := new Person('John', 'male')
+	lStrings := for {name, gender} of walker.walk(person)
+		"#{name} is #{gender}"
 	equal lStrings, ['John is male']
 
 	# --- Walk an array
-	lStrings2 := for h of walker.walk([
+	lStrings2 := for {name, gender} of walker.walk([
 			new Person('John', 'male')
 			new Person('Julie', 'female')
 			])
-		"#{h.node.name} is #{h.node.gender}"
+		"#{name} is #{gender}"
 	equal lStrings2, ['John is male', 'Julie is female']
 
 	# --- Walk an object
-	lStrings3 := for h of walker.walk({
+	lStrings3 := for {name, gender} of walker.walk({
 			first: new Person('John', 'male')
 			second: new Person('Julie', 'female')
 			})
-		"#{h.index}: #{h.node.name} is #{h.node.gender}"
+		"#{name} is #{gender}"
 	equal lStrings3, [
-		'first: John is male',
-		'second: Julie is female'
+		'John is male',
+		'Julie is female'     # TODO add key by querying for parent
 		]
 
 	h := {
@@ -76,12 +68,12 @@ DBG "class Walker"
 			}
 		} as const
 
-	lNames := for h: TNodeInfo<Person> of walker.walk(h)
-		h.node.name
+	lNames := for {name} of walker.walk(h)
+		name
 	equal lNames, ['John Bowling', 'Julie Booker']
 
 	# --- put it in an array
-	h2 := [{
+	arr := [{
 		friends: [
 			new Person('John Bowling', 'male')
 			new Person('Julie Booker', 'female')
@@ -95,8 +87,8 @@ DBG "class Walker"
 			}
 		}] as const
 
-	lNames2 := for h: TNodeInfo<Person> of walker.walk(h)
-		h.node.name
+	lNames2 := for {name} of walker.walk(arr)
+		name
 	equal lNames2, ['John Bowling', 'Julie Booker']
 
 	# --- put it in a hash
@@ -114,9 +106,9 @@ DBG "class Walker"
 			}
 		}} as const
 
-	lNames3 := for h: TNodeInfo<Person> of walker.walk(h)
-		h.node.name
-	equal lNames3, ['John Bowling', 'Julie Booker']
+	lNames3 := for {name} of walker.walk(h3)
+		"#{walker.level} #{name}"
+	equal lNames3, ['0 John Bowling', '0 Julie Booker']
 	)()
 
 # --- NOTE: In the above, the nodes must be Person objects,
@@ -132,32 +124,34 @@ DBG "class Walker"
 		gender: 'male' | 'female'
 		}
 
-	walker := new Walker<Person>()
-	walker.isNode = (x: object): x is Person =>
-		return hasKeys(x, 'name', 'gender')
+	class PersonWalker extends Walker<hash>
+		override isNode = (x: object): x is hash =>
+			return hasKeys(x, 'name', 'gender')
+	walker := new PersonWalker()
 
 	# --- Walk a single node
-	lStrings := for h of walker.walk({name: 'John', gender: 'male'})
-		"#{h.node.name} is #{h.node.gender}"
+	person := {name: 'John', gender: 'male'}
+	lStrings := for {name, gender} of walker.walk(person)
+		"#{name} is #{gender}"
 	equal lStrings, ['John is male']
 
 	# --- Walk an array
-	lStrings2 := for h of walker.walk([
+	lStrings2 := for {name, gender} of walker.walk([
 			{name: 'John', gender: 'male'}
 			{name: 'Julie', gender: 'female'}
 			])
-		"#{h.node.name} is #{h.node.gender}"
+		"#{name} is #{gender}"
 	equal lStrings2, ['John is male', 'Julie is female']
 
 	# --- Walk an object
-	lStrings3 := for h of walker.walk({
+	lStrings3 := for node of walker.walk({
 			first: {name: 'John', gender: 'male'}
 			second: {name: 'Julie', gender: 'female'}
 			})
-		"#{h.index}: #{h.node.name} is #{h.node.gender}"
+		"#{node.name} is #{node.gender}"
 	equal lStrings3, [
-		'first: John is male',
-		'second: Julie is female'
+		'John is male',
+		'Julie is female'
 		]
 
 	h := {
@@ -174,8 +168,8 @@ DBG "class Walker"
 			}
 		} as const
 
-	lNames := for h: TNodeInfo<Person> of walker.walk(h)
-		h.node.name
+	lNames := for node of walker.walk(h)
+		node.name
 	equal lNames, ['John Deighan', 'John Bowling', 'Julie Booker']
 
 	# --- put it in an array
@@ -193,8 +187,8 @@ DBG "class Walker"
 			}
 		}] as const
 
-	lNames2 := for h: TNodeInfo<Person> of walker.walk(h)
-		h.node.name
+	lNames2 := for node of walker.walk(h2)
+		node.name
 	equal lNames2, ['John Deighan', 'John Bowling', 'Julie Booker']
 
 	# --- put it in a hash
@@ -212,7 +206,54 @@ DBG "class Walker"
 			}
 		}} as const
 
-	lNames3 := for h: TNodeInfo<Person> of walker.walk(h)
-		h.node.name
+	lNames3 := for node of walker.walk(h3)
+		node.name
 	equal lNames3, ['John Deighan', 'John Bowling', 'Julie Booker']
 	)()
+
+# ---------------------------------------------------------------------------
+
+(() =>
+	h := {
+		name: 'John D'
+		age: 72
+		friends: [
+			{
+				name: 'John B',
+				alias: {name: 'male JB'}
+				}
+			{
+				name: 'Julie',
+				aliases: [{name: 'female JB'}]
+				}
+			{name: 'Aaron'}
+			{notname: 'building'}
+			]
+		enemies: {
+			a: {name: 'Donald', kind: 'scumbag'}
+			b: {name: 'Satan',  kind: 'devil'}
+			c: {notname: 'woods', key: 'nothing'}
+			}
+		}
+
+	class PersonWalker extends Walker<hash>
+		override isNode(x: object): x is hash
+			return hasKey x, 'name'
+
+	walker := new PersonWalker()
+
+	lItems := for node of walker.walk(h)
+		[walker.level, node.name]
+
+	equal lItems, [
+		[ 0, "John D" ],
+		[ 1, "John B" ],
+		[ 2, "male JB" ],
+		[ 1, "Julie" ],
+		[ 2, "female JB" ],
+		[ 1, "Aaron" ],
+		[ 1, "Donald" ],
+		[ 1, "Satan" ]
+		]
+	)()
+

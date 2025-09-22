@@ -1,0 +1,288 @@
+# to-nice.lib.civet
+
+import {sep, centered} from 'base-utils'
+import {
+	assert, croak, undef, defined, notdefined, hash, hashof,
+	isString, isArray, isClass, isRegExp, isObject, isPrimitive,
+	isEmpty, nonEmpty,
+	symbolName, className, functionName, regexpDef,
+	} from 'datatypes'
+import {
+	getOptions, escapeStr, o, toBlock, spaces, mapEachLine,
+	} from 'llutils'
+
+export type TCompareFunc = (a: string, b: string) => number
+export type TMapFunc = (key: string, x: unknown) => hashof<unknown>
+
+# ---------------------------------------------------------------------------
+
+export alphaCompare: TCompareFunc := (
+		a: string,
+		b: string
+		): number =>
+
+	return (a < b) ? -1 : (a > b) ? 1 : 0
+
+# ---------------------------------------------------------------------------
+# --- any leading digit must be preceded by a single '\'
+
+export toNiceString := (str: string): string =>
+
+	# --- escape spaces and \t, \n or \r
+
+	str1 := escapeStr(str)
+
+	# --- precede with '\' if starts with digit, '.' or '-'
+
+	str2 := str1.match(/^[\d.-]/) ? "\\#{str1}" : str1
+	str3 := str2.match(/^[^˳\s]+:/) ? "\\#{str2}" : str2
+
+	# --- check for leading or trailing spaces
+	#     (TABs and NEWLINEs have already been escaped)
+	#     (regex always matches)
+
+	return str3
+
+# ---------------------------------------------------------------------------
+
+pathadd := (
+		path: string
+		key: string | number
+		): string =>
+
+	newkey := (
+		  (typeof key == 'number')
+		? "[#{key.toString()}]"
+		: "/#{key}"
+		)
+	return (path == '/') ? newkey : "#{path}#{newkey}"
+
+# ---------------------------------------------------------------------------
+
+# --- Returns a function that:
+#        compares 2 strings based on their position in lSortKeys
+#        else compares alphabetically
+
+getCompareFunc := (
+		lSortKeys: string[]
+		): TCompareFunc =>
+
+	# --- Create map of key to number
+	h: hashof<number> := {}
+	for key,i of lSortKeys
+		h[key] = i+1
+
+	return (a: string, b: string): number ->
+		aVal := h[a]
+		bVal := h[b]
+
+		if defined(aVal)
+			if defined(bVal)
+				# --- compare numerically
+				return (aVal < bVal) ? -1 : (aVal > bVal) ? 1 : 0
+			else
+				return -1
+		else
+			if defined(bVal)
+				return 1
+			else
+				return alphaCompare(a, b)
+
+# ---------------------------------------------------------------------------
+
+indented := (block: string, oneIndent: string) =>
+
+	return mapEachLine(block, (line) => oneIndent + line)
+
+# ---------------------------------------------------------------------------
+
+export toNice := (
+		x: unknown,
+		hOptions: hash={}
+		mapVisited: Map<object, string> = new Map<object, string>()
+		path: string = '/'
+		): string =>
+
+	# --- When recoverable, classes and functions
+	#     include their definitions,
+	#     with escaped chars
+
+	type opt = {
+		compact: boolean
+		recoverable: boolean
+		ignoreEmptyValues: boolean
+		sortKeys: boolean
+		sortFunc: TCompareFunc?
+		mapFunc: TMapFunc
+		lInclude: string[]?
+		lExclude: string[]?
+		oneIndent: string
+		}
+	{		compact
+			recoverable
+			ignoreEmptyValues
+			sortKeys
+			sortFunc
+			mapFunc
+			lInclude
+			lExclude
+			oneIndent
+		} := getOptions<opt> hOptions, {
+		compact: false
+		recoverable: false
+		ignoreEmptyValues: false
+		sortKeys: false
+		sortFunc: undef
+		mapFunc: (key: string, x: unknown) => return {[key]: x}
+		lInclude: undef
+		lExclude: undef
+		oneIndent: spaces(3)
+		}
+
+	# --- You can provide sortKeys or a sortFunc, but not both
+	assert not (sortKeys && defined(sortFunc)), "Bad options"
+
+	switch typeof x
+		when 'undefined'
+			return '.undef.'
+
+		when 'boolean'
+			return x ? '.true.' : '.false.'
+
+		when 'number'
+			return (
+				  Number.isNaN(x)    ? '.NaN.'
+				: Number.isFinite(x) ? x.toString()
+				: ((x < 0) ? '.neginfinity.' : '.infinity.')
+				)
+
+		when 'bigint'
+			return x.toString() + 'n'
+
+		when 'string'
+			return toNiceString(x)
+
+		when 'symbol'
+			name := symbolName(x)
+			return name ? ".symbol #{name}." : '.symbol.'
+
+		when 'function'
+			if isClass(x)
+				return ".class #{className(x)}."
+			else
+				return ".function #{functionName(x)}."
+
+		when 'object'
+			if (x == null)
+				return '.null.'
+
+			if isRegExp(x)
+				return ".regexp #{escapeStr(regexpDef(x))}."
+
+			# --- Check if object was previously visited
+			prevpath := mapVisited.get x
+			if prevpath
+				return ".REF #{prevpath}."
+
+			if isArray(x)
+				if (x.length == 0)
+					return '.[].'
+
+				mapVisited.set x, path
+				lLines := []
+				for val,i of x
+					block := toNice(
+							val,
+							hOptions,
+							mapVisited,
+							pathadd(path, i)
+							)
+					if compact
+						lLines.push block
+					else if isPrimitive(val) || block.startsWith('.')
+						lLines.push "- #{block}"
+					else
+						lLines.push '-'
+						lLines.push indented(block, oneIndent)
+				if compact
+					return '[' + lLines.join(' ') + ']'
+				else
+					return toBlock(lLines)
+
+			lKeys := Object.keys(x)
+			if (lKeys.length == 0)
+				return '.{}.'
+
+			func: TCompareFunc? := (
+				  defined(sortFunc) ? sortFunc
+				: defined(lInclude) ? getCompareFunc(lInclude)
+				: sortKeys          ? alphaCompare
+				:                     undef
+				)
+
+			useKey := (key: unknown): boolean =>
+				if (typeof key != 'string')
+					return false
+				if defined(lExclude) && lExclude.includes(key)
+					return false
+				if defined(lInclude) && not lInclude.includes(key)
+					return false
+				return true
+
+			mapVisited.set x, path
+
+			lLines := []
+			for key of (defined(func) ? lKeys.sort(func) : lKeys)
+				value := (x as hashof<unknown>)[key]
+				if useKey(key) && (not ignoreEmptyValues || nonEmpty(value))
+					hMapped := mapFunc(key, value)
+					for [newkey, val] of Object.entries(hMapped)
+						block := toNice(
+								val,
+								hOptions,
+								mapVisited,
+								pathadd(path, key)
+								)
+						if compact || isPrimitive(val) || block.startsWith('.')
+							lLines.push "#{newkey}: #{block}"
+						else
+							lLines.push "#{newkey}:"
+							lLines.push indented(block, oneIndent)
+			if compact
+				return '{' + lLines.join(' ') + '}'
+			else
+				return toBlock(lLines)
+
+	return "<Unknown object #{x}>"
+
+# ---------------------------------------------------------------------------
+
+export OL := (x: unknown): string =>
+
+	return toNice x, {compact: true}
+
+# ---------------------------------------------------------------------------
+
+export ML := (x: unknown): string =>
+
+	return toNice x, {compact: false}
+
+# ---------------------------------------------------------------------------
+
+export DUMP := (
+		x: unknown
+		label: string? = undef
+		hOptions: hash = {}
+		width: number = 64
+		): void =>
+
+	if isEmpty label
+		console.log sep(width)
+	else if defined label
+		console.log centered(label, width, '-')
+	if isString(x)
+		console.log x
+	else
+		console.log toNice(x, hOptions)
+	console.log sep(width)
+	return

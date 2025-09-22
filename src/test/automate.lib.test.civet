@@ -3,7 +3,7 @@
 import {defined, isHash, isFunction} from 'datatypes'
 import {o} from 'llutils'
 import {getCmdArgs} from 'cmd-args'
-import {withExt, TPathInfo} from 'fsys'
+import {withExt, TPathInfo, isFile} from 'fsys'
 import {DBG} from 'logger'
 import {execCmd, getCmdOutput} from 'exec'
 import {
@@ -132,7 +132,7 @@ isType 'TUnitTestResult', {
 DBG "getCompilerConfig(path)"
 
 (() =>
-	civetPath := 'src/test/compile/comp.config.civet'
+	civetPath := 'src/test/automate/comp.config.civet'
 	hConfig := getCompilerConfig(civetPath)
 	isType 'TCompilerConfig', hConfig, isCompilerConfig
 	)()
@@ -166,8 +166,8 @@ DBG "compileFile()"
 fails () => compileFile 'nosuchfile.civet'
 
 (() =>
-	hResult := compileFile('src/test/compile/test1.cielo', o'nopp')
-	# truthy isFile('test/compile/test1.civet')
+	hResult := compileFile('src/test/automate/test1.cielo', o'nopp')
+	truthy isFile('src/test/automate/test1.temp.civet')
 	)()
 
 DBG "runUnitTestsFor(stub)"
@@ -187,7 +187,7 @@ succeeds () =>
 
 # DBG "installCmd()", "uninstallCmd()"
 
-# await installCmd 'src/test/compile/hello.ts', 'hello'
+# await installCmd 'src/test/automate/hello.ts', 'hello'
 # hResult := await getCmdOutput 'hello', []
 # str := hResult.stdout
 # equal str, "Hello, World!\n"

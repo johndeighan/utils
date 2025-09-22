@@ -5,9 +5,10 @@ import {
 	isArray, isFunction, isString, isRegExp, isHash,
 	} from 'datatypes'
 import {
-	getOptions, escapeStr, spaces, randomLabel, OL,
+	getOptions, escapeStr, spaces, randomLabel,
 	getLineAndColumn,
 	} from 'llutils'
+import {OL} from 'to-nice'
 import {
 	DBG, INDENT, UNDENT,
 	} from 'logger'

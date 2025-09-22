@@ -14,8 +14,9 @@ import {
 	normalizeCode, voidFunc, croak,
 	} from 'datatypes'
 import {
-	pass, stringify, o, OL, keys, getOptions, spaces,
+	pass, stringify, o, keys, getOptions, spaces,
 	} from 'llutils'
+import {OL} from 'to-nice'
 import {indented} from 'indent'
 import {TextTable} from 'text-table'
 import {

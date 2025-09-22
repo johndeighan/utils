@@ -2,87 +2,104 @@
 
 import {
 	undef, defined, notdefined, integer, TConstructor,
-	isArray, isObject, isPrimitive,
+	isArray, isObject, isPrimitive, hash, croak, isEmpty,
+	assertIsString, assertIsArray,
 	} from 'datatypes'
-import {OL} from 'llutils'
+import {extract} from 'llutils'
+import {OL} from 'to-nice'
 import {DBG} from 'logger'
 
 # ---------------------------------------------------------------------------
 
-type TIndex = string | number
-
-export type TNodeInfo<T> = {
-	node: T
-	level: integer
-	parent: T?
-	index?: TIndex
-	}
-
-# ---------------------------------------------------------------------------
-
-export class Walker<T extends object = object>
+export class Walker<T extends object = hash>
 
 	# --- Keep track of nodes visited to avoid infinite loops
 	setVisited: WeakSet<T> = new WeakSet<T>()
 
-	# --- If constructor is provided, only objects with that
-	#     constuctor will be returned
-
-	nodeConstructor: TConstructor<T>?
+	lNodeStack: T[] = []
 
 	# ..........................................................
 
-	constructor(@nodeConstructor: TConstructor<T>? = undef)
+	get level()
+
+		return @lNodeStack.length - 1
+
+	# ..........................................................
+
+	parent(n: number = 1): T
+
+		if (n < 0)
+			croak "Bad index: #{n}"
+		pos := @lNodeStack.length - n - 1
+		if (pos < 0)
+			croak "Bad index: #{n}, stack has #{@lNodeStack.length} items"
+		return @lNodeStack[pos]
 
 	# ..........................................................
 
 	isNode(x: object): x is T
 
-		return (
-			isObject(x)  # not undef, null, regex, array
-				&& (
-						not @nodeConstructor
-					|| (x instanceof @nodeConstructor)
-					)
-			)
-
-	# ..........................................................
-
-	useNode(x: object): boolean
-
-		return @isNode(x)
-
-	# ..........................................................
-
-	filter(h: TNodeInfo<T>): boolean
-
-		# --- filter() is only called if isNode(h.node) is true
 		return true
+
+	# ..........................................................
+
+	filter(node: T): boolean
+
+		# --- filter() is only called if isNode(node) is true
+		return true
+
+	# ..........................................................
+
+	extract(dspath: string): unknown?
+
+		DBG "dspath = '#{dspath}'"
+		lMatches := dspath.match ///^
+				(\^*)
+				(.*)
+				$///
+		if defined(lMatches)
+			[_, goUpStr, mainStr] := lMatches
+			return extract @parent(goUpStr.length), mainStr
+		else
+			croak "Bad dspath: #{dspath}"
+
+	# ..........................................................
+
+	getString(dspath: string): string
+
+		str := @extract dspath
+		assertIsString str
+		return str
+
+	# ..........................................................
+
+	getArray(dspath: string): unknown[]
+
+		lItems := @extract dspath
+		assertIsArray lItems
+		return lItems
 
 	# ..........................................................
 	# GENERATOR
 
-	walk(
-			item: unknown
-			parent: T? = undef
-			level: number = 0
-			index: (string | number)? = undef
-			): Generator<TNodeInfo<T>, void, void>
+	walk(item: unknown): Generator<T, void, void>
 
-		if isObject(item) && @useNode item
-			DBG "NODE: #{OL(item)}"
-			yield {
-				node: item as T
-				parent
-				level
-				index
-				}
-
-		if isArray item
+		if isObject(item) && @isNode(item)
+			if @setVisited.has item
+				return
+			DBG "YIELD NODE: #{OL(item)}"
+			@lNodeStack.push item
+			yield item
+			@setVisited.add item
+			for x of Object.values(item)
+				yield* @walk x
+			@lNodeStack.pop()
+		else if isArray item
 			DBG "ARRAY"
-			for x,i of item
-				yield* @walk x, parent, level+1, i
-		else if isObject item
+			for x of item
+				yield* @walk x
+		else if isObject(item)
 			DBG "OBJECT"
-			for [key, x] of Object.entries(item)
-				yield* @walk x, (@isNode(item) ? item : parent), level+1, key
+			for x of Object.values(item)
+				yield* @walk x
+		return

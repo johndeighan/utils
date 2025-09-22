@@ -1,0 +1,4 @@
+import {undef, functionName} from 'datatypes'
+import {Walker} from 'walker'
+
+export x := 42

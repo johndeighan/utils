@@ -33,12 +33,6 @@ export undef := undefined
 
 # ---------------------------------------------------------------------------
 
-/**
- * returns true if the provided value is defined
- * (i.e. not null or undefined), else returns false
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,defined)
- */
-
 export type TObject = {
 	[key: string]: unknown
 	[sym: symbol]: unknown
@@ -86,7 +80,7 @@ export type TAssertFunc = (
 export assert: TAssertFunc := (
 		cond: unknown,
 		msg: string = "An error occurred"
-		) =>
+		): asserts cond =>
 
 	if not cond
 		throw new Error(msg)
@@ -150,29 +144,14 @@ export className = (x: unknown): string? =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * An array containing anything
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,array)
- */
-
 export type array = unknown[]
 export type arrayof<T> = T[]
-
-/**
- * Test if something is an array
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isArray)
- */
 
 export isArray := (x: unknown): x is array =>
 
 	return Array.isArray(x)
 
 # ---------------------------------------------------------------------------
-
-/**
- * An alias for TypeScript type 'object' with string keys
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,hash)
- */
 
 export interface hash
 	[key: string | symbol]: unknown
@@ -181,11 +160,6 @@ export interface hashof<T>
 	[key: string | symbol]: T
 
 # ---------------------------------------------------------------------------
-
-/**
- * Test if something is a hash
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isHash)
- */
 
 export isHash := (x: unknown): x is hash =>
 
@@ -215,18 +189,9 @@ export hashLike := (h: hash, hPat: hash): boolean =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * returns true if (typeof item == 'string') or item instanceof String
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isString)
- */
-
 export isString := (x: unknown): x is string =>
 
 	return (typeof x == 'string') || (x instanceof String)
-
-export assertIsString := (x: unknown): asserts x is string =>
-
-	assert isString(x), "Not a string: #{typeof x}"
 
 # ---------------------------------------------------------------------------
 
@@ -287,13 +252,7 @@ export isPrimitive := (x: unknown): boolean =>
 
 export isNonPrimitive := (x: unknown): boolean =>
 
-	return (
-		   (typeof x == 'object')
-		&& (x != null)
-		&& not (x instanceof String)
-		&& not (x instanceof Number)
-		&& not (x instanceof Boolean)
-		)
+	return (typeof x == 'object') && (x != null)
 
 # ---------------------------------------------------------------------------
 
@@ -354,56 +313,23 @@ export isArrayOfStrings := (x: unknown): x is string[] =>
 
 export type regexp = RegExp
 
-/**
- * Test if something is a regular expression
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isRegExp)
- */
-
 export isRegExp := (item: unknown): item is regexp =>
 
 	return (item instanceof RegExp)
 
 # ---------------------------------------------------------------------------
 
-/**
- * Test if something is an object
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isObject)
- */
-
 export isObject := (x: unknown): x is TObject =>
 
-	return (
-		  (typeof x == 'object')
-		&& (x != null)
-		&& not Array.isArray(x)
-		&& (x not instanceof RegExp)
-		&& (x not instanceof String)
-		&& (x not instanceof Number)
-		&& (x not instanceof Boolean)
-		)
+	return (typeof x == 'object') && (x != null) && not isArray(x)
 
 # ---------------------------------------------------------------------------
-
-/**
- * Test if something is a function
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isFunction)
- */
 
 export isFunction := (item: unknown): item is Function =>
 
 	return (typeof item == 'function')
 
 # ---------------------------------------------------------------------------
-
-/**
- * returns true if any of these is true:
- * 	- x is null or undef
- * 	- x is a string consisting of only whitespace
- * 	- x is an array of length 0
- * 	- x is a hash that has no keys
- * else returns false
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isEmpty)
- */
 
 export isEmpty := (x: unknown): boolean =>
 
@@ -513,7 +439,6 @@ export isClassInstance := (
 export isIterable := (x: unknown): boolean =>
 
 	if (typeof x == 'object') && (x != null)
-#		return (typeof x[Symbol.iterator] == 'function')
 		return Symbol.iterator in x
 	return false
 
@@ -596,3 +521,39 @@ export normalizeExpr := (
 		return str
 
 # ---------------------------------------------------------------------------
+
+export assertIsDefined: (x: unknown) => asserts x is TDefined := (
+		x: unknown
+		): asserts x is TDefined =>
+
+	assert defined(x), "Not defined: #{typeof x}"
+
+export assertIsString: (x: unknown) => asserts x is string := (
+		x: unknown
+		): asserts x is string =>
+
+	assert isString(x), "Not a string: #{typeof x}"
+
+export assertIsNumber: (x: unknown) => asserts x is number := (
+		x: unknown
+		): asserts x is number =>
+
+	assert isNumber(x), "Not a number: #{typeof x}"
+
+export assertIsArray: (x: unknown) => asserts x is array := (
+		x: unknown
+		): asserts x is array =>
+
+	assert isArray(x), "Not an array: #{typeof x}"
+
+export assertIsHash: (x: unknown) => asserts x is hash := (
+		x: unknown
+		): asserts x is hash =>
+
+	assert isHash(x), "Not a hash: #{typeof x}"
+
+export assertIsObject: (x: unknown) => asserts x is object := (
+		x: unknown
+		): asserts x is object =>
+
+	assert isObject(x), "Not an object: #{typeof x}"

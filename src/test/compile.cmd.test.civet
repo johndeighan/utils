@@ -1,14 +1,10 @@
 # compile.cmd.test.civet
 
-import {
-	LOG,
-	} from '../src/lib/logger.lib.ts'
-import {
-	getCmdArgs, execCmdSync, getCmdOutputSync, ML,
-	} from '../src/lib/utils.lib.ts'
-import {
-	equal,
-	} from '../src/lib/unit-test.lib.ts'
+import {LOG} from 'logger'
+import {getCmdArgs} from 'cmd-args'
+import {execCmdSync, getCmdOutputSync} from 'exec'
+import {ML} from 'to-nice'
+import {equal} from 'unit-test'
 
 getCmdArgs()
 

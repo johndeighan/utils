@@ -5,8 +5,9 @@ import {
 	hash, hashof, isEmpty, nonEmpty,
 	} from 'datatypes'
 import {
-	pass, OL, ML, o, getOptions, keys,
+	pass, o, getOptions, keys,
 	} from 'llutils'
+import {OL, ML} from 'to-nice'
 import {resetOneIndent} from 'indent'
 import {LOG, DBG, DBGVALUE, ERR} from 'logger'
 import {

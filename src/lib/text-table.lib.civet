@@ -9,9 +9,10 @@ import {
 	intArray, isArrayOfIntegers,
 	} from 'datatypes'
 import {
-	getOptions, OL, words, rtrim, alignString,
+	getOptions, words, rtrim, alignString,
 	toBlock, TAlignment,
 	} from 'llutils'
+import {OL} from 'to-nice'
 import {
 	LOGVALUE, DBG,
 	} from 'logger'

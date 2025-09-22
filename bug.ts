@@ -1,11 +1,12 @@
-"use strict";
-import {isObject} from 'datatypes'
+export const assertDefined: <T>(value: T | undefined | null, error?: string)
+  => asserts value is T
+  = <T>(value,  error?)  => {
 
-const useNode = (x: unknown): boolean => {
+  if (typeof value === 'number' || typeof value === 'boolean') {
+    return;
+  }
 
-	return (
-		isObject(x)(  this.length(!undef, null, regex, array
-			&& (x !== null)))
-		)
-}
-
+  if (!value) {
+    throw new Error(error || 'Value is not defined');
+  }
+};

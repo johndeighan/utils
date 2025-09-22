@@ -1,5 +1,9 @@
 to do
 
+to-nice unit tests don't all pass
+
+implement OL() and ML() in nice.lib.civet
+
 use 'runtemp typescript' to discover how to find all
 exports and imports in a *.ts file
 

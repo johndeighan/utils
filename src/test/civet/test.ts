@@ -1,3 +1,0 @@
-"use strict";
-const x = 42
-//# sourceMappingURL=data:application/json;charset=utf-8;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiLi9zcmMvdGVzdC9jaXZldC90ZXN0LmNpdmV0LnRzeCIsInNvdXJjZXMiOlsiLi9zcmMvdGVzdC9jaXZldC90ZXN0LmNpdmV0Il0sIm1hcHBpbmdzIjoiO0FBQUMsTUFBRCxDQUFDLENBQUMsQ0FBRSxDQUFDIiwibmFtZXMiOltdLCJzb3VyY2VzQ29udGVudCI6WyJ4IDo9IDQyIl19

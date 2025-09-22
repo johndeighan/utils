@@ -67,27 +67,36 @@ DBG "civet2ast(code)"
 DBG "astAsString(hAST)"
 
 equal astAsString(ts2ast('x := 42')), s"""
-	kind: SourceFile
+	kind: 308
+	kindStr: SourceFile
 	statements:
 		-
-			kind: LabeledStatement
+			kind: 257
+			kindStr: LabeledStatement
 			label:
-				kind: Identifier
+				kind: 80
+				kindStr: Identifier
 				escapedText: x
 			statement:
-				kind: ExpressionStatement
+				kind: 245
+				kindStr: ExpressionStatement
 				expression:
-					kind: BinaryExpression
+					kind: 227
+					kindStr: BinaryExpression
 					left:
-						kind: Identifier
+						kind: 80
+						kindStr: Identifier
 					operatorToken:
-						kind: FirstAssignment
+						kind: 64
+						kindStr: FirstAssignment
 					right:
-						kind: FirstLiteralToken
+						kind: 9
+						kindStr: FirstLiteralToken
 						text: \\42
 	endOfFileToken:
-		kind: EndOfFileToken
-	text: x := 42
+		kind: 1
+		kindStr: EndOfFileToken
+	text: x˳:=˳42
 	fileName: temp.ts
 	scriptKind: 3
 	isDeclarationFile: .false.
@@ -99,7 +108,7 @@ equal astAsString(ts2ast('x := 42')), s"""
 			file: .REF /.
 			start: 3
 			length: 1
-			messageText: Expression expected.
+			messageText: Expression˳expected.
 			category: 1
 			code: 1109
 	"""

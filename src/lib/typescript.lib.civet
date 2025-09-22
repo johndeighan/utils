@@ -17,73 +17,22 @@ import {
 	isEmpty, nonEmpty, TConstructor,
 	} from 'datatypes'
 import {
-	truncStr, getOptions, spaces, o, OL, words,
-	stringify,
+	truncStr, getOptions, spaces, o, words,
+	stringify, getString,
 	} from 'llutils'
+import {OL} from 'to-nice'
 import {indented} from 'indent'
 import {
 	LOG, DBG, LOGVALUE, INDENT, UNDENT, DBGVALUE,
 	} from 'logger'
 import {slurp, barf, barfTempFile} from 'fsys'
-import {toNice, TMapFunc} from 'nice'
+import {toNice, TMapFunc} from 'to-nice'
 import {getCmdOutputSync} from 'exec'
 import {stripSrcMap} from 'source-map'
 import {getNeededImportStmts} from 'symbols'
 import {Walker} from 'walker'
 
 decoder := new TextDecoder("utf-8")
-
-# ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-
-type TExportDesc = {
-	name: string
-	kind?: string
-	}
-
-# ---------------------------------------------------------------------------
-
-export allExportsIn := (
-		tsCode: string
-		): Generator<TExportDesc, void, void> ->
-
-	yield {name: 'dummy'}
-	return
-
-# ---------------------------------------------------------------------------
-
-export allExportsInFile := (
-		path: string
-		): Generator<TExportDesc, void, void> ->
-
-	yield* allExportsIn(slurp(path))
-	return
-
-# ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-
-type TImportDesc = {
-	name: string
-	source: string
-	}
-
-# ---------------------------------------------------------------------------
-
-export allImportsIn := (
-		tsCode: string
-		): Generator<TImportDesc, void, void> ->
-
-	yield {name: 'dummy', source: 'dummy'}
-	return
-
-# ---------------------------------------------------------------------------
-
-export allImportsInFile := (
-		path: string
-		): Generator<TImportDesc, void, void> ->
-
-	yield* allImportsIn(slurp(path))
-	return
 
 # ---------------------------------------------------------------------------
 
@@ -154,11 +103,15 @@ export typeCheckFile = typeCheckFiles   # --- synonym
 export tsMapFunc: TMapFunc := (
 		key: string
 		val: unknown
-		): unknown =>
+		): hashof<unknown> =>
 
 	if (key == 'kind') && (typeof val == 'number')
-		return kindStr(val)
-	return val
+		return {
+			kind: val
+			kindStr: kindStr(val)
+			}
+	else
+		return {[key]: val}
 
 # ---------------------------------------------------------------------------
 
@@ -168,7 +121,7 @@ export astAsString := (
 		): string =>
 
 	return toNice hAst, {
-		ignoreEmptyKeys: true
+		ignoreEmptyValues: true
 		mapFunc: tsMapFunc
 		lExclude: words(
 			'pos end id flags modifierFlagsCache'
@@ -412,18 +365,67 @@ hDefConfig: CompilerOptions := {
 
 # ---------------------------------------------------------------------------
 
-export getNodeObjectConstructorFunc := (): TConstructor<Node> =>
+export class AstWalker extends Walker<Node>
 
-	hAst := ts2ast "let x = 42;"
-	obj := hAst.statements[0]    # --- this is a NodeObject
-	return obj.constructor as TConstructor<Node>
+	override isNode(x: object): x is Node
 
-nodeConstructor := getNodeObjectConstructorFunc()
+		return Object.hasOwn x, 'kind'
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+type TExportDesc = {
+	name: string
+	kind?: string
+	}
 
 # ---------------------------------------------------------------------------
 
-export class AstWalker extends Walker<Node>
+export allExportsIn := (
+		tsCode: string
+		): Generator<TExportDesc, void, void> ->
 
-	constructor()
+	yield {name: 'dummy'}
+	return
 
-		super(nodeConstructor)
+# ---------------------------------------------------------------------------
+
+export allExportsInFile := (
+		path: string
+		): Generator<TExportDesc, void, void> ->
+
+	yield* allExportsIn(slurp(path))
+	return
+
+# ---------------------------------------------------------------------------
+# ---------------------------------------------------------------------------
+
+type TImportDesc = {
+	name: string
+	source: string
+	}
+
+# ---------------------------------------------------------------------------
+
+export allImportsIn := (
+		tsCode: string
+		): Generator<TImportDesc, void, void> ->
+
+	hAst := ts2ast tsCode
+	walker := new AstWalker()
+	for node of walker.walk(hAst)
+		if (node.kind == 273)
+			source := walker.getString('.moduleSpecifier.text')
+			for h of walker.getArray('.importClause.namedBindings.elements')
+				name := getString h, '.name.escapedText'
+				yield {name, source}
+	return
+
+# ---------------------------------------------------------------------------
+
+export allImportsInFile := (
+		path: string
+		): Generator<TImportDesc, void, void> ->
+
+	yield* allImportsIn(slurp(path))
+	return

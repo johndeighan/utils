@@ -13,8 +13,9 @@ import {
 	isString, isArray, isArrayOfStrings,
 	} from 'datatypes'
 import {
-	getOptions, OL, pass, blockToArray,
+	getOptions, pass, blockToArray,
 	} from 'llutils'
+import {OL} from 'to-nice'
 import {
 	getLogLevel, pushLogLevel, popLogLevel,
 	DBG, LOG, WARN, ERR, LOGVALUE,

@@ -1,0 +1,38 @@
+# temp2.civet
+
+import {LOG} from 'base-utils'
+import {hash} from 'datatypes'
+import {hasKeys} from 'llutils'
+import {Walker} from 'walker'
+
+# ---------------------------------------------------------------------------
+
+type Person = {
+	name: string
+	gender: 'male' | 'female'
+	}
+
+class PersonWalker extends Walker<hash>
+	override isNode = (x: object): x is hash =>
+		return hasKeys(x, 'name', 'gender')
+walker := new PersonWalker()
+
+# --- put it in an array
+h := [{
+	friends: [
+		{name: 'John Bowling', gender: 'male'}
+		{name: 'Julie Booker', gender: 'female'}
+		]
+	name: 'John Deighan'
+	gender: 'male'
+	address: {
+		street: '1749 Main St.'
+		city: 'Blacksburg'
+		state: 'VA'
+		}
+	}] as const
+
+lNames2 := for node of walker.walk(h)
+	node.name
+
+LOG lNames2

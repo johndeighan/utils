@@ -7,7 +7,8 @@ import {
 	isEmpty, nonEmpty, hash,
 	isString, isNonEmptyString, isInteger,
 	} from 'datatypes'
-import {OL, ML, rpad, centered} from 'llutils'
+import {rpad, centered} from 'llutils'
+import {OL, ML} from 'to-nice'
 import {DBG, LOG, WARN, ERR, INDENT, UNDENT} from 'logger'
 import {
 	isFile, mkpath, fileExt, withExt,

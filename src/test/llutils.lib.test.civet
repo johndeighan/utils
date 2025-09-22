@@ -6,21 +6,18 @@ import {
 	deepEqual, undef, functionDef, isArray, isHash,
 	} from 'datatypes'
 import {
-	sinceLoad, sinceLoadStr,
-	throwsError, pass, truncStr,
-	stringify, OL, ML, o, s, t,
-	strToHash, getOptions,
+	sinceLoad, sinceLoadStr, throwsError, pass, truncStr,
+	stringify, o, s, t, strToHash, getOptions,
 	removeEmptyKeys, keys, hasKey, hasKeys, missingKeys,
 	merge, hit, sleep, spaces, tabs,
 	rtrim, countChars, wsSplit, words,
-	blockToArray, allLinesInBlock, toArray,
-	arrayToBlock, toBlock,
-	escapeStr, unescapeStr, escapeBlock,
+	blockToArray, allLinesInBlock, mapEachLine, toArray,
+	arrayToBlock, toBlock, escapeStr, unescapeStr, escapeBlock,
 	getNExtra, rpad, lpad, centered, relpath,
 	TAlignment, isAlignment, alignString, zpad,
 	TBlockSpec, isBlockSpec, allMatches,
-	range, Fetcher, getLineAndColumn,
-	assertSameStr, interpolate,
+	range, Fetcher, getLineAndColumn, assertSameStr, interpolate,
+	extract, getString, getNumber,
 	} from 'llutils'
 import {
 	equal, truthy, falsy, succeeds, fails, codeLike,
@@ -131,32 +128,6 @@ equal stringify({
 	e: false,
 	f: a=>{return}
 	}
-	"""
-
-DBG "OL()"
-
-equal OL({a:1, b:2}), '{"a":1,"b":2}'
-equal OL('abc'), '"abc"'
-equal OL([1, 2, 3]), '[1,2,3]'
-equal OL(undefined), 'undef'
-equal OL(null), 'null'
-
-DBG "ML()"
-
-equal ML(undefined), 'undef'
-equal ML(null), 'null'
-equal ML('abc'), '"abc"'
-equal ML({a:1, b:2}), """
-	{
-	   "a": 1,
-	   "b": 2
-	}
-	"""
-equal ML([1,'abc']), """
-	[
-	   1,
-	   "abc"
-	]
 	"""
 
 DBG "strToHash()"
@@ -307,6 +278,17 @@ equal Array.from(allLinesInBlock("a\nb\n")), [
 	'a'
 	'b'
 	]
+
+DBG "mapEachLine()"
+
+equal mapEachLine("""
+	this is
+	something
+	""", (line) => "- #{line}"
+	), """
+	- this is
+	- something
+	"""
 
 DBG "type TBlockSpec", "isBlockSpec()"
 
@@ -561,3 +543,54 @@ DBG "truncStr(str, len)"
 equal truncStr('abc', 12), 'abc'
 equal truncStr('abcdefg', 5), 'ab...'
 
+# ---------------------------------------------------------------------------
+
+equal extract({n: 42}, '.n'), 42
+
+class Person
+	name: string
+	gender: TGender
+	constructor(@name: string, @gender: TGender)
+
+type TGender = 'male' | 'female'
+
+h := {
+	friends: [
+		new Person('John Bowling', 'male')
+		new Person('Julie Booker', 'female')
+		]
+	name: 'John Deighan'
+	gender: 'male'
+	address: {
+		street: '1749 Main St.'
+		city: 'Blacksburg'
+		state: 'VA'
+		}
+	} as const
+
+equal extract(h, '.name'), 'John Deighan'
+equal extract(h, '.friends[1].name'), 'Julie Booker'
+equal extract(h, '.friends[0].gender'), 'male'
+equal extract(h, '.friends[1]'), new Person('Julie Booker', 'female')
+equal extract(h, ''), h
+equal extract(h, '.address.city'), 'Blacksburg'
+
+# ---------------------------------------------------------------------------
+
+(() =>
+	h := {
+		a: 1
+		b: 2
+		c: [
+			'abc'
+			'def'
+			]
+		}
+
+	s := getString h, '.c[1]'
+	equal s, 'def'
+	equal s.length, 3
+
+	n := getNumber h, '.b'
+	equal n, 2
+	)()

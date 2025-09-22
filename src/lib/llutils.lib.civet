@@ -10,6 +10,7 @@ import {
 	isEmpty, nonEmpty, isString, isObject, isInteger,
 	integer, hash, hashof, array, arrayof, voidFunc,
 	isNonPrimitive, functionDef, croak,
+	assertIsString, assertIsNumber,
 	} from 'datatypes'
 
 /**
@@ -66,12 +67,6 @@ export truncStr := (str: string, len: number) =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * stringify any value, so that if we take the resultStr, we can
- *    let x = <resultStr>
- * to retrieve the original value (if no trunc option is passed in)
- */
-
 export stringify := (
 	x: unknown,
 	hOptions: hash={}
@@ -127,7 +122,7 @@ export stringify := (
 		when 'function'
 			functionDef(x)
 		else
-			croak "Can't stringify #{OL(x)}"
+			croak "Can't stringify #{x}"
 
 	if isInteger(trunc) && (trunc > 0)
 		return truncStr(result, trunc)
@@ -135,56 +130,6 @@ export stringify := (
 		return result
 
 # ---------------------------------------------------------------------------
-
-/**
- * JSON stringifies x on one line
- */
-
-export OL := (x: unknown): string =>
-
-	if (x == undef)
-		return 'undef'
-	else if (x == null)
-		return 'null'
-	else if (typeof x == 'symbol')
-		if defined(x.description)
-			return "[Symbol #{x.description}]"
-		else
-			return "[Symbol]"
-		return 'symbol'
-	else if (typeof x == 'function')
-		return x.toString().replaceAll('\n', ' ')
-	else
-		str := JSON.stringify(x, (k,v) => defined(v) ? v : '__undef__')
-		return str.replaceAll('"__undef__"', 'undefined')
-
-# ---------------------------------------------------------------------------
-
-export ML := (x: unknown): string =>
-
-	if (x == undef)
-		return 'undef'
-	else if (x == null)
-		return 'null'
-	else if (typeof x == 'function')
-		return x.toString()
-	else
-		str := JSON.stringify(x, (k,v) => defined(v) ? v : '__undef__', 3)
-		if defined(str)
-			return str.replaceAll('"__undef__"', 'undefined')
-		else
-			console.log x
-			return "JSON.stringify returned undef!!!"
-
-# ---------------------------------------------------------------------------
-
-/**
- * Converts the given string to a hash
- * <word> becomes a key with a true value
- * !<word> becomes a keys with a false value
- * <word>=<string> becomes a key with value <string>
- *    - <string> must be quoted if it contains whitespace
- */
 
 export strToHash := (str: string): hash =>
 
@@ -220,7 +165,7 @@ export strToHash := (str: string): hash =>
 			else
 				h[ident] = true
 		else
-			croak "Invalid word #{OL(word)}"
+			croak "Invalid word #{word}"
 	return h
 
 # ---------------------------------------------------------------------------
@@ -313,6 +258,10 @@ export keys := (obj: hash, hOptions: hash={}): string[] =>
 
 # ---------------------------------------------------------------------------
 
+export hasOwn := Object.hasOwn
+
+# ---------------------------------------------------------------------------
+
 export hasKey := (obj: unknown, ...lKeys: string[]) =>
 
 	if (typeof obj != 'object') || (obj == null)
@@ -330,7 +279,7 @@ export missingKeys := (h: hash, ...lKeys: string[]): string[] =>
 
 	if notdefined(h)
 		return lKeys
-	assert isHash(h), "h not a hash: #{OL(h)}"
+	assert isHash(h), "h not a hash: #{h}"
 	lMissing: string[] := []
 	for key of lKeys
 		if not h.hasOwnProperty(key)
@@ -452,6 +401,19 @@ export allLinesInBlock := (
 
 # ---------------------------------------------------------------------------
 
+type TLineMapper = (line: string) => string
+
+export mapEachLine := (
+		block: string
+		mapper: TLineMapper
+		) =>
+
+	lLines := for line of allLinesInBlock(block)
+		mapper line
+	return lLines.join('\n')
+
+# ---------------------------------------------------------------------------
+
 /**
  * A string or string array
  */
@@ -484,7 +446,7 @@ export toArray := (strOrArray: TBlockSpec): string[] =>
 
 export arrayToBlock := (lLines: string[]): string =>
 
-	assert isArray(lLines), "lLines is not an array: #{OL(lLines)}"
+	assert isArray(lLines), "lLines is not an array: #{lLines}"
 	return lLines.filter((line) => defined(line)).join("\n")
 
 # ---------------------------------------------------------------------------
@@ -505,7 +467,7 @@ export toBlock := (strOrArray: TBlockSpec): string =>
 
 export invertHash := (h: hash): hash =>
 
-	assert isHash(h), "Not a hash: #{OL(h)}"
+	assert isHash(h), "Not a hash: #{h}"
 	hResult: hash := {}
 	for key of keys(h)
 		value := h[key]
@@ -533,11 +495,18 @@ hDebugReplace: hashof<string> := {
 	"\n": '↓'
 	"\t": '→'
 	" ":  '˳'
+	"←":  '\\←'
+	"↓":  '\\↓'
+	"→":  '\\→'
+	"˳":  '\\˳'
+	"\\": '\\\\'
 	}
 
 hDebugNoNewlineReplace: hashof<string> := {
 	"\t": '→'
 	" ":  '˳'
+	"→":  '\\→'
+	"˳":  '\\˳'
 	}
 
 hCReplace: hashof<string> := {
@@ -566,8 +535,13 @@ export escapeStr := (
 		endchar: char
 		}
 	{
-		style, hReplace, block, offset, poschar,
-		beginchar, endchar
+		style,
+		hReplace,
+		block,
+		offset,
+		poschar,
+		beginchar,
+		endchar
 		} := getOptions<opt> hOptions, {
 			style: 'debug'
 			hReplace: {}
@@ -884,7 +858,7 @@ export class Fetcher<T>
 			result = done ? @eofValue : value
 		if defined(expected)
 			assert deepEqual(result, expected),
-					"#{OL(expected)} expected"
+					"#{expected} expected"
 		return result
 
 	skip(expected: T?=undef): void
@@ -978,3 +952,51 @@ export getLineAndColumn := (text: string, pos: number) =>
 		countChars(shortStr, "\n") + 1
 		pos - shortStr.lastIndexOf('\n')
 		]
+
+# ---------------------------------------------------------------------------
+
+type TPathItem = string | number
+
+export getDsPath := (lPath: TPathItem[]): string =>
+
+	lParts := for x of lPath
+		isString(x) ? ".#{x}" : "[#{x}]"
+	return lParts.join('')
+
+# ---------------------------------------------------------------------------
+
+export extract := (
+		x: unknown,
+		dspath: string | TPathItem[]
+		): unknown =>
+
+	pathstr := isArray(dspath) ? getDsPath(dspath) : dspath
+	if nonEmpty(pathstr)
+		eval "x = x#{pathstr}"
+	return x
+
+# ---------------------------------------------------------------------------
+
+export getString := (
+		x: unknown,
+		dspath: string | TPathItem[]
+		): string =>
+
+	pathstr := isArray(dspath) ? getDsPath(dspath) : dspath
+	if nonEmpty(pathstr)
+		eval "x = x#{pathstr}"
+	assertIsString x
+	return x
+
+# ---------------------------------------------------------------------------
+
+export getNumber := (
+		x: unknown,
+		dspath: string | TPathItem[]
+		): number =>
+
+	pathstr := isArray(dspath) ? getDsPath(dspath) : dspath
+	if nonEmpty(pathstr)
+		eval "x = x#{pathstr}"
+	assertIsNumber x
+	return x

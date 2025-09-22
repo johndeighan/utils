@@ -16,8 +16,9 @@ import {
 	croak, assert,
 	} from 'datatypes'
 import {
-	spaces, o, sinceLoadStr, OL, ML, pass,
+	spaces, o, sinceLoadStr, pass,
 	} from 'llutils'
+import {OL, ML} from 'to-nice'
 import {
 	TLogLevel, isLogLevel, getLogLevel, setLogLevel,
 	pushLogLevel, popLogLevel, resetLogLevel,

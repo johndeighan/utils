@@ -1,0 +1,187 @@
+# from-nice.lib.civet
+
+import {sep, centered} from 'base-utils'
+import {
+	undef, defined, notdefined, assert, croak, hash, hashof,
+	isArray, isFunction, isBoolean, isString, isNonPrimitive,
+	isClass, isArrayOfStrings, isEmpty, nonEmpty,
+	className, functionName, symbolName,
+	classDef, functionDef, regexpDef,
+	} from 'datatypes'
+import {
+	getOptions, escapeStr, unescapeStr,
+	keys, toBlock, o, rtrim, Fetcher,
+	} from 'llutils'
+import {OL} from 'to-nice'
+import {indented} from 'indent'
+import {toNice} from 'to-nice'
+import {
+	TPLLToken, tkEOF, tkIndent, tkUndent,
+	TTokenGenerator, allTokensInBlock,
+	} from 'pll'
+
+# ---------------------------------------------------------------------------
+
+export niceSplitter: TTokenGenerator := (
+		str: string
+		) ->
+	if let lMatches = str.match(///^
+			-
+			(.*)
+			$///)
+		tail := lMatches[1].trim()
+		if tail
+			yield {
+				kind: 'list-item'
+				str
+				value: getPrimitive(tail)
+				}
+		else
+			yield {
+				kind: 'list-head'
+				name: str
+				str: ''
+				}
+	else if let lMatches = str.match(///^
+			([A-Za-z][A-Za-z0-9_]*)
+			:
+			(.*)
+			$///)
+		name := lMatches[1]
+		tail := lMatches[2].trim()
+		if tail
+			yield {
+				kind: 'hash-item'
+				str
+				name
+				value: getPrimitive(tail)
+				}
+		else
+			yield {
+				kind: 'hash-head'
+				name
+				str
+				}
+	else
+		yield {
+			kind: 'primitive'
+			str
+			value: getPrimitive(str)
+			}
+
+# ---------------------------------------------------------------------------
+
+export allNiceTokens := (
+		block: string,
+		): Generator<TPLLToken, void, void> ->
+
+	for h of allTokensInBlock(block, niceSplitter)
+		yield h
+	return
+
+# ---------------------------------------------------------------------------
+
+export fromNice := (
+		str: string,
+		): unknown =>
+
+	# --- Create a Fetcher, then use
+	#     recursive descent parsing
+
+	fetcher := new Fetcher<TPLLToken>(allNiceTokens(str), tkEOF)
+
+	parseObj := (): unknown =>
+		{kind, str} := fetcher.peek()
+		switch kind
+			'list-item', 'list-head'
+				return parseList()
+			'hash-item', 'hash-head'
+				return parseHash()
+			'eof'
+				return undef
+			else
+				fetcher.skip()
+				if defined(str)
+					return getPrimitive(str)
+
+	parseList := (): unknown[] =>
+		lItems: unknown[] := []
+		let {kind} = fetcher.peek()
+		while ['list-item', 'list-head'].includes kind
+			if (kind == 'list-head')
+				lItems.push parseListNest()
+			else
+				lItems.push fetcher.get().value
+			kind = fetcher.peek().kind
+		return lItems
+
+	parseListNest := (): unknown[] =>
+		fetcher.get({kind: 'list-head', str: ''})
+		fetcher.get({kind: 'indent', str: ''})
+		value := parseObj()
+		fetcher.get({kind: 'undent', str: ''})
+		return [value]
+
+	parseHash := (): hash =>
+		hItems: hash := {}
+		let {kind, name} = fetcher.peek()
+		if (kind == 'hash-head')
+			fetcher.skip()
+			fetcher.get({kind: 'indent', str: ''})
+			value := parseObj()
+			if defined(name)
+				hItems[name] = value
+			fetcher.get({kind: 'undent', str: ''})
+		else
+			while (kind == 'hash-item')
+				{name, value} := fetcher.get()
+				if defined(name)
+					hItems[name] = value
+				{kind} = fetcher.peek()
+		return hItems
+
+	debugger
+	return parseObj()
+
+# ---------------------------------------------------------------------------
+
+export getPrimitive := (
+		str: string,
+		): unknown =>
+
+	str = str.trim()
+	if lMatches := str.match(/^\.(.*)\.$/)
+		s := lMatches[1].trim()
+		switch s
+			'undef'       then return undef
+			'null'        then return null
+			'true'        then return true
+			'false'       then return false
+			'NaN'         then return NaN
+			'infinity'    then return Infinity
+			'neginfinity' then return -Infinity
+			'symbol'      then return Symbol()
+			'[]'          then return []
+			'{}'          then return {}
+			/^symbol\s+(.+)$/
+				lMatches := s.match(/^symbol\s+(.+)$/)
+				if defined(lMatches)
+					name := lMatches[1]
+					return Symbol(name)
+				else
+					return Symbol()
+			/^regexp\s+(.+)$/
+				lMatches := s.match(/^regexp\s+(.+)$/)
+				if defined(lMatches)
+					name := lMatches[1]
+					return new RegExp(name)
+				else
+					return new RegExp('^$')
+			else
+				croak "Not Implemented"
+	else if str.match(/^\d+$/)
+		return parseInt(str, 10)
+	else if str.match(/^\d+\.\d*$/)
+		return parseFloat(str)
+	else
+		return unescapeStr(str, o'purpose=C')

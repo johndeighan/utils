@@ -1,5 +1,0 @@
-import {undef} from 'datatypes'
-
-export sum := (x: number, y: number) =>
-
-	return x + y

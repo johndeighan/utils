@@ -1,5 +1,0 @@
-# temp.civet
-
-lFruit: string[] := ['apple','pear','peach']
-for fruit of lFruit
-	console.log fruit

@@ -1,9 +1,0 @@
-function Any(lRules)
-
-	return (state) =>
-		for rule of lRules
-			next := rule(state)
-			if (next != state)
-				return next
-		return state
-

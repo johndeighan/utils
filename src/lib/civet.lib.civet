@@ -6,7 +6,8 @@ import {
 	undef, defined, notdefined, hash, assert,
 	isString, isHash,
 	} from 'datatypes'
-import {OL, ML, getOptions, o} from 'llutils'
+import {getOptions, o} from 'llutils'
+import {OL, ML} from 'to-nice'
 import {DBG, DBGVALUE} from 'logger'
 import {
 	isFile, fileExt, withExt, slurp, barf, barfTempFile,

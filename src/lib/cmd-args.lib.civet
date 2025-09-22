@@ -6,8 +6,9 @@ import {
 	isEmpty, isArray, isBoolean, isInteger, isHash, isString,
 	} from 'datatypes'
 import {
-	keys, OL, getOptions, o, spaces,
+	keys, getOptions, o, spaces,
 	} from 'llutils'
+import {OL} from 'to-nice'
 import {
 	TLogLevel, setLogLevel,
 	} from 'log-levels'

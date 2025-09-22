@@ -11,7 +11,8 @@ decoder := new TextDecoder()
 decode := (x: Uint8Array<ArrayBuffer>) =>
 	return decoder.decode(x)
 
-export DIR := console.dir
+export DIR := (x: unknown): void =>
+	console.dir x, {depth: null}
 
 export type TConstructor<T> = new (...args: any[]) => T
 
@@ -170,6 +171,13 @@ export replaceInArray := (
 
 # ---------------------------------------------------------------------------
 #             fsys
+# ---------------------------------------------------------------------------
+
+export slurp := (path: string): string =>
+
+	data := Deno.readFileSync path
+	return decoder.decode(data).replaceAll('\r', '')
+
 # ---------------------------------------------------------------------------
 
 export rmFile := (path: string): void =>
@@ -410,13 +418,15 @@ export allFilesMatching := (
 
 export findFile := (fileName: string): string? =>
 
-	lFiles := Array.from allFilesMatching("**/#{fileName}")
-	switch lFiles.length
+	lPaths := Array.from allFilesMatching("**/#{fileName}")
+	switch lPaths.length
 		when 1
-			return lFiles[0]
+			return lPaths[0]
 		when 0
 			return undef
 		else
+			for path of lPaths
+				console.log path
 			croak "Multiple files with name #{fileName}"
 			return ''
 
@@ -720,11 +730,11 @@ export centered := (
 
 export lAllLibs := [
 	'base-utils', 'datatypes', 'llutils', 'indent', 'unicode',
-	'log-levels', 'log-formatter', 'logger', 'text-table',
+	'to-nice', 'log-levels', 'log-formatter', 'logger', 'text-table',
 
 	'parser', 'cmd-args',
-	'walker', 'fsys', 'pll', 'exec', 'nice'
+	'walker', 'fsys', 'pll', 'exec', 'from-nice'
 
-	'symbols', 'typescript', 'civet', 'cielo', 'automate',
-	'source-map', 'v8-stack', 'unit-test',
+	'source-map', 'symbols', 'typescript', 'civet', 'cielo',
+	'automate', 'v8-stack', 'unit-test',
 	]
