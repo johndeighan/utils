@@ -2,9 +2,10 @@
 
 import {
 	nonOption, FAIL, lAllLibs, tryCmd, civet2tsFile, flag,
-	doUnitTest, defined,
+	doUnitTest, defined, stdChecks,
 	} from 'base-utils'
 
+stdChecks()
 stub := nonOption(0) || FAIL("USAGE: buildlib <stub> [-n]")
 
 # ---------------------------------------------------------------------------

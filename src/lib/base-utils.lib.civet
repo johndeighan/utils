@@ -28,6 +28,14 @@ export checkSetup := (): void =>
 
 # ---------------------------------------------------------------------------
 
+export stdChecks := (): void =>
+
+	checkSetup()
+	condClear()
+	return
+
+# ---------------------------------------------------------------------------
+
 export FAIL := (errMsg: string, n: number = 99): never =>
 
 	console.log errMsg
@@ -59,12 +67,25 @@ export flag := (
 
 # ---------------------------------------------------------------------------
 
-export nonOption := (pos: number): string? =>
+export condClear := (
+		lCmdArgs: string[] = Deno.args
+		): void =>
 
-	for str of Deno.args
+	if (Deno.args.at(-1) == '!')
+		execCmd 'clear'
+	return
+
+# ---------------------------------------------------------------------------
+
+export nonOption := (
+		pos: number,
+		lCmdArgs: string[] = Deno.args
+		): string? =>
+
+	for str of lCmdArgs
 		if not /^-/.test(str)
 			if (pos == 0)
-				return str
+				return (str == '!') ? undef : str
 			else
 				pos -= 1
 	return undef
@@ -83,7 +104,7 @@ export DBG := (msg: string): void =>
 
 # ---------------------------------------------------------------------------
 
-LLOG := (
+export LLOG := (
 		label: string
 		msg: string
 		): void =>
@@ -639,10 +660,7 @@ export doInstallCmd := (
 	path := findFile fileName
 	assert path, "No such file: #{fileName}"
 
-	name := (
-		   getStringOption(hOptions, 'name')
-		|| parsePath(path).stub
-		)
+	name := getStringOption(hOptions, 'name') || parsePath(path).stub
 	h := await execCmd 'deno', [
 		'install',
 		'-fgA',

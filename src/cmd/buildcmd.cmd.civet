@@ -1,17 +1,27 @@
 # buildcmd.cmd.civet
 
 import {
-	nonOption, FAIL, tryCmd, civet2tsFile, flag,
-	doUnitTest, doInstallCmd,
+	nonOption, FAIL, tryCmd, civet2tsFile, flag, assert, stdChecks,
+	doUnitTest, doInstallCmd, parsePath, allFilesMatching,
 	} from 'base-utils'
 
+stdChecks()    # --- clear screen if last arg is '!'
 stub := nonOption(0) || FAIL("USAGE: buildcmd <stub> [-n]")
 
 # ---------------------------------------------------------------------------
+# --- install before running unit tests
+#     since unit test may require command to be installed
 
-# --- if tryCmd fails, an exception is thrown
-
-await tryCmd civet2tsFile, stub, 'cmd'
-if not flag('n')
-	await tryCmd doUnitTest, stub, 'cmd'
-	await tryCmd doInstallCmd, stub, 'cmd'
+if (stub == 'all')
+	for path of allFilesMatching('cmd/*.cmd.civet')
+		{stub, purpose} := parsePath path
+		assert (purpose == 'cmd'), "Not a cmd: #{path}"
+		await tryCmd civet2tsFile, stub, 'cmd'
+		if not flag('n')
+			await tryCmd doInstallCmd, stub, 'cmd'
+			await tryCmd doUnitTest, stub, 'cmd'
+else
+	await tryCmd civet2tsFile, stub, 'cmd'
+	if not flag('n')
+		await tryCmd doInstallCmd, stub, 'cmd'
+		await tryCmd doUnitTest, stub, 'cmd'
