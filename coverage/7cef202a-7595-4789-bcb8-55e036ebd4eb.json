@@ -1,0 +1,177 @@
+{
+  "scriptId": "342",
+  "url": "file:///C:/Users/johnd/utils/src/lib/fsys.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 83256, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "isFile",
+      "ranges": [{ "startOffset": 1211, "endOffset": 1276, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isDir",
+      "ranges": [{ "startOffset": 1468, "endOffset": 1538, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getPathType",
+      "ranges": [{ "startOffset": 1567, "endOffset": 1815, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "fileExt",
+      "ranges": [
+        { "startOffset": 2005, "endOffset": 2146, "count": 168 },
+        { "startOffset": 2118, "endOffset": 2144, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "withExt",
+      "ranges": [
+        { "startOffset": 2362, "endOffset": 2691, "count": 84 },
+        { "startOffset": 2570, "endOffset": 2619, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getStats",
+      "ranges": [{ "startOffset": 3088, "endOffset": 3158, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isStub",
+      "ranges": [{ "startOffset": 3261, "endOffset": 3379, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "parsePath",
+      "ranges": [{ "startOffset": 3406, "endOffset": 4723, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "allFilesMatching",
+      "ranges": [{ "startOffset": 4757, "endOffset": 5772, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "findSrcFile",
+      "ranges": [{ "startOffset": 5909, "endOffset": 6444, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "allLinesIn",
+      "ranges": [{ "startOffset": 6771, "endOffset": 7067, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "normalizePath",
+      "ranges": [{ "startOffset": 7273, "endOffset": 7457, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "pathToURL",
+      "ranges": [{ "startOffset": 7563, "endOffset": 7655, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "mkpath",
+      "ranges": [{ "startOffset": 7845, "endOffset": 7926, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "pathSubDirs",
+      "ranges": [{ "startOffset": 8132, "endOffset": 8403, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "myself",
+      "ranges": [{ "startOffset": 8601, "endOffset": 8647, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "barf",
+      "ranges": [{ "startOffset": 8827, "endOffset": 9120, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "barfTempFile",
+      "ranges": [{ "startOffset": 9229, "endOffset": 9448, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isExt",
+      "ranges": [{ "startOffset": 9550, "endOffset": 9600, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "newerDestFileExists",
+      "ranges": [{ "startOffset": 9716, "endOffset": 10057, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "mkDir",
+      "ranges": [{ "startOffset": 10337, "endOffset": 10461, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "rmFile",
+      "ranges": [{ "startOffset": 10659, "endOffset": 10737, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "rmDir",
+      "ranges": [{ "startOffset": 11027, "endOffset": 11288, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "mkDirsForFile",
+      "ranges": [{ "startOffset": 11460, "endOffset": 11649, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "clearDir",
+      "ranges": [{ "startOffset": 11827, "endOffset": 11876, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "removeFilesMatching",
+      "ranges": [{ "startOffset": 12042, "endOffset": 12274, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "removeFilesExcept",
+      "ranges": [{ "startOffset": 12388, "endOffset": 13049, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "<instance_members_initializer>",
+      "ranges": [{ "startOffset": 13461, "endOffset": 13485, "count": 0 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "FileEventHandler",
+      "ranges": [{ "startOffset": 13553, "endOffset": 13870, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "handle",
+      "ranges": [{ "startOffset": 13991, "endOffset": 14191, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "watchFile",
+      "ranges": [{ "startOffset": 14700, "endOffset": 15547, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "patchFirstLine",
+      "ranges": [{ "startOffset": 15695, "endOffset": 16042, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

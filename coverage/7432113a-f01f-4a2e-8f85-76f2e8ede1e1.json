@@ -1,0 +1,53 @@
+{
+  "scriptId": "383",
+  "url": "file:///C:/Users/johnd/utils/src/lib/log-levels.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 9320, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getLogLevel",
+      "ranges": [
+        { "startOffset": 361, "endOffset": 495, "count": 3064 },
+        { "startOffset": 394, "endOffset": 444, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "isLogLevel",
+      "ranges": [{ "startOffset": 602, "endOffset": 637, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isInactiveLevel",
+      "ranges": [{ "startOffset": 749, "endOffset": 805, "count": 3064 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "setLogLevel",
+      "ranges": [{ "startOffset": 913, "endOffset": 1016, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "pushLogLevel",
+      "ranges": [{ "startOffset": 1125, "endOffset": 1169, "count": 32 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "popLogLevel",
+      "ranges": [
+        { "startOffset": 1277, "endOffset": 1455, "count": 34 },
+        { "startOffset": 1337, "endOffset": 1361, "count": 33 },
+        { "startOffset": 1361, "endOffset": 1453, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "resetLogLevel",
+      "ranges": [{ "startOffset": 1565, "endOffset": 1626, "count": 1 }],
+      "isBlockCoverage": true
+    }
+  ]
+}

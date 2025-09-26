@@ -2,7 +2,7 @@
 
 import {undef, hash} from 'datatypes'
 import {hasKey, hasKeys} from 'llutils'
-import {DBG} from 'logger'
+import {LOG, DBG} from 'logger'
 import {getCmdArgs} from 'cmd-args'
 import {Walker} from 'walker'
 import {equal, truthy, falsy, isType, notType} from 'unit-test'
@@ -124,8 +124,8 @@ DBG "class Walker"
 		gender: 'male' | 'female'
 		}
 
-	class PersonWalker extends Walker<hash>
-		override isNode = (x: object): x is hash =>
+	class PersonWalker extends Walker<Person>
+		override isNode = (x: object): x is Person =>
 			return hasKeys(x, 'name', 'gender')
 	walker := new PersonWalker()
 
@@ -236,8 +236,8 @@ DBG "class Walker"
 			}
 		}
 
-	class PersonWalker extends Walker<hash>
-		override isNode(x: object): x is hash
+	class PersonWalker extends Walker<Person>
+		override isNode(x: object): x is Person
 			return hasKey x, 'name'
 
 	walker := new PersonWalker()
@@ -257,3 +257,157 @@ DBG "class Walker"
 		]
 	)()
 
+# ---------------------------------------------------------------------------
+# --- Define some classes to use in subsequent tests
+
+class Person
+	name: string
+	gender: 'male' | 'female'
+	email: string?
+	constructor(
+			@name: string
+			@gender: 'male' | 'female'
+			@email: string? = undef
+			)
+
+class PersonWalker extends Walker<Person>
+	override isNode(x: object): x is Person
+		return x instanceof Person
+
+# ---------------------------------------------------------------------------
+# --- Walk a single node
+
+(() =>
+	hAst := new Person('John', 'male')
+
+	walker := new PersonWalker()
+
+	lNames := for {name} of walker.walk(hAst)
+		name
+	lGenders := for {gender} of walker.walk(hAst)
+		gender
+	lDesc := for {name, gender} of walker.walk(hAst)
+		"#{name} is #{gender}"
+
+	equal lNames,   ['John']
+	equal lGenders, ['male']
+	equal lDesc,    ['John is male']
+	)()
+
+# ---------------------------------------------------------------------------
+# --- Walk an array of nodes
+
+(() =>
+	hAst := [
+		new Person('John', 'male')
+		new Person('Julie', 'female')
+		]
+
+	walker := new PersonWalker()
+
+	lNames   := for {name} of walker.walk(hAst)
+		name
+	lGenders := for {gender} of walker.walk(hAst)
+		gender
+	lDesc    := for {name, gender} of walker.walk(hAst)
+		"#{name} is #{gender}"
+
+	equal lNames,   ['John', 'Julie']
+	equal lGenders, ['male', 'female']
+	equal lDesc,    ['John is male', 'Julie is female']
+	)()
+
+# ---------------------------------------------------------------------------
+# --- Walk a hash with node values
+
+(() =>
+	hAst := {
+		first: new Person('John', 'male')
+		second: new Person('Julie', 'female')
+		}
+
+	walker := new PersonWalker()
+
+	lNames   := for {name} of walker.walk(hAst)
+		name
+	lGenders := for {gender} of walker.walk(hAst)
+		gender
+	lDesc    := for {name, gender} of walker.walk(hAst)
+		"#{name} is #{gender}"
+
+	equal lNames,   ['John', 'Julie']
+	equal lGenders, ['male', 'female']
+	equal lDesc,    ['John is male', 'Julie is female']
+	)()
+
+# ---------------------------------------------------------------------------
+# --- Walk a complex structure with nodes inside
+#     including hashes that look like a Person, but it's not
+
+(() =>
+	hAst := {
+		first: new Person('John', 'male')
+		third: {name: 'Julie', gender: 'female'}
+		fourth: {name: 'Bob', gender: 'male', email: 'bob@gmail.com'}
+		pos: 1
+		end: 42
+		second: [
+			{
+				person: new Person('Julie', 'female')
+				index: 13.2
+				for: 'me'
+				}
+			[1,2,3]
+			]
+		}
+
+	walker := new PersonWalker()
+
+	lNames   := for {name} of walker.walk(hAst)
+		name
+	lGenders := for {gender} of walker.walk(hAst)
+		gender
+	lDesc    := for {name, gender} of walker.walk(hAst)
+		"#{name} is #{gender}"
+
+	equal lNames,   ['John', 'Julie']
+	equal lGenders, ['male', 'female']
+	equal lDesc,    ['John is male', 'Julie is female']
+	)()
+
+# ---------------------------------------------------------------------------
+# --- Redefine node to be anything with name and gender
+
+(() =>
+	hAst := {
+		first: new Person('John', 'male')
+		third: {name: 'Julie', gender: 'female'}
+		fourth: {name: 'Bob', gender: 'male', email: 'bob@gmail.com'}
+		pos: 1
+		end: 42
+		second: [
+			{
+				person: new Person('Jane', 'female')
+				index: 13.2
+				for: 'me'
+				}
+			[1,2,3]
+			]
+		}
+
+	class NewPersonWalker extends Walker<Person>
+		override isNode(x: object): x is Person
+			return hasKeys(x, 'name', 'gender')
+
+	walker := new NewPersonWalker()
+
+	lDesc := for {name, gender} of walker.walk(hAst)
+		"#{name} is #{gender}"
+
+	equal lDesc, [
+		'John is male'
+		'Julie is female'
+		'Bob is male'
+		'Jane is female'
+		]
+	)()

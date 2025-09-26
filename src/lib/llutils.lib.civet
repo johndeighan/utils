@@ -1,5 +1,6 @@
 # llutils.lib.civet
 
+import {stripAnsiCode} from "@std/fmt/colors"
 import {createRequire} from "node:module"
 import {sprintf} from "@std/fmt/printf"
 import {relative} from '@std/path'
@@ -7,7 +8,7 @@ import {relative} from '@std/path'
 import {
 	undef, defined, notdefined, assert, char, deepEqual,
 	isHash, isArray, isNonEmptyString, isArrayOfStrings,
-	isEmpty, nonEmpty, isString, isObject, isInteger,
+	isEmpty, nonEmpty, isString, isInteger,
 	integer, hash, hashof, array, arrayof, voidFunc,
 	isNonPrimitive, functionDef, croak,
 	assertIsString, assertIsNumber,
@@ -955,48 +956,35 @@ export getLineAndColumn := (text: string, pos: number) =>
 
 # ---------------------------------------------------------------------------
 
-type TPathItem = string | number
+export class KeyedStringSet
 
-export getDsPath := (lPath: TPathItem[]): string =>
+	hMap := new Map<string, Set<string>>
 
-	lParts := for x of lPath
-		isString(x) ? ".#{x}" : "[#{x}]"
-	return lParts.join('')
+	# ..........................................................
 
-# ---------------------------------------------------------------------------
+	add(key: string, value: string): void
 
-export extract := (
-		x: unknown,
-		dspath: string | TPathItem[]
-		): unknown =>
+		aSet := @hMap.get key
+		if defined(aSet)
+			aSet.add value
+		else
+			newSet := new Set<string>()
+			newSet.add value
+			@hMap.set key, newSet
+		return
 
-	pathstr := isArray(dspath) ? getDsPath(dspath) : dspath
-	if nonEmpty(pathstr)
-		eval "x = x#{pathstr}"
-	return x
+	# ..........................................................
 
-# ---------------------------------------------------------------------------
+	allKeys(): Generator<string, void, void>
 
-export getString := (
-		x: unknown,
-		dspath: string | TPathItem[]
-		): string =>
+		yield* @hMap.keys()
+		return
 
-	pathstr := isArray(dspath) ? getDsPath(dspath) : dspath
-	if nonEmpty(pathstr)
-		eval "x = x#{pathstr}"
-	assertIsString x
-	return x
+	# ..........................................................
 
-# ---------------------------------------------------------------------------
+	allValues(key: string): Generator<string, void, void>
 
-export getNumber := (
-		x: unknown,
-		dspath: string | TPathItem[]
-		): number =>
-
-	pathstr := isArray(dspath) ? getDsPath(dspath) : dspath
-	if nonEmpty(pathstr)
-		eval "x = x#{pathstr}"
-	assertIsNumber x
-	return x
+		aSet := @hMap.get key
+		if defined(aSet)
+			yield* aSet.values()
+		return

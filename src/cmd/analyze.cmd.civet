@@ -1,0 +1,32 @@
+# analyze.cmd.civet
+
+import {
+	undef, defined, notdefined, slurp, stdChecks,
+	LOG, DBG, DIR, flag, nonOption, assert, croak, findFile, fileExt,
+	} from 'base-utils'
+import {assertIsDefined} from 'datatypes'
+import {getCmdArgs} from 'cmd-args'
+import {DUMP} from 'to-nice'
+import {ts2ast, astAsString, analyze} from 'typescript'
+import {civet2ast, civet2ts} from 'civet'
+
+stdChecks()
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+fileName := nonOption(0) || 'ast.civet'
+path := findFile(fileName) || croak("No such file: #{fileName}")
+assertIsDefined path
+
+LOG "-----  ANALYZE #{path}  -----"
+
+analysis := switch fileExt(path)
+	when '.ts'
+		analyze slurp(path)
+	when '.civet'
+		analyze civet2ts(slurp(path))
+	else
+		croak "Bad path: #{path}"
+
+DIR analysis

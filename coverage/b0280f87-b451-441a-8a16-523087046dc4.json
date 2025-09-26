@@ -1,0 +1,59 @@
+{
+  "scriptId": "522",
+  "url": "file:///C:/Users/johnd/utils/node_modules/.deno/uglify-js@3.19.3/node_modules/uglify-js/tools/node.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 4080, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1, "endOffset": 4079, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 214, "endOffset": 4073, "count": 1 },
+        { "startOffset": 1356, "endOffset": 2337, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 803, "endOffset": 1019, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 849, "endOffset": 917, "count": 12 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "to_comment",
+      "ranges": [{ "startOffset": 1062, "endOffset": 1315, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "exports.minify",
+      "ranges": [{ "startOffset": 1373, "endOffset": 2336, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "describe_ast",
+      "ranges": [{ "startOffset": 2339, "endOffset": 3449, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "infer_options",
+      "ranges": [{ "startOffset": 3451, "endOffset": 3578, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "exports.default_options",
+      "ranges": [{ "startOffset": 3606, "endOffset": 4069, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

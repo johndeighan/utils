@@ -1,0 +1,14 @@
+{
+  "scriptId": "461",
+  "url": "file:///C:/Users/johnd/utils/node_modules/.deno/source-map-sync@0.8.0-beta.2/node_modules/source-map-sync/source-map.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 0, "endOffset": 776, "count": 1 },
+        { "startOffset": 189, "endOffset": 359, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

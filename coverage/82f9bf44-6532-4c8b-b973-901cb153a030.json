@@ -1,0 +1,76 @@
+{
+  "scriptId": "346",
+  "url": "file:///C:/Users/johnd/utils/src/lib/v8-stack.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 33282, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getV8Stack",
+      "ranges": [
+        { "startOffset": 659, "endOffset": 5148, "count": 28 },
+        { "startOffset": 4251, "endOffset": 4256, "count": 0 },
+        { "startOffset": 4438, "endOffset": 5054, "count": 88 },
+        { "startOffset": 4719, "endOffset": 4827, "count": 0 },
+        { "startOffset": 4827, "endOffset": 5048, "count": 84 },
+        { "startOffset": 5054, "endOffset": 5078, "count": 24 },
+        { "startOffset": 5078, "endOffset": 5146, "count": 4 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "Error.prepareStackTrace",
+      "ranges": [
+        { "startOffset": 1053, "endOffset": 4127, "count": 28 },
+        { "startOffset": 1216, "endOffset": 4063, "count": 144 },
+        { "startOffset": 1365, "endOffset": 1377, "count": 0 },
+        { "startOffset": 2580, "endOffset": 2668, "count": 56 },
+        { "startOffset": 2668, "endOffset": 2712, "count": 88 },
+        { "startOffset": 2712, "endOffset": 2720, "count": 0 },
+        { "startOffset": 2721, "endOffset": 2880, "count": 88 },
+        { "startOffset": 2732, "endOffset": 2742, "count": 0 },
+        { "startOffset": 2759, "endOffset": 2774, "count": 0 },
+        { "startOffset": 2797, "endOffset": 2807, "count": 0 },
+        { "startOffset": 2832, "endOffset": 2844, "count": 60 },
+        { "startOffset": 2845, "endOffset": 2880, "count": 28 },
+        { "startOffset": 2869, "endOffset": 2880, "count": 0 },
+        { "startOffset": 2975, "endOffset": 2989, "count": 60 },
+        { "startOffset": 2990, "endOffset": 3064, "count": 28 },
+        { "startOffset": 3013, "endOffset": 3023, "count": 0 },
+        { "startOffset": 3047, "endOffset": 3059, "count": 0 },
+        { "startOffset": 3143, "endOffset": 3189, "count": 0 },
+        { "startOffset": 3488, "endOffset": 3722, "count": 60 },
+        { "startOffset": 3524, "endOffset": 3548, "count": 28 },
+        { "startOffset": 3550, "endOffset": 3712, "count": 0 },
+        { "startOffset": 3722, "endOffset": 3916, "count": 88 },
+        { "startOffset": 3916, "endOffset": 4003, "count": 0 },
+        { "startOffset": 4003, "endOffset": 4063, "count": 88 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getV8StackStr",
+      "ranges": [{ "startOffset": 5258, "endOffset": 5620, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getMyCaller",
+      "ranges": [{ "startOffset": 5775, "endOffset": 6064, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getMyOutsideCaller",
+      "ranges": [
+        { "startOffset": 6271, "endOffset": 6848, "count": 28 },
+        { "startOffset": 6397, "endOffset": 6424, "count": 4 },
+        { "startOffset": 6424, "endOffset": 6543, "count": 24 },
+        { "startOffset": 6543, "endOffset": 6698, "count": 72 },
+        { "startOffset": 6661, "endOffset": 6692, "count": 24 },
+        { "startOffset": 6698, "endOffset": 6846, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

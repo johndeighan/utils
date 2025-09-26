@@ -1,0 +1,31 @@
+{
+  "scriptId": "345",
+  "url": "file:///C:/Users/johnd/utils/src/lib/civet.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 11966, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "compileCivetFiles",
+      "ranges": [{ "startOffset": 414, "endOffset": 930, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "civet2tsFile",
+      "ranges": [{ "startOffset": 1039, "endOffset": 1547, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "civet2ts",
+      "ranges": [{ "startOffset": 1652, "endOffset": 1891, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "civet2ast",
+      "ranges": [{ "startOffset": 1997, "endOffset": 2076, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

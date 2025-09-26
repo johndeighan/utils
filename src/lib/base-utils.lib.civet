@@ -16,6 +16,8 @@ export DIR := (x: unknown): void =>
 
 export type TConstructor<T> = new (...args: any[]) => T
 
+let hasClear = false
+
 # ---------------------------------------------------------------------------
 
 export checkSetup := (): void =>
@@ -24,6 +26,17 @@ export checkSetup := (): void =>
 	assertIsDefined(rootDir)
 	assert existsSync(rootDir) && statSync(rootDir).isDirectory(),
 		"Please set env var PROJECT_ROOT_DIR to a valid directory"
+	return
+
+# ---------------------------------------------------------------------------
+
+export condClear := (
+		lCmdArgs: string[] = Deno.args
+		): void =>
+
+	if (Deno.args.at(-1) == '!')
+		hasClear = true
+		execCmd 'clear'
 	return
 
 # ---------------------------------------------------------------------------
@@ -67,16 +80,6 @@ export flag := (
 
 # ---------------------------------------------------------------------------
 
-export condClear := (
-		lCmdArgs: string[] = Deno.args
-		): void =>
-
-	if (Deno.args.at(-1) == '!')
-		execCmd 'clear'
-	return
-
-# ---------------------------------------------------------------------------
-
 export nonOption := (
 		pos: number,
 		lCmdArgs: string[] = Deno.args
@@ -85,7 +88,7 @@ export nonOption := (
 	for str of lCmdArgs
 		if not /^-/.test(str)
 			if (pos == 0)
-				return (str == '!') ? undef : str
+				return hasClear && (str == '!') ? undef : str
 			else
 				pos -= 1
 	return undef
@@ -119,7 +122,7 @@ export LLOG := (
 
 # ---------------------------------------------------------------------------
 
-ILOG := (msg: string): void =>
+export ILOG := (msg: string): void =>
 
 	LOG "   #{msg}"
 	return
@@ -192,6 +195,12 @@ export replaceInArray := (
 
 # ---------------------------------------------------------------------------
 #             fsys
+# ---------------------------------------------------------------------------
+
+export isFile := (path: string): boolean =>
+
+	return existsSync(path) && statSync(path).isFile()
+
 # ---------------------------------------------------------------------------
 
 export slurp := (path: string): string =>
@@ -608,7 +617,6 @@ export doUnitTest := (
 		stub: string
 		purpose: string?      # purpose of the file being tested
 		lArgs: string[] = []
-		hOptions: hash = {}
 		): void =>
 
 	fileName := buildTestFileName stub, purpose, '.civet'
@@ -632,15 +640,15 @@ export doUnitTest := (
 			]
 		assert success, "   Compile of #{testPath} failed"
 
-	reporter := getStringOption hOptions, 'reporter', 'dot'
-	verbose := getBooleanOption hOptions, 'verbose'
-	flags := verbose ? '-A' : '-qA'
-	lStrArgs := (
-		  reporter
-		? ['test', flags, '--reporter', reporter, withExt(testPath, '.ts')]
-		: ['test', flags, withExt(testPath, '.ts')]
+	tsTestPath := relpath(withExt(testPath, '.ts'))
+	verbose := flag('v')
+	lCmdArgs := (
+		  verbose
+		? ['test', '-A', '--coverage-raw-data-only', tsTestPath]
+		: ['test', '-A', '--coverage-raw-data-only', '--reporter', 'dot', tsTestPath]
 		)
-	h := await execCmd 'deno', lStrArgs
+
+	h := await execCmd 'deno', lCmdArgs
 	assert h.success, "   FAILED"
 	return
 
@@ -747,8 +755,8 @@ export centered := (
 # ---------------------------------------------------------------------------
 
 export lAllLibs := [
-	'base-utils', 'datatypes', 'llutils', 'indent', 'unicode',
-	'to-nice', 'log-levels', 'log-formatter', 'logger', 'text-table',
+	'base-utils', 'datatypes', 'llutils', 'db', 'indent', 'unicode',
+	'to-nice', 'extract', 'log-levels', 'log-formatter', 'logger', 'text-table',
 
 	'parser', 'cmd-args',
 	'walker', 'fsys', 'pll', 'exec', 'from-nice'

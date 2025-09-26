@@ -1,0 +1,66 @@
+{
+  "scriptId": "392",
+  "url": "file:///C:/Users/johnd/utils/src/lib/walker.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 14600, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "hasChildren",
+      "ranges": [{ "startOffset": 328, "endOffset": 370, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "<instance_members_initializer>",
+      "ranges": [{ "startOffset": 457, "endOffset": 502, "count": 0 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "get level",
+      "ranges": [{ "startOffset": 570, "endOffset": 622, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "parent",
+      "ranges": [{ "startOffset": 689, "endOffset": 849, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isNode",
+      "ranges": [{ "startOffset": 916, "endOffset": 948, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "filter",
+      "ranges": [{ "startOffset": 1015, "endOffset": 1050, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "extract",
+      "ranges": [{ "startOffset": 1117, "endOffset": 1413, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getString",
+      "ranges": [{ "startOffset": 1480, "endOffset": 1582, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getArray",
+      "ranges": [{ "startOffset": 1649, "endOffset": 1758, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "walk",
+      "ranges": [{ "startOffset": 1840, "endOffset": 1968, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "walkItem",
+      "ranges": [{ "startOffset": 2050, "endOffset": 2850, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

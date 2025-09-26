@@ -1,0 +1,271 @@
+{
+  "scriptId": "376",
+  "url": "file:///C:/Users/johnd/utils/src/lib/base-utils.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 90850, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "decode",
+      "ranges": [{ "startOffset": 306, "endOffset": 342, "count": 2 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "DIR",
+      "ranges": [{ "startOffset": 363, "endOffset": 412, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "checkSetup",
+      "ranges": [{ "startOffset": 541, "endOffset": 764, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "condClear",
+      "ranges": [{ "startOffset": 870, "endOffset": 988, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "stdChecks",
+      "ranges": [{ "startOffset": 1094, "endOffset": 1142, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "FAIL",
+      "ranges": [{ "startOffset": 1243, "endOffset": 1303, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "SUCCEED",
+      "ranges": [{ "startOffset": 1407, "endOffset": 1489, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "flag",
+      "ranges": [
+        { "startOffset": 1693, "endOffset": 1923, "count": 7 },
+        { "startOffset": 1851, "endOffset": 1905, "count": 6 },
+        { "startOffset": 1875, "endOffset": 1901, "count": 4 },
+        { "startOffset": 1905, "endOffset": 1922, "count": 3 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "nonOption",
+      "ranges": [{ "startOffset": 2029, "endOffset": 2263, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "DBG",
+      "ranges": [{ "startOffset": 2496, "endOffset": 2553, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "LLOG",
+      "ranges": [{ "startOffset": 2654, "endOffset": 2897, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "ILOG",
+      "ranges": [{ "startOffset": 2998, "endOffset": 3038, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "defined",
+      "ranges": [
+        { "startOffset": 3174, "endOffset": 3218, "count": 2 },
+        { "startOffset": 3202, "endOffset": 3215, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "notdefined",
+      "ranges": [
+        { "startOffset": 3325, "endOffset": 3369, "count": 2 },
+        { "startOffset": 3353, "endOffset": 3366, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "assertIsDefined",
+      "ranges": [{ "startOffset": 3457, "endOffset": 3610, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 3504, "endOffset": 3607, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "assertNotDefined",
+      "ranges": [{ "startOffset": 3697, "endOffset": 3844, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "croak",
+      "ranges": [{ "startOffset": 3945, "endOffset": 3979, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "replaceInArray",
+      "ranges": [{ "startOffset": 4169, "endOffset": 4430, "count": 3 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 4203, "endOffset": 4424, "count": 3 },
+        { "startOffset": 4264, "endOffset": 4400, "count": 6 },
+        { "startOffset": 4306, "endOffset": 4352, "count": 2 },
+        { "startOffset": 4352, "endOffset": 4394, "count": 4 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "slurp",
+      "ranges": [{ "startOffset": 4631, "endOffset": 4734, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "rmFile",
+      "ranges": [{ "startOffset": 4837, "endOffset": 4915, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "fileExt",
+      "ranges": [
+        { "startOffset": 5019, "endOffset": 5160, "count": 1 },
+        { "startOffset": 5132, "endOffset": 5158, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "withExt",
+      "ranges": [
+        { "startOffset": 5264, "endOffset": 5496, "count": 1 },
+        { "startOffset": 5355, "endOffset": 5409, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "normalizePath",
+      "ranges": [
+        { "startOffset": 5606, "endOffset": 5790, "count": 3 },
+        { "startOffset": 5759, "endOffset": 5788, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "relpath",
+      "ranges": [{ "startOffset": 5894, "endOffset": 5949, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "buildFileName",
+      "ranges": [{ "startOffset": 6059, "endOffset": 6149, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "buildTestFileName",
+      "ranges": [{ "startOffset": 6263, "endOffset": 6363, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "parsePath",
+      "ranges": [{ "startOffset": 6390, "endOffset": 6722, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "execCmd",
+      "ranges": [
+        { "startOffset": 6835, "endOffset": 7465, "count": 1 },
+        { "startOffset": 7021, "endOffset": 7032, "count": 0 },
+        { "startOffset": 7064, "endOffset": 7075, "count": 0 },
+        { "startOffset": 7315, "endOffset": 7463, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "newerDestFileExists",
+      "ranges": [{ "startOffset": 7581, "endOffset": 7799, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "cmdSucceeds",
+      "ranges": [{ "startOffset": 7907, "endOffset": 8078, "count": 2 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "splitPatterns",
+      "ranges": [
+        { "startOffset": 8188, "endOffset": 8749, "count": 1 },
+        { "startOffset": 8284, "endOffset": 8442, "count": 0 },
+        { "startOffset": 8481, "endOffset": 8700, "count": 4 },
+        { "startOffset": 8582, "endOffset": 8686, "count": 2 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "allFilesMatching",
+      "ranges": [{ "startOffset": 9056, "endOffset": 9761, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "findFile",
+      "ranges": [{ "startOffset": 9866, "endOffset": 10257, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "procFiles",
+      "ranges": [{ "startOffset": 10284, "endOffset": 11027, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getStringOption",
+      "ranges": [{ "startOffset": 11139, "endOffset": 11355, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getBooleanOption",
+      "ranges": [{ "startOffset": 11468, "endOffset": 11686, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "tryCmd",
+      "ranges": [{ "startOffset": 11798, "endOffset": 12056, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "civet2tsFile",
+      "ranges": [{ "startOffset": 12411, "endOffset": 13315, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "doUnitTest",
+      "ranges": [{ "startOffset": 13431, "endOffset": 14564, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "doInstallCmd",
+      "ranges": [{ "startOffset": 14682, "endOffset": 15209, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "doRun",
+      "ranges": [{ "startOffset": 15320, "endOffset": 15839, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "sep",
+      "ranges": [{ "startOffset": 15939, "endOffset": 15997, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "centered",
+      "ranges": [{ "startOffset": 16230, "endOffset": 16732, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

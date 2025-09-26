@@ -1,0 +1,31 @@
+{
+  "scriptId": "391",
+  "url": "file:///C:/Users/johnd/utils/src/lib/symbols.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 19302, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "loadSymbols",
+      "ranges": [{ "startOffset": 1063, "endOffset": 2745, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "sourceLib",
+      "ranges": [{ "startOffset": 2851, "endOffset": 3086, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "libsAndSymbols",
+      "ranges": [{ "startOffset": 3197, "endOffset": 3638, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getNeededImportStmts",
+      "ranges": [{ "startOffset": 3755, "endOffset": 4124, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+{
+  "scriptId": "384",
+  "url": "file:///C:/Users/johnd/utils/src/lib/log-formatter.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 10234, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getPrefix",
+      "ranges": [{ "startOffset": 164, "endOffset": 195, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "clearConsoleLog",
+      "ranges": [{ "startOffset": 412, "endOffset": 455, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getConsoleLog",
+      "ranges": [{ "startOffset": 565, "endOffset": 605, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "levelStr",
+      "ranges": [{ "startOffset": 703, "endOffset": 1037, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getFormatter",
+      "ranges": [{ "startOffset": 1403, "endOffset": 1845, "count": 4 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1427, "endOffset": 1842, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "indentLog",
+      "ranges": [{ "startOffset": 1951, "endOffset": 1986, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "undentLog",
+      "ranges": [{ "startOffset": 2092, "endOffset": 2156, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

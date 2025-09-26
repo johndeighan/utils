@@ -1,0 +1,31 @@
+{
+  "scriptId": "728",
+  "url": "file:///C:/Users/johnd/utils/node_modules/.deno/source-map-sync@0.8.0-beta.2/node_modules/source-map-sync/lib/binary-search.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 4416, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1, "endOffset": 4415, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 214, "endOffset": 4409, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "recursiveSearch",
+      "ranges": [{ "startOffset": 1152, "endOffset": 2685, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "search",
+      "ranges": [{ "startOffset": 3740, "endOffset": 4405, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

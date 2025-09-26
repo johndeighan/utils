@@ -27,7 +27,7 @@ import {
 import {
 	undef, defined, notdefined, assert, croak, isEmpty, nonEmpty,
 	isString, isNonEmptyString, isBoolean, isNumber, isInteger,
-	isArray, isArrayOfStrings, isHash, isObject, isRegExp,
+	isArray, isArrayOfStrings, isHash, isRegExp,
 	integer, hash, voidFunc,
 	} from 'datatypes'
 import {
@@ -42,10 +42,6 @@ import {
 
 export {slurp, relpath}
 
-/**
- * @module fs - file system utilities
- */
-
 # --- Create a function capable of synchronously
 #     importing ESM modules
 
@@ -58,21 +54,11 @@ encoder := new TextEncoder()
 
 # ---------------------------------------------------------------------------
 
-/**
- * returns a boolean indicating if the given path exists
- * and is a file
- */
-
 export isFile := (path: string): boolean =>
 
 	return existsSync(path) && statSync(path).isFile()
 
 # ---------------------------------------------------------------------------
-
-/**
- * returns a boolean indicating of the given path exists
- * and is a directory
- */
 
 export isDir := (path: string): boolean =>
 

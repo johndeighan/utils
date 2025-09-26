@@ -1,0 +1,979 @@
+<!doctype html>
+      <html lang='en-US'>
+        
+      <head>
+        <meta charset='utf-8'>
+        <title>Coverage report for walker.lib.ts</title>
+        <style>/* Copyright 2015 the Istanbul contributors. All rights reserved. ISC license. */
+/* Copyright 2018-2023 the Deno authors. All rights reserved. MIT license. */
+
+body,
+html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+body {
+  color-scheme: light dark;
+  font-family:
+    Helvetica Neue,
+    Helvetica,
+    Arial;
+  font-size: 14px;
+  color: light-dark(#333, #ddd);
+  background-color: light-dark(white, #111);
+}
+.small {
+  font-size: 12px;
+}
+*,
+*:after,
+*:before {
+  box-sizing: border-box;
+}
+h1 {
+  font-size: 20px;
+  margin: 0;
+}
+h2 {
+  font-size: 14px;
+}
+pre {
+  font:
+    12px/1.4 Consolas,
+    "Liberation Mono",
+    Menlo,
+    Courier,
+    monospace;
+  margin: 0;
+  padding: 0;
+  tab-size: 2;
+}
+a {
+  color: light-dark(#0074d9, #3ba3ff);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+.strong {
+  font-weight: bold;
+}
+.space-top1 {
+  padding: 10px 0 0 0;
+}
+.pad2y {
+  padding: 20px 0;
+}
+.pad1y {
+  padding: 10px 0;
+}
+.pad2x {
+  padding: 0 20px;
+}
+.pad2 {
+  padding: 20px;
+}
+.pad1 {
+  padding: 10px;
+}
+.space-left2 {
+  padding-left: 55px;
+}
+.space-right2 {
+  padding-right: 20px;
+}
+.center {
+  text-align: center;
+}
+.clearfix {
+  display: block;
+}
+.clearfix:after {
+  content: "";
+  display: block;
+  height: 0;
+  clear: both;
+  visibility: hidden;
+}
+.fl {
+  float: left;
+}
+@media only screen and (max-width: 640px) {
+  .col3 {
+    width: 100%;
+    max-width: 100%;
+  }
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+.quiet {
+  color: light-dark(rgb(0 0 0 / 0.5), rgb(255 255 255 / 0.5));
+}
+.quiet a {
+  opacity: 0.7;
+}
+
+.fraction {
+  font-family: Consolas, "Liberation Mono", Menlo, Courier, monospace;
+  font-size: 10px;
+  color: light-dark(#555, #bbb);
+  background: light-dark(#e8e8e8, #171717);
+  padding: 4px 5px;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+div.path a:link,
+div.path a:visited {
+  color: light-dark(#333, #ddd);
+}
+table.coverage {
+  border-collapse: collapse;
+  margin: 10px 0 0 0;
+  padding: 0;
+}
+
+table.coverage td {
+  margin: 0;
+  padding: 0;
+  vertical-align: top;
+}
+table.coverage td.line-count {
+  text-align: right;
+  padding: 0 5px 0 20px;
+}
+table.coverage td.line-coverage {
+  text-align: right;
+  padding-right: 4px;
+  min-width: 20px;
+}
+
+table.coverage td.branch-coverage {
+  text-align: right;
+  padding-right: 3px;
+  min-width: 8px;
+}
+
+table.coverage td span.cline-any {
+  display: inline-block;
+  padding: 0 5px;
+  width: 100%;
+}
+.missing-if-branch {
+  display: inline-block;
+  margin-right: 5px;
+  border-radius: 3px;
+  position: relative;
+  padding: 0 4px;
+  background: light-dark(#333, #ddd);
+  color: light-dark(yellow, #cc0);
+}
+
+.skip-if-branch {
+  display: none;
+  margin-right: 10px;
+  position: relative;
+  padding: 0 4px;
+  background: light-dark(#ccc, #333);
+  color: light-dark(white, black);
+}
+.missing-if-branch .typ,
+.skip-if-branch .typ {
+  color: inherit !important;
+}
+.coverage-summary {
+  border-collapse: collapse;
+  width: 100%;
+}
+.coverage-summary tr {
+  border-bottom: 1px solid light-dark(#bbb, #444);
+}
+.keyline-all {
+  border: 1px solid light-dark(#ddd, #222);
+}
+.coverage-summary td,
+.coverage-summary th {
+  padding: 10px;
+}
+.coverage-summary tbody {
+  border: 1px solid light-dark(#bbb, #444);
+}
+.coverage-summary td {
+  border-right: 1px solid light-dark(#bbb, #444);
+}
+.coverage-summary td:last-child {
+  border-right: none;
+}
+.coverage-summary th {
+  text-align: left;
+  font-weight: normal;
+  white-space: nowrap;
+}
+.coverage-summary th.file {
+  border-right: none !important;
+}
+.coverage-summary th.pic,
+.coverage-summary th.abs,
+.coverage-summary td.pct,
+.coverage-summary td.abs {
+  text-align: right;
+}
+.coverage-summary td.file {
+  white-space: nowrap;
+}
+.coverage-summary td.pic {
+  min-width: 120px !important;
+}
+
+.coverage-summary .sorter {
+  height: 10px;
+  width: 7px;
+  display: inline-block;
+  margin-left: 0.5em;
+  background: url(sort-arrow-sprite.png) no-repeat scroll 0 0 transparent;
+}
+.coverage-summary .sorted .sorter {
+  background-position: 0 -20px;
+}
+.coverage-summary .sorted-desc .sorter {
+  background-position: 0 -10px;
+}
+.status-line {
+  height: 10px;
+}
+/* yellow */
+.cbranch-no {
+  background: light-dark(yellow, #cc0) !important;
+  color: #111;
+}
+/* dark red */
+.red.solid,
+.status-line.low,
+.low .cover-fill {
+  background: light-dark(#c21f39, #a5162e);
+}
+.low .chart {
+  border: 1px solid light-dark(#c21f39, #a5162e);
+}
+.highlighted,
+.highlighted .cstat-no,
+.highlighted .fstat-no,
+.highlighted .cbranch-no {
+  background: light-dark(#c21f39, #a5162e) !important;
+}
+/* medium red */
+.cstat-no,
+.fstat-no,
+.cbranch-no,
+.cbranch-no {
+  background: light-dark(#f6c6ce, #553339);
+}
+/* light red */
+.low,
+.cline-no {
+  background: light-dark(#fce1e5, #2e2023);
+}
+/* light green */
+.high,
+.cline-yes {
+  background: light-dark(#e6f5d0, #25291f);
+}
+/* medium green */
+.cstat-yes {
+  background: light-dark(#a1d76a, #293b18);
+}
+/* dark green */
+.status-line.high,
+.high .cover-fill {
+  background: light-dark(#4d9221, #2a5211);
+}
+.high .chart {
+  border: 1px solid light-dark(#4d9221, #2a5211);
+}
+/* dark yellow (gold) */
+.status-line.medium,
+.medium .cover-fill {
+  background: light-dark(#f9cd0b, #b09107);
+}
+.medium .chart {
+  border: 1px solid light-dark(#f9cd0b, #b09107);
+}
+/* light yellow */
+.medium {
+  background: light-dark(#fff4c2, #4a432a);
+}
+
+.cstat-skip {
+  background: light-dark(#ddd, #222);
+  color: light-dark(#111, #eee);
+}
+.fstat-skip {
+  background: light-dark(#ddd, #222);
+  color: light-dark(#111, #eee) !important;
+}
+.cbranch-skip {
+  background: light-dark(#ddd, #222) !important;
+  color: light-dark(#111, #eee);
+}
+
+span.cline-neutral {
+  background: light-dark(#eaeaea, #141414);
+}
+
+.coverage-summary td.empty {
+  opacity: 0.5;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  line-height: 1;
+  color: light-dark(#888, #999);
+}
+
+.cover-fill,
+.cover-empty {
+  display: inline-block;
+  height: 12px;
+}
+.chart {
+  line-height: 0;
+}
+.cover-empty {
+  background: light-dark(white, black);
+}
+.cover-full {
+  border-right: none !important;
+}
+pre.prettyprint {
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.com {
+  color: light-dark(#999, #666) !important;
+}
+.ignore-none {
+  color: light-dark(#999, #666);
+  font-weight: normal;
+}
+
+.wrapper {
+  min-height: 100%;
+  height: auto !important;
+  height: 100%;
+  margin: 0 auto -48px;
+}
+.footer,
+.push {
+  height: 48px;
+}
+.overflow-auto {
+  overflow: auto;
+}
+</style>
+        <meta name='viewport' content='width=device-width, initial-scale=1'>
+      </head>
+        <body>
+          <div class='wrapper'>
+            
+      <div class='pad1'>
+        <h1><a href='index.html'>All files</a> / walker.lib.ts</h1>
+        <div class='clearfix'>
+          <div class='fl pad1y space-right2'>
+            <span class='strong'>100.00%</span>
+            <span class='quiet'>Branches</span>
+            <span class='fraction'>0/0</span>
+          </div>
+          <div class='fl pad1y space-right2'>
+            <span class='strong'>12.36%</span>
+            <span class='quiet'>Lines</span>
+            <span class='fraction'>11/89</span>
+          </div>
+        </div>
+      </div>
+      <div class='status-line low'></div>
+            <div class='pad1 overflow-auto'>
+              <table class='coverage'>
+        <tr>
+          <td class='line-count quiet'><pre><a href='#L1' id='L1'>1</a>
+<a href='#L2' id='L2'>2</a>
+<a href='#L3' id='L3'>3</a>
+<a href='#L4' id='L4'>4</a>
+<a href='#L5' id='L5'>5</a>
+<a href='#L6' id='L6'>6</a>
+<a href='#L7' id='L7'>7</a>
+<a href='#L8' id='L8'>8</a>
+<a href='#L9' id='L9'>9</a>
+<a href='#L10' id='L10'>10</a>
+<a href='#L11' id='L11'>11</a>
+<a href='#L12' id='L12'>12</a>
+<a href='#L13' id='L13'>13</a>
+<a href='#L14' id='L14'>14</a>
+<a href='#L15' id='L15'>15</a>
+<a href='#L16' id='L16'>16</a>
+<a href='#L17' id='L17'>17</a>
+<a href='#L18' id='L18'>18</a>
+<a href='#L19' id='L19'>19</a>
+<a href='#L20' id='L20'>20</a>
+<a href='#L21' id='L21'>21</a>
+<a href='#L22' id='L22'>22</a>
+<a href='#L23' id='L23'>23</a>
+<a href='#L24' id='L24'>24</a>
+<a href='#L25' id='L25'>25</a>
+<a href='#L26' id='L26'>26</a>
+<a href='#L27' id='L27'>27</a>
+<a href='#L28' id='L28'>28</a>
+<a href='#L29' id='L29'>29</a>
+<a href='#L30' id='L30'>30</a>
+<a href='#L31' id='L31'>31</a>
+<a href='#L32' id='L32'>32</a>
+<a href='#L33' id='L33'>33</a>
+<a href='#L34' id='L34'>34</a>
+<a href='#L35' id='L35'>35</a>
+<a href='#L36' id='L36'>36</a>
+<a href='#L37' id='L37'>37</a>
+<a href='#L38' id='L38'>38</a>
+<a href='#L39' id='L39'>39</a>
+<a href='#L40' id='L40'>40</a>
+<a href='#L41' id='L41'>41</a>
+<a href='#L42' id='L42'>42</a>
+<a href='#L43' id='L43'>43</a>
+<a href='#L44' id='L44'>44</a>
+<a href='#L45' id='L45'>45</a>
+<a href='#L46' id='L46'>46</a>
+<a href='#L47' id='L47'>47</a>
+<a href='#L48' id='L48'>48</a>
+<a href='#L49' id='L49'>49</a>
+<a href='#L50' id='L50'>50</a>
+<a href='#L51' id='L51'>51</a>
+<a href='#L52' id='L52'>52</a>
+<a href='#L53' id='L53'>53</a>
+<a href='#L54' id='L54'>54</a>
+<a href='#L55' id='L55'>55</a>
+<a href='#L56' id='L56'>56</a>
+<a href='#L57' id='L57'>57</a>
+<a href='#L58' id='L58'>58</a>
+<a href='#L59' id='L59'>59</a>
+<a href='#L60' id='L60'>60</a>
+<a href='#L61' id='L61'>61</a>
+<a href='#L62' id='L62'>62</a>
+<a href='#L63' id='L63'>63</a>
+<a href='#L64' id='L64'>64</a>
+<a href='#L65' id='L65'>65</a>
+<a href='#L66' id='L66'>66</a>
+<a href='#L67' id='L67'>67</a>
+<a href='#L68' id='L68'>68</a>
+<a href='#L69' id='L69'>69</a>
+<a href='#L70' id='L70'>70</a>
+<a href='#L71' id='L71'>71</a>
+<a href='#L72' id='L72'>72</a>
+<a href='#L73' id='L73'>73</a>
+<a href='#L74' id='L74'>74</a>
+<a href='#L75' id='L75'>75</a>
+<a href='#L76' id='L76'>76</a>
+<a href='#L77' id='L77'>77</a>
+<a href='#L78' id='L78'>78</a>
+<a href='#L79' id='L79'>79</a>
+<a href='#L80' id='L80'>80</a>
+<a href='#L81' id='L81'>81</a>
+<a href='#L82' id='L82'>82</a>
+<a href='#L83' id='L83'>83</a>
+<a href='#L84' id='L84'>84</a>
+<a href='#L85' id='L85'>85</a>
+<a href='#L86' id='L86'>86</a>
+<a href='#L87' id='L87'>87</a>
+<a href='#L88' id='L88'>88</a>
+<a href='#L89' id='L89'>89</a>
+<a href='#L90' id='L90'>90</a>
+<a href='#L91' id='L91'>91</a>
+<a href='#L92' id='L92'>92</a>
+<a href='#L93' id='L93'>93</a>
+<a href='#L94' id='L94'>94</a>
+<a href='#L95' id='L95'>95</a>
+<a href='#L96' id='L96'>96</a>
+<a href='#L97' id='L97'>97</a>
+<a href='#L98' id='L98'>98</a>
+<a href='#L99' id='L99'>99</a>
+<a href='#L100' id='L100'>100</a>
+<a href='#L101' id='L101'>101</a>
+<a href='#L102' id='L102'>102</a>
+<a href='#L103' id='L103'>103</a>
+<a href='#L104' id='L104'>104</a>
+<a href='#L105' id='L105'>105</a>
+<a href='#L106' id='L106'>106</a>
+<a href='#L107' id='L107'>107</a>
+<a href='#L108' id='L108'>108</a>
+<a href='#L109' id='L109'>109</a>
+<a href='#L110' id='L110'>110</a>
+<a href='#L111' id='L111'>111</a>
+<a href='#L112' id='L112'>112</a>
+<a href='#L113' id='L113'>113</a>
+<a href='#L114' id='L114'>114</a>
+<a href='#L115' id='L115'>115</a>
+<a href='#L116' id='L116'>116</a>
+<a href='#L117' id='L117'>117</a>
+<a href='#L118' id='L118'>118</a>
+<a href='#L119' id='L119'>119</a>
+<a href='#L120' id='L120'>120</a>
+<a href='#L121' id='L121'>121</a>
+<a href='#L122' id='L122'>122</a>
+<a href='#L123' id='L123'>123</a>
+<a href='#L124' id='L124'>124</a>
+<a href='#L125' id='L125'>125</a>
+<a href='#L126' id='L126'>126</a>
+<a href='#L127' id='L127'>127</a>
+<a href='#L128' id='L128'>128</a>
+<a href='#L129' id='L129'>129</a>
+<a href='#L130' id='L130'>130</a>
+<a href='#L131' id='L131'>131</a>
+<a href='#L132' id='L132'>132</a>
+<a href='#L133' id='L133'>133</a>
+<a href='#L134' id='L134'>134</a>
+<a href='#L135' id='L135'>135</a>
+<a href='#L136' id='L136'>136</a>
+<a href='#L137' id='L137'>137</a>
+<a href='#L138' id='L138'>138</a>
+<a href='#L139' id='L139'>139</a>
+<a href='#L140' id='L140'>140</a>
+<a href='#L141' id='L141'>141</a>
+<a href='#L142' id='L142'>142</a></pre></td>
+          <td class='line-coverage quiet'><pre><span class='cline-any cline-yes' title='This line is covered 1 time'>x1</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-yes' title='This line is covered 1 time'>x1</span>
+<span class='cline-any cline-yes' title='This line is covered 1 time'>x1</span>
+<span class='cline-any cline-yes' title='This line is covered 1 time'>x1</span>
+<span class='cline-any cline-yes' title='This line is covered 1 time'>x1</span>
+<span class='cline-any cline-yes' title='This line is covered 1 time'>x1</span>
+<span class='cline-any cline-yes' title='This line is covered 1 time'>x1</span>
+<span class='cline-any cline-yes' title='This line is covered 1 time'>x1</span>
+<span class='cline-any cline-yes' title='This line is covered 1 time'>x1</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-yes' title='This line is covered 1 time'>x1</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-no'>&nbsp;</span>
+<span class='cline-any cline-yes' title='This line is covered 1 time'>x1</span>
+<span class='cline-any cline-neutral'>&nbsp;</span>
+<span class='cline-any cline-neutral'>&nbsp;</span></pre></td>
+          <td class='branch-coverage quiet'><pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</pre></td>
+          <td class='text'><pre class='prettyprint'>"use strict";
+// walker.lib.civet
+
+import {
+	undef, defined, notdefined, integer, hash, array,
+	isArray, isHash, isPrimitive, assert, croak, isEmpty,
+	assertIsString, assertIsArray,
+	} from 'datatypes'
+import {extract} from 'llutils'
+import {OL} from 'to-nice'
+import {DBG} from 'logger'
+
+// ---------------------------------------------------------------------------
+
+const hasChildren = (x: unknown) =&gt; {
+	return isHash(x) || isArray(x)
+}
+
+export class Walker&lt;T extends object = hash&gt; {
+
+	// --- Keep track of nodes visited to avoid infinite loops
+	setVisited: WeakSet&lt;hash | array&gt; = new WeakSet&lt;hash | array&gt;()
+
+	lNodeStack: T[] = []
+
+	// ..........................................................
+
+	get level(): integer {
+
+		return this.lNodeStack.length
+	}
+
+	// ..........................................................
+
+	parent(n: integer = 1): T {
+
+		const len = this.lNodeStack.length
+		assert((n &gt;= 0) &amp;&amp; (n &lt; len), `Bad index: ${n} of ${len}`)
+		return this.lNodeStack[len-n-1]
+	}
+
+	// ..........................................................
+
+	isNode(x: unknown): x is T {
+
+		return true
+	}
+
+	// ..........................................................
+
+	filter(node: T): boolean {
+
+		return true
+	}
+
+	// ..........................................................
+
+	extract(dspath: string): (unknown | undefined) {
+
+		DBG(`dspath = '${dspath}'`)
+		const lMatches = dspath.match(/^(\^*)(.*)$/)
+		if (defined(lMatches)) {
+			const [_, goUpStr, mainStr] = lMatches
+			return extract(this.parent(goUpStr.length), mainStr)
+		}
+		else {
+			croak(`Bad dspath: ${dspath}`)
+		}
+	}
+
+	// ..........................................................
+
+	getString(dspath: string): string {
+
+		const str = this.extract(dspath)
+		assertIsString(str)
+		return str
+	}
+
+	// ..........................................................
+
+	getArray(dspath: string): unknown[] {
+
+		const lItems = this.extract(dspath)
+		assertIsArray(lItems)
+		return lItems
+	}
+
+	// ..........................................................
+	// GENERATOR
+
+	*walk(x: unknown): Generator&lt;T, void, void&gt; {
+
+		if (hasChildren(x)) {
+			this.setVisited = new WeakSet&lt;hash | array&gt;()
+			yield* this.walkItem(x)
+		}
+		return
+	}
+
+	// ..........................................................
+	// GENERATOR
+
+	*walkItem(item: hash | array): Generator&lt;T, void, void&gt; {
+
+		if (this.setVisited.has(item)) {
+			return
+		}
+
+		if (this.isNode(item)) {
+			// --- type narrowing ensures that item is a T
+			if (this.filter(item)) {
+				DBG(`YIELD NODE: ${OL(item)}`)
+				yield item
+				this.setVisited.add(item)
+			}
+
+			this.lNodeStack.push(item)
+		}    // --- item is parent of yielded items
+
+		if (isArray(item)) {
+			let i1 = 0;for (const x of item) {const i = i1++;
+				if (isHash(x) || isArray(x)) {
+					yield* this.walkItem(x)
+				}
+			}
+		}
+		else {
+			for (const [key,x] of Object.entries(item)) {
+				if (isHash(x) || isArray(x)) {
+					yield* this.walkItem(x)
+				}
+			}
+		}
+		if (this.isNode(item)) {
+			this.lNodeStack.pop()
+		}
+		return
+	}
+}
+
+//# sourceMappingURL=data:application/json;base64,eyJ2ZXJzaW9uIjozLCJmaWxlIjoiQzpcXFVzZXJzXFxqb2huZFxcdXRpbHNcXHNyY1xcbGliXFx3YWxrZXIubGliLmNpdmV0LnRzeCIsInNvdXJjZXMiOlsiQzpcXFVzZXJzXFxqb2huZFxcdXRpbHNcXHNyY1xcbGliXFx3YWxrZXIubGliLmNpdmV0Il0sIm1hcHBpbmdzIjoiO0FBQUEsbUJBQWtCO0FBQ2xCLEFBQUE7QUFDQSxBQUFBLE1BQU0sQ0FBQyxDQUFDO0FBQ1IsQ0FBQyxLQUFLLENBQUMsQ0FBQyxPQUFPLENBQUMsQ0FBQyxVQUFVLENBQUMsQ0FBQyxPQUFPLENBQUMsQ0FBQyxJQUFJLENBQUMsQ0FBQyxLQUFLLENBQUM7QUFDbEQsQ0FBQyxPQUFPLENBQUMsQ0FBQyxNQUFNLENBQUMsQ0FBQyxXQUFXLENBQUMsQ0FBQyxNQUFNLENBQUMsQ0FBQyxLQUFLLENBQUMsQ0FBQyxPQUFPLENBQUM7QUFDdEQsQ0FBQyxjQUFjLENBQUMsQ0FBQyxhQUFhLENBQUM7QUFDL0IsQ0FBQyxDQUFDLENBQUMsSUFBSSxDQUFDLFdBQVc7QUFDbkIsQUFBQSxBQUFBLE1BQU0sQ0FBQyxDQUFDLE9BQU8sQ0FBQyxDQUFDLElBQUksQ0FBQyxTQUFTO0FBQy9CLEFBQUEsQUFBQSxNQUFNLENBQUMsQ0FBQyxFQUFFLENBQUMsQ0FBQyxJQUFJLENBQUMsU0FBUztBQUMxQixBQUFBLEFBQUEsTUFBTSxDQUFDLENBQUMsR0FBRyxDQUFDLENBQUMsSUFBSSxDQUFDLFFBQVE7QUFDMUIsQUFBQTtBQUNBLEFBQUEsOEVBQTZFO0FBQzdFLEFBQUE7QUFDQSxBQUFBLEFBQVcsTUFBWCxXQUFXLENBQUMsQ0FBRSxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsT0FBTyxDQUFDLENBQUMsRUFBRSxDQUFBLENBQUE7QUFDOUIsQUFBQSxDQUFDLE1BQU0sQ0FBQyxNQUFNLENBQUMsQ0FBQyxDQUFDLENBQUMsRUFBRSxDQUFDLE9BQU8sQ0FBQyxDQUFDLEM7QUFBQyxDQUFBO0FBQy9CLEFBQUE7QUFDQSxBQUFBLEFBQUEsTUFBTSxDQUFDLEtBQUssQ0FBQyxNQUFNLENBQUMsQ0FBQyxDQUFDLE9BQU8sQ0FBQyxNQUFNLEMsQ0FBRSxDQUFDLElBQUksQ0FBQyxDQUFBLENBQUE7QUFDNUMsQUFBQTtBQUNBLEFBQUEsQ0FBQywwREFBeUQ7QUFDMUQsQUFBQSxDQUFDLFVBQVUsQ0FBQyxDQUFDLE9BQU8sQ0FBQyxJQUFJLENBQUMsQ0FBQyxDQUFDLEtBQUssQ0FBQyxDQUFDLENBQUMsQ0FBQyxHQUFHLENBQUMsT0FBTyxDQUFDLElBQUksQ0FBQyxDQUFDLENBQUMsS0FBSyxDQUFDLENBQUMsQ0FBQztBQUNoRSxBQUFBO0FBQ0EsQUFBQSxDQUFDLFVBQVUsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQztBQUNyQixBQUFBO0FBQ0EsQUFBQSxDQUFDLDZEQUE0RDtBQUM3RCxBQUFBO0FBQ0EsQUFBQSxDQUFDLEdBQUcsQyxLQUFNLENBQUMsQ0FBQyxDQUFDLENBQUMsT0FBTyxDQUFBLENBQUE7QUFDckIsQUFBQTtBQUNBLEFBQUEsRUFBRSxNQUFNLENBQUMsSSxDQUFDLFVBQVUsQ0FBQyxNO0NBQU0sQ0FBQTtBQUMzQixBQUFBO0FBQ0EsQUFBQSxDQUFDLDZEQUE0RDtBQUM3RCxBQUFBO0FBQ0EsQUFBQSxDLE1BQU8sQ0FBQyxDQUFDLENBQUMsQ0FBQyxPQUFPLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxDQUFBLENBQUE7QUFDMUIsQUFBQTtBQUNBLEFBQUEsRUFBSyxNQUFILEdBQUcsQ0FBQyxDQUFFLENBQUMsSSxDQUFDLFVBQVUsQ0FBQyxNQUFNO0FBQzNCLEFBQUEsRUFBRSxNQUFNLENBQUEsQUFBQyxDQUFDLENBQUMsQ0FBQyxFQUFFLENBQUMsQ0FBQyxDQUFDLENBQUMsRUFBRSxDQUFDLENBQUMsQ0FBQyxDQUFDLENBQUMsQ0FBQyxHQUFHLENBQUMsQ0FBQyxDQUFDLENBQUMsV0FBVyxFQUFFLENBQUMsQ0FBQyxJQUFJLEVBQUUsR0FBRyxDQUFDLENBQUMsQ0FB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QUcsQ0FBQSxJLENBQUMsTUFBTSxDQUFDLElBQUksQ0FBQyxDQUFBLENBQUEsQ0FBQTtBQUNsQixBQUFBLEdBQUcsSSxDQUFDLFVBQVUsQ0FBQyxHQUFHLENBQUMsQztFQUFDLENBQUE7QUFDcEIsQUFBQSxFQUFFLE07Q0FBTSxDO0FBQUEsQ0FBQTtBQUNSIiwibmFtZXMiOltdLCJzb3VyY2VzQ29udGVudCI6WyIjIHdhbGtlci5saWIuY2l2ZXRcclxuXHJcbmltcG9ydCB7XHJcblx0dW5kZWYsIGRlZmluZWQsIG5vdGRlZmluZWQsIGludGVnZXIsIGhhc2gsIGFycmF5LFxyXG5cdGlzQXJyYXksIGlzSGFzaCwgaXNQcmltaXRpdmUsIGFzc2VydCwgY3JvYWssIGlzRW1wdHksXHJcblx0YXNzZXJ0SXNTdHJpbmcsIGFzc2VydElzQXJyYXksXHJcblx0fSBmcm9tICdkYXRhdHlwZXMnXHJcbmltcG9ydCB7ZXh0cmFjdH0gZnJvbSAnbGx1dGlscydcclxuaW1wb3J0IHtPTH0gZnJvbSAndG8tbmljZSdcclxuaW1wb3J0IHtEQkd9IGZyb20gJ2xvZ2dlcidcclxuXHJcbiMgLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tLS0tXHJcblxyXG5oYXNDaGlsZHJlbiA6PSAoeDogdW5rbm93bikgPT5cclxuXHRyZXR1cm4gaXNIYXNoKHgpIHx8IGlzQXJyYXkoeClcclxuXHJcbmV4cG9ydCBjbGFzcyBXYWxrZXI8VCBleHRlbmRzIG9iamVjdCA9IGhhc2g+XHJcblxyXG5cdCMgLS0tIEtlZXAgdHJhY2sgb2Ygbm9kZXMgdmlzaXRlZCB0byBhdm9pZCBpbmZpbml0ZSBsb29wc1xyXG5cdHNldFZpc2l0ZWQ6IFdlYWtTZXQ8aGFzaCB8IGFycmF5PiA9IG5ldyBXZWFrU2V0PGhhc2ggfCBhcnJheT4oKVxyXG5cclxuXHRsTm9kZVN0YWNrOiBUW10gPSBbXVxyXG5cclxuXHQjIC4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi5cclxuXHJcblx0Z2V0IGxldmVsKCk6IGludGVnZXJcclxuXHJcblx0XHRyZXR1cm4gQGxOb2RlU3RhY2subGVuZ3RoXHJcblxyXG5cdCMgLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLlxyXG5cclxuXHRwYXJlbnQobjogaW50ZWdlciA9IDEpOiBUXHJcblxyXG5cdFx0bGVuIDo9IEBsTm9kZVN0YWNrLmxlbmd0aFxyXG5cdFx0YXNzZXJ0IChuID49IDApICYmIChuIDwgbGVuKSwgXCJCYWQgaW5kZXg6ICN7bn0gb2YgI3tsZW59XCJcclxuXHRcdHJldHVybiBAbE5vZGVTdGFja1tsZW4tbi0xXVxyXG5cclxuXHQjIC4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi5cclxuXHJcblx0aXNOb2RlKHg6IHVua25vd24pOiB4IGlzIFRcclxuXHJcblx0XHRyZXR1cm4gdHJ1ZVxyXG5cclxuXHQjIC4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi5cclxuXHJcblx0ZmlsdGVyKG5vZGU6IFQpOiBib29sZWFuXHJcblxyXG5cdFx0cmV0dXJuIHRydWVcclxuXHJcblx0IyAuLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uXHJcblxyXG5cdGV4dHJhY3QoZHNwYXRoOiBzdHJpbmcpOiB1bmtub3duP1xyXG5cclxuXHRcdERCRyBcImRzcGF0aCA9ICcje2RzcGF0aH0nXCJcclxuXHRcdGxNYXRjaGVzIDo9IGRzcGF0aC5tYXRjaCAvLy9eXHJcblx0XHRcdFx0KFxcXiopXHJcblx0XHRcdFx0KC4qKVxyXG5cdFx0XHRcdCQvLy9cclxuXHRcdGlmIGRlZmluZWQobE1hdGNoZXMpXHJcblx0XHRcdFtfLCBnb1VwU3RyLCBtYWluU3RyXSA6PSBsTWF0Y2hlc1xyXG5cdFx0XHRyZXR1cm4gZXh0cmFjdCBAcGFyZW50KGdvVXBTdHIubGVuZ3RoKSwgbWFpblN0clxyXG5cdFx0ZWxzZVxyXG5cdFx0XHRjcm9hayBcIkJhZCBkc3BhdGg6ICN7ZHNwYXRofVwiXHJcblxyXG5cdCMgLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLlxyXG5cclxuXHRnZXRTdHJpbmcoZHNwYXRoOiBzdHJpbmcpOiBzdHJpbmdcclxuXHJcblx0XHRzdHIgOj0gQGV4dHJhY3QgZHNwYXRoXHJcblx0XHRhc3NlcnRJc1N0cmluZyBzdHJcclxuXHRcdHJldHVybiBzdHJcclxuXHJcblx0IyAuLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uXHJcblxyXG5cdGdldEFycmF5KGRzcGF0aDogc3RyaW5nKTogdW5rbm93bltdXHJcblxyXG5cdFx0bEl0ZW1zIDo9IEBleHRyYWN0IGRzcGF0aFxyXG5cdFx0YXNzZXJ0SXNBcnJheSBsSXRlbXNcclxuXHRcdHJldHVybiBsSXRlbXNcclxuXHJcblx0IyAuLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uXHJcblx0IyBHRU5FUkFUT1JcclxuXHJcblx0d2Fsayh4OiB1bmtub3duKTogR2VuZXJhdG9yPFQsIHZvaWQsIHZvaWQ+XHJcblxyXG5cdFx0aWYgaGFzQ2hpbGRyZW4oeClcclxuXHRcdFx0QHNldFZpc2l0ZWQgPSBuZXcgV2Vha1NldDxoYXNoIHwgYXJyYXk+KClcclxuXHRcdFx0eWllbGQqIEB3YWxrSXRlbSB4XHJcblx0XHRyZXR1cm5cclxuXHJcblx0IyAuLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uXHJcblx0IyBHRU5FUkFUT1JcclxuXHJcblx0d2Fsa0l0ZW0oaXRlbTogaGFzaCB8IGFycmF5KTogR2VuZXJhdG9yPFQsIHZvaWQsIHZvaWQ+XHJcblxyXG5cdFx0aWYgQHNldFZpc2l0ZWQuaGFzIGl0ZW1cclxuXHRcdFx0cmV0dXJuXHJcblxyXG5cdFx0aWYgQGlzTm9kZShpdGVtKVxyXG5cdFx0XHQjIC0tLSB0eXBlIG5hcnJvd2luZyBlbnN1cmVzIHRoYXQgaXRlbSBpcyBhIFRcclxuXHRcdFx0aWYgQGZpbHRlcihpdGVtKVxyXG5cdFx0XHRcdERCRyBcIllJRUxEIE5PREU6ICN7T0woaXRlbSl9XCJcclxuXHRcdFx0XHR5aWVsZCBpdGVtXHJcblx0XHRcdFx0QHNldFZpc2l0ZWQuYWRkIGl0ZW1cclxuXHJcblx0XHRcdEBsTm9kZVN0YWNrLnB1c2ggaXRlbSAgICAjIC0tLSBpdGVtIGlzIHBhcmVudCBvZiB5aWVsZGVkIGl0ZW1zXHJcblxyXG5cdFx0aWYgaXNBcnJheSBpdGVtXHJcblx0XHRcdGZvciB4LGkgb2YgaXRlbVxyXG5cdFx0XHRcdGlmIGlzSGFzaCh4KSB8fCBpc0FycmF5KHgpXHJcblx0XHRcdFx0XHR5aWVsZCogQHdhbGtJdGVtIHhcclxuXHRcdGVsc2VcclxuXHRcdFx0Zm9yIFtrZXkseF0gb2YgT2JqZWN0LmVudHJpZXMoaXRlbSlcclxuXHRcdFx0XHRpZiBpc0hhc2goeCkgfHwgaXNBcnJheSh4KVxyXG5cdFx0XHRcdFx0eWllbGQqIEB3YWxrSXRlbSB4XHJcblx0XHRpZiBAaXNOb2RlKGl0ZW0pXHJcblx0XHRcdEBsTm9kZVN0YWNrLnBvcCgpXHJcblx0XHRyZXR1cm5cclxuIl19</pre></td>
+        </tr>
+      </table>
+            </div>
+            <div class='push'></div>
+          </div>
+          
+      <div class='footer quiet pad2 space-top1 center small'>
+        Code coverage generated by
+        <a href='https://deno.com/' target='_blank'>Deno v2.5.1</a>
+        at Wed, 24 Sep 2025 20:03:49 +0000
+      </div>
+        </body>
+      </html>

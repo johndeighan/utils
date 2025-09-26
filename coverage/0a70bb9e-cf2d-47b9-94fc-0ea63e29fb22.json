@@ -1,0 +1,14 @@
+{
+  "scriptId": "374",
+  "url": "file:///C:/Users/johnd/utils/node_modules/.deno/uglify-js@3.19.3/node_modules/uglify-js/tools/node.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 0, "endOffset": 704, "count": 1 },
+        { "startOffset": 189, "endOffset": 342, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

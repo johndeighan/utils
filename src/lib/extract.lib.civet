@@ -1,0 +1,61 @@
+# extract.lib.civet
+
+import {
+	undef, defined, notdefined, isString, isArray, isEmpty, nonEmpty,
+	assertIsString, assertIsNumber,
+	} from 'datatypes'
+
+# ---------------------------------------------------------------------------
+
+export type TPathItem = string | number
+
+export getDsPath := (lPath: TPathItem[]): string =>
+
+	lParts := for x of lPath
+		isString(x) ? ".#{x}" : "[#{x}]"
+	return lParts.join('')
+
+# ---------------------------------------------------------------------------
+
+export extract := (
+		x: unknown,
+		dspath: string | TPathItem[]
+		): unknown =>
+
+	pathstr := isArray(dspath) ? getDsPath(dspath) : dspath
+	if nonEmpty(pathstr)
+		expr := "x = x#{pathstr}"
+		try
+			eval expr
+		catch err
+			console.log "EVAL ERROR: '#{expr}'"
+			try
+				console.log "x = #{JSON.stringify(x, null, 3)}"
+			throw err
+	return x
+
+# ---------------------------------------------------------------------------
+
+export getString := (
+		x: unknown,
+		dspath: string | TPathItem[]
+		): string =>
+
+	pathstr := isArray(dspath) ? getDsPath(dspath) : dspath
+	if nonEmpty(pathstr)
+		eval "x = x#{pathstr}"
+	assertIsString x
+	return x
+
+# ---------------------------------------------------------------------------
+
+export getNumber := (
+		x: unknown,
+		dspath: string | TPathItem[]
+		): number =>
+
+	pathstr := isArray(dspath) ? getDsPath(dspath) : dspath
+	if nonEmpty(pathstr)
+		eval "x = x#{pathstr}"
+	assertIsNumber x
+	return x

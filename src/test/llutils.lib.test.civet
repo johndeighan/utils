@@ -17,7 +17,7 @@ import {
 	TAlignment, isAlignment, alignString, zpad,
 	TBlockSpec, isBlockSpec, allMatches,
 	range, Fetcher, getLineAndColumn, assertSameStr, interpolate,
-	extract, getString, getNumber,
+	KeyedStringSet,
 	} from 'llutils'
 import {
 	equal, truthy, falsy, succeeds, fails, codeLike,
@@ -545,52 +545,12 @@ equal truncStr('abcdefg', 5), 'ab...'
 
 # ---------------------------------------------------------------------------
 
-equal extract({n: 42}, '.n'), 42
+DBG "class KeyedStringSet"
 
-class Person
-	name: string
-	gender: TGender
-	constructor(@name: string, @gender: TGender)
+ss := new KeyedStringSet()
+ss.add 'llutils', 'pass'
+ss.add 'fsys', 'isFile'
+ss.add 'llutils', 'require'
 
-type TGender = 'male' | 'female'
-
-h := {
-	friends: [
-		new Person('John Bowling', 'male')
-		new Person('Julie Booker', 'female')
-		]
-	name: 'John Deighan'
-	gender: 'male'
-	address: {
-		street: '1749 Main St.'
-		city: 'Blacksburg'
-		state: 'VA'
-		}
-	} as const
-
-equal extract(h, '.name'), 'John Deighan'
-equal extract(h, '.friends[1].name'), 'Julie Booker'
-equal extract(h, '.friends[0].gender'), 'male'
-equal extract(h, '.friends[1]'), new Person('Julie Booker', 'female')
-equal extract(h, ''), h
-equal extract(h, '.address.city'), 'Blacksburg'
-
-# ---------------------------------------------------------------------------
-
-(() =>
-	h := {
-		a: 1
-		b: 2
-		c: [
-			'abc'
-			'def'
-			]
-		}
-
-	s := getString h, '.c[1]'
-	equal s, 'def'
-	equal s.length, 3
-
-	n := getNumber h, '.b'
-	equal n, 2
-	)()
+equal Array.from(ss.allKeys()), ['llutils', 'fsys']
+equal Array.from(ss.allValues('llutils')), ['pass','require']

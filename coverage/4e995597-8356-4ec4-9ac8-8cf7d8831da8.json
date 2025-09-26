@@ -1,0 +1,96 @@
+{
+  "scriptId": "344",
+  "url": "file:///C:/Users/johnd/utils/src/lib/typescript.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 53511, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "kindStr",
+      "ranges": [{ "startOffset": 852, "endOffset": 884, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "ts2ast",
+      "ranges": [{ "startOffset": 987, "endOffset": 1335, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "ast2ts",
+      "ranges": [{ "startOffset": 1438, "endOffset": 1639, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "typeCheckFiles",
+      "ranges": [{ "startOffset": 1750, "endOffset": 2415, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "tsMapFunc",
+      "ranges": [{ "startOffset": 2580, "endOffset": 2763, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "astAsString",
+      "ranges": [{ "startOffset": 2871, "endOffset": 3203, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "typeCheckCode",
+      "ranges": [{ "startOffset": 3313, "endOffset": 3846, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "checkType",
+      "ranges": [{ "startOffset": 3952, "endOffset": 4665, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getTsCode",
+      "ranges": [{ "startOffset": 4871, "endOffset": 5389, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "splitFuncStr",
+      "ranges": [{ "startOffset": 5419, "endOffset": 5803, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getImportCode",
+      "ranges": [{ "startOffset": 5913, "endOffset": 6211, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getSymbolsFromType",
+      "ranges": [{ "startOffset": 6326, "endOffset": 6785, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "<instance_members_initializer>",
+      "ranges": [{ "startOffset": 9239, "endOffset": 9249, "count": 0 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "AstWalker",
+      "ranges": [{ "startOffset": 9317, "endOffset": 9402, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isNode",
+      "ranges": [{ "startOffset": 9469, "endOffset": 9521, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "filter",
+      "ranges": [{ "startOffset": 9588, "endOffset": 9674, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "analyze",
+      "ranges": [{ "startOffset": 9700, "endOffset": 10565, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

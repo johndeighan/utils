@@ -1,6 +1,6 @@
 # civet.lib.civet
 
-import {SourceFile} from 'npm:typescript'
+import {Node, SourceFile} from 'npm:typescript'
 
 import {
 	undef, defined, notdefined, hash, assert,
@@ -90,7 +90,7 @@ export civet2ts := (
 
 # ---------------------------------------------------------------------------
 
-export civet2ast := (civetCode: string): SourceFile =>
+export civet2ast := (civetCode: string): Node =>
 
 	tsCode := civet2ts civetCode
 	return ts2ast tsCode

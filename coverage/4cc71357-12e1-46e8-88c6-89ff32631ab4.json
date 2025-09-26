@@ -1,0 +1,143 @@
+{
+  "scriptId": "334",
+  "url": "file:///C:/Users/johnd/utils/src/lib/unit-test.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 88012, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getTestName",
+      "ranges": [
+        { "startOffset": 950, "endOffset": 1146, "count": 28 },
+        { "startOffset": 1051, "endOffset": 1054, "count": 4 },
+        { "startOffset": 1055, "endOffset": 1067, "count": 24 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "equal",
+      "ranges": [{ "startOffset": 1576, "endOffset": 1744, "count": 10 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1697, "endOffset": 1730, "count": 10 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "same",
+      "ranges": [{ "startOffset": 1845, "endOffset": 2018, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "truthy",
+      "ranges": [{ "startOffset": 2377, "endOffset": 2514, "count": 7 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 2483, "endOffset": 2500, "count": 7 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "falsy",
+      "ranges": [{ "startOffset": 2869, "endOffset": 3006, "count": 3 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 2974, "endOffset": 2992, "count": 3 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "fails",
+      "ranges": [{ "startOffset": 3422, "endOffset": 3752, "count": 4 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 3575, "endOffset": 3738, "count": 4 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "succeeds",
+      "ranges": [{ "startOffset": 4180, "endOffset": 4529, "count": 4 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 4351, "endOffset": 4515, "count": 4 },
+        { "startOffset": 4387, "endOffset": 4511, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "iterEqual",
+      "ranges": [{ "startOffset": 4635, "endOffset": 4817, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "iterLike",
+      "ranges": [{ "startOffset": 4922, "endOffset": 5340, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "matches",
+      "ranges": [{ "startOffset": 5912, "endOffset": 6326, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "like",
+      "ranges": [{ "startOffset": 6869, "endOffset": 7138, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "codeLike",
+      "ranges": [{ "startOffset": 7243, "endOffset": 7455, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "strListLike",
+      "ranges": [{ "startOffset": 7563, "endOffset": 8112, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "objListLike",
+      "ranges": [{ "startOffset": 9097, "endOffset": 10342, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "includes",
+      "ranges": [{ "startOffset": 10802, "endOffset": 11052, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "includesAll",
+      "ranges": [{ "startOffset": 11540, "endOffset": 11843, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "isType",
+      "ranges": [{ "startOffset": 12450, "endOffset": 12910, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "notType",
+      "ranges": [{ "startOffset": 13389, "endOffset": 13740, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "setDirTree",
+      "ranges": [{ "startOffset": 13768, "endOffset": 18869, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "fileOpsTable",
+      "ranges": [{ "startOffset": 18978, "endOffset": 19694, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

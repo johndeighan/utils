@@ -1,0 +1,91 @@
+{
+  "scriptId": "340",
+  "url": "file:///C:/Users/johnd/utils/src/lib/text-table.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 42436, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "<instance_members_initializer>",
+      "ranges": [{ "startOffset": 340, "endOffset": 403, "count": 0 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "TextTable",
+      "ranges": [{ "startOffset": 407, "endOffset": 1303, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "title",
+      "ranges": [{ "startOffset": 1370, "endOffset": 1550, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "labels",
+      "ranges": [{ "startOffset": 1617, "endOffset": 1925, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "accum",
+      "ranges": [{ "startOffset": 1992, "endOffset": 2233, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "data",
+      "ranges": [{ "startOffset": 2300, "endOffset": 3313, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "sep",
+      "ranges": [{ "startOffset": 3380, "endOffset": 3471, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "fullsep",
+      "ranges": [{ "startOffset": 3538, "endOffset": 3637, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "totals",
+      "ranges": [{ "startOffset": 3704, "endOffset": 4039, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "subtotals",
+      "ranges": [{ "startOffset": 4106, "endOffset": 4527, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "adjustColWidths",
+      "ranges": [{ "startOffset": 4594, "endOffset": 4828, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "formatNum",
+      "ranges": [{ "startOffset": 4895, "endOffset": 5046, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "dumpInternals",
+      "ranges": [{ "startOffset": 5113, "endOffset": 5258, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getTotalWidth",
+      "ranges": [{ "startOffset": 5325, "endOffset": 5562, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getColsToHide",
+      "ranges": [{ "startOffset": 5629, "endOffset": 6341, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "asString",
+      "ranges": [{ "startOffset": 6463, "endOffset": 8042, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

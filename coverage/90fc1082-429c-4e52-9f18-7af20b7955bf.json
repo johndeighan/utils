@@ -1,0 +1,223 @@
+{
+  "scriptId": "727",
+  "url": "file:///C:/Users/johnd/utils/node_modules/.deno/source-map-sync@0.8.0-beta.2/node_modules/source-map-sync/lib/source-map-consumer.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 33944, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1, "endOffset": 33943, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 214, "endOffset": 33937, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "SourceMapConsumer",
+      "ranges": [
+        { "startOffset": 743, "endOffset": 1089, "count": 168 },
+        { "startOffset": 1010, "endOffset": 1088, "count": 84 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "fromSourceMap",
+      "ranges": [{ "startOffset": 1100, "endOffset": 1197, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "with",
+      "ranges": [{ "startOffset": 2263, "endOffset": 2460, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "eachMapping",
+      "ranges": [{ "startOffset": 3222, "endOffset": 3330, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "allGeneratedPositionsFor",
+      "ranges": [{ "startOffset": 4404, "endOffset": 4516, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "destroy",
+      "ranges": [{ "startOffset": 4520, "endOffset": 4593, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "BasicSourceMapConsumer",
+      "ranges": [
+        { "startOffset": 6465, "endOffset": 8654, "count": 84 },
+        { "startOffset": 6659, "endOffset": 6726, "count": 0 },
+        { "startOffset": 7498, "endOffset": 7567, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 8104, "endOffset": 8197, "count": 84 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "_findSourceIndex",
+      "ranges": [{ "startOffset": 8754, "endOffset": 10000, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "fromSourceMap",
+      "ranges": [{ "startOffset": 10322, "endOffset": 10430, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "get sources",
+      "ranges": [{ "startOffset": 10434, "endOffset": 10497, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_getMappingsPtr",
+      "ranges": [{ "startOffset": 10501, "endOffset": 10625, "count": 84 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "_parseMappings",
+      "ranges": [
+        { "startOffset": 10833, "endOffset": 12118, "count": 84 },
+        { "startOffset": 11142, "endOffset": 11192, "count": 1762180 },
+        { "startOffset": 11292, "endOffset": 12076, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "eachMapping",
+      "ranges": [{ "startOffset": 12122, "endOffset": 13180, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "allGeneratedPositionsFor",
+      "ranges": [{ "startOffset": 13184, "endOffset": 14254, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "destroy",
+      "ranges": [{ "startOffset": 14258, "endOffset": 14402, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "computeColumnSpans",
+      "ranges": [{ "startOffset": 14510, "endOffset": 14701, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "originalPositionFor",
+      "ranges": [
+        { "startOffset": 15859, "endOffset": 17357, "count": 84 },
+        { "startOffset": 16052, "endOffset": 16111, "count": 0 },
+        { "startOffset": 16149, "endOffset": 16210, "count": 0 },
+        { "startOffset": 16341, "endOffset": 16401, "count": 0 },
+        { "startOffset": 17007, "endOffset": 17057, "count": 0 },
+        { "startOffset": 17257, "endOffset": 17356, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 16462, "endOffset": 16480, "count": 84 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 16488, "endOffset": 16683, "count": 84 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "hasContentsOfAllSources",
+      "ranges": [{ "startOffset": 17478, "endOffset": 17730, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "sourceContentFor",
+      "ranges": [{ "startOffset": 17913, "endOffset": 18512, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "generatedPositionFor",
+      "ranges": [{ "startOffset": 19613, "endOffset": 21192, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "IndexedSourceMapConsumer",
+      "ranges": [{ "startOffset": 23265, "endOffset": 25265, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "get sources",
+      "ranges": [{ "startOffset": 25316, "endOffset": 25584, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "originalPositionFor",
+      "ranges": [{ "startOffset": 26380, "endOffset": 27520, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "hasContentsOfAllSources",
+      "ranges": [{ "startOffset": 27641, "endOffset": 27777, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "sourceContentFor",
+      "ranges": [{ "startOffset": 27960, "endOffset": 28350, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_findSectionIndex",
+      "ranges": [{ "startOffset": 28354, "endOffset": 28586, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "generatedPositionFor",
+      "ranges": [{ "startOffset": 29325, "endOffset": 30593, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "allGeneratedPositionsFor",
+      "ranges": [{ "startOffset": 30597, "endOffset": 31801, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "eachMapping",
+      "ranges": [{ "startOffset": 31805, "endOffset": 32943, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "computeColumnSpans",
+      "ranges": [{ "startOffset": 32947, "endOffset": 33088, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "destroy",
+      "ranges": [{ "startOffset": 33092, "endOffset": 33211, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "_factory",
+      "ranges": [
+        { "startOffset": 33436, "endOffset": 33807, "count": 84 },
+        { "startOffset": 33551, "endOffset": 33610, "count": 0 },
+        { "startOffset": 33668, "endOffset": 33724, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "_factoryBSM",
+      "ranges": [{ "startOffset": 33809, "endOffset": 33934, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

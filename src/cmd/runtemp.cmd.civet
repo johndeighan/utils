@@ -2,7 +2,7 @@
 
 import {
 	undef, defined, SUCCEED, FAIL, flag, LOG,
-	buildFileName, sep, centered,
+	buildFileName, sep, centered, stdChecks,
 	findFile, tryCmd, civet2tsFile, doUnitTest, doRun,
 	} from 'base-utils'
 
@@ -10,6 +10,8 @@ if flag('h')
 	# ---  -d invokes Chrome debugger
 	#      -D causes debugging output
 	SUCCEED "USAGE: runtemp [-d] [-D] { <stub> }"
+
+stdChecks()
 
 # ---------------------------------------------------------------------------
 
@@ -21,7 +23,7 @@ for arg of Deno.args
 		lFlags.push arg
 	else if arg.match /^\d+$/
 		stub = "temp#{arg}"
-	else
+	else if (arg != '!')
 		await tryCmd civet2tsFile, arg, 'lib'
 		await tryCmd doUnitTest, arg, 'lib'
 

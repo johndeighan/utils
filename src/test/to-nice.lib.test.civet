@@ -26,7 +26,7 @@ equal toNiceString('3.14'), '\\3.14'
 equal toNiceString('-123'), '\\-123'
 equal toNiceString('-3.14'), '\\-3.14'
 equal toNiceString('134 Main St.'), '\\134˳Main˳St.'
-equal toNiceString('.inf.'), '\\.inf.'
+equal toNiceString('.inf'), '\\.inf'
 equal toNiceString('.text'), '\\.text'
 equal toNiceString('label: 42'), '\\label:˳42'
 equal toNiceString(' xxx '), '˳xxx˳'
@@ -38,16 +38,16 @@ equal toNiceString('func1 = (str: string)'), 'func1˳=˳(str:˳string)'
 DBG "toNice()"
 
 # --- 'undefined'
-equal toNice(undef),      '.undef.'
+equal toNice(undef),      '.undef'
 
 # --- 'boolean'
-equal toNice(true),       '.true.'
-equal toNice(false),      '.false.'
+equal toNice(true),       '.true'
+equal toNice(false),      '.false'
 
 # --- 'number'
-equal toNice(NaN),        '.NaN.'
-equal toNice(Infinity),   '.infinity.'
-equal toNice(-Infinity),  '.neginfinity.'
+equal toNice(NaN),        '.NaN'
+equal toNice(Infinity),   '.inf'
+equal toNice(-Infinity),  '.neginf'
 equal toNice(42),         '42'
 equal toNice(3.14),       '3.14'
 
@@ -59,7 +59,7 @@ equal toNice('abc'),      'abc'
 equal toNice('say "hi"'), 'say˳"hi"'
 equal toNice('a\tb'),     'a→b'
 equal toNice('a\nb'),     'a↓b'
-equal toNice('.true.'),   '\\.true.'
+equal toNice('.true'),   '\\.true'
 equal toNice('.abc'),     '\\.abc'
 equal toNice('- abc'),    '\\-˳abc'
 equal toNice('-abc'),     '\\-abc'
@@ -68,8 +68,8 @@ equal toNice('123'),      '\\123'
 equal toNice('1749 Main St.'), '\\1749˳Main˳St.'
 
 # --- 'symbol'
-equal toNice(Symbol()),   '.symbol.'
-equal toNice(Symbol('abc')), '.symbol abc.'
+equal toNice(Symbol()),   '.symbol'
+equal toNice(Symbol('abc')), '.symbol abc'
 
 # --- 'function'
 (() =>
@@ -79,7 +79,7 @@ equal toNice(Symbol('abc')), '.symbol abc.'
 		constructor(str: string)
 			@var = str
 
-	equal toNice(TempClass), '.class TempClass.'
+	equal toNice(TempClass), '.class TempClass'
 
 	# --- However, a class instance is an object
 	equal toNice(new TempClass('xyz')), """
@@ -91,21 +91,21 @@ equal toNice(Symbol('abc')), '.symbol abc.'
 	func := (x: string): string =>
 		return 'abc'
 
-	equal toNice(func), '.function func.'
+	equal toNice(func), '.function func'
 	)()
 
 # --- 'object'
-equal toNice(null), '.null.'
+equal toNice(null), '.null'
 
-equal toNice(/^abc$/), '.regexp ^abc$.'
+equal toNice(/^abc$/), '.regexp ^abc$'
 
-equal toNice([]), ".[]."
+equal toNice([]), "[]"
 equal toNice([1,2]), """
 	- 1
 	- 2
 	"""
 
-equal toNice({}), ".{}."
+equal toNice({}), "{}"
 equal toNice({a:1, b:2}), """
 	a: 1
 	b: 2
@@ -158,7 +158,7 @@ equal toNice({a:1, b:2}), """
 
 	equal toNice(hAst), s"""
 		name: John
-		ref: .REF /.
+		ref: .ref /
 		"""
 	)()
 
@@ -210,13 +210,13 @@ DBG "OL()"
 equal OL({a:1, b:2}), '{a: 1 b: 2}'
 equal OL('abc'), 'abc'
 equal OL([1, 2, 3]), '[1 2 3]'
-equal OL(undefined), '.undef.'
-equal OL(null), '.null.'
+equal OL(undefined), '.undef'
+equal OL(null), '.null'
 
 DBG "ML()"
 
-equal ML(undefined), '.undef.'
-equal ML(null), '.null.'
+equal ML(undefined), '.undef'
+equal ML(null), '.null'
 equal ML('abc'), 'abc'
 equal ML({a:1, b:2}), """
 	   a: 1

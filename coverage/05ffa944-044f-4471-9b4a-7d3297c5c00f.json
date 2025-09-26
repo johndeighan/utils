@@ -1,0 +1,36 @@
+{
+  "scriptId": "339",
+  "url": "file:///C:/Users/johnd/utils/src/lib/indent.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 20516, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "resetOneIndent",
+      "ranges": [{ "startOffset": 449, "endOffset": 496, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "indentLevel",
+      "ranges": [{ "startOffset": 726, "endOffset": 1994, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "splitLine",
+      "ranges": [{ "startOffset": 2021, "endOffset": 2174, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "indented",
+      "ranges": [{ "startOffset": 2183, "endOffset": 2656, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "undented",
+      "ranges": [{ "startOffset": 2910, "endOffset": 3810, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

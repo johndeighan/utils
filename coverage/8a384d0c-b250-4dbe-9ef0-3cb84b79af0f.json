@@ -1,0 +1,46 @@
+{
+  "scriptId": "343",
+  "url": "file:///C:/Users/johnd/utils/src/lib/pll.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 16084, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "isKind",
+      "ranges": [{ "startOffset": 424, "endOffset": 472, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "tokenWith",
+      "ranges": [{ "startOffset": 499, "endOffset": 549, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "identTokenGen",
+      "ranges": [{ "startOffset": 573, "endOffset": 649, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "allTokensIn",
+      "ranges": [{ "startOffset": 757, "endOffset": 1839, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "allTokensInBlock",
+      "ranges": [{ "startOffset": 1952, "endOffset": 2085, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "allTokensInFile",
+      "ranges": [{ "startOffset": 2197, "endOffset": 2297, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "tokenTable",
+      "ranges": [{ "startOffset": 2404, "endOffset": 2738, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

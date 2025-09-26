@@ -3,41 +3,97 @@
 import {
 	assert, TDefined, TNotDefined, undef, defined,
 	notdefined, assertIsDefined, assertNotDefined,
-	croak, checkSetup, flag, replaceInArray,
+	croak, checkSetup, flag, nonOption, replaceInArray,
 	fileExt, withExt, normalizePath, relpath,
 	TPathInfo, parsePath, TExecResult, TReplaceHash,
 	execCmd, cmdSucceeds, newerDestFileExists,
 	splitPatterns, allFilesMatching, findFile
 	TProcFunc, TProcResult, procFiles,
+	isFile, slurp, rmFile, buildFileName, buildTestFileName,
+
+	civet2tsFile, getStringOption, getBooleanOption,
+	tryCmd, doUnitTest, doInstallCmd, doRun,
+	sep, centered, lAllLibs,
 	} from 'base-utils'
 import {
 	equal, like, succeeds, fails, truthy, falsy,
-	isType, notType,
+	isType, notType, setDirTree,
 	} from 'unit-test'
+
+# --- Not Tested yet: (aside from last imports)
+#        allFilesMatching
+#        findFile
+#        procFiles
+# ---------------------------------------------------------------------------
+
+setDirTree 'src/test/base-utils', """
+	file.txt
+		a simple file
+	file2.txt
+		a simple file
+	sample.lib.civet
+		meaning := 42
+	"""
 
 # ---------------------------------------------------------------------------
 
 succeeds () => assert 2 == 2
 fails    () => assert 2 == 3 + 5
+
+succeeds () => checkSetup()
+
+truthy flag 'c', ['-c']
+truthy flag 'c', ['-cm']
+truthy flag 'x', ['-cx']
+falsy  flag 'x', ['-c']
+falsy  flag 'c', []
+falsy  flag 'c', ['-def']
+
+equal  nonOption(0, ['-d', 'x', 'y']), 'x'
+equal  nonOption(1, ['-d', 'x', 'y']), 'y'
+
 succeeds () => defined 'abc'
 fails    () => defined undef
 succeeds () => notdefined undef
 fails    () => notdefined 'abc'
+
+succeeds () => assertIsDefined('abc')
+fails    () => assertIsDefined(undef)
+
+fails    () => assertNotDefined('abc')
+succeeds () => assertNotDefined(undef)
+
 fails    () => croak "Bad"
-succeeds () => checkSetup()
-truthy   flag 'c', ['-c']
-truthy   flag 'c', ['-cm']
-falsy    flag 'c', []
-falsy    flag 'c', ['-def']
-equal    replaceInArray(['-cm','%PATH'], {'%PATH': '/temp.txt'}),
+
+equal replaceInArray(['-cm','%PATH'], {'%PATH': '/temp.txt'}),
 	['-cm', '/temp.txt']
+equal replaceInArray(['a','b','c'], {
+	b: 'x'
+	}), ['a','x','c']
+
 
 # ---------------------------------------------------------------------------
 
+truthy   isFile('src/test/base-utils/file2.txt')
+succeeds () => rmFile('src/test/base-utils/file2.txt')
+# falsy    isFile('src/test/base-utils/file2.txt')
+
+truthy isFile('src/test/base-utils/file.txt')
+falsy  isFile('src/test/base-utils/notafile.txt')
+
+equal slurp('src/test/base-utils/file.txt'), 'a simple file'
+
 equal fileExt('temp.txt'), '.txt'
 equal withExt('temp.txt', '.md'), 'temp.md'
+
 equal normalizePath('c:\\Users\\johnd\\utils\\src\\lib\\fsys.lib.civet'),
 	'C:/Users/johnd/utils/src/lib/fsys.lib.civet'
+
+equal buildFileName('dummy', 'lib', '.civet'), 'dummy.lib.civet'
+equal buildFileName('dummy', '', '.civet'), 'dummy.civet'
+equal buildFileName('dummy', undef, '.civet'), 'dummy.civet'
+equal buildTestFileName('dummy', 'lib', '.civet'), 'dummy.lib.test.civet'
+
 equal parsePath('c:\\path\\dir\\file.lib.ts'), {
 	root: 'C:/'
 	dir: 'C:/path/dir'
@@ -48,15 +104,11 @@ equal parsePath('c:\\path\\dir\\file.lib.ts'), {
 	ext: '.ts'
 	}
 
-
 truthy cmdSucceeds 'ls'
-truthy flag('c', ['-c'])
-truthy flag('x', ['-cx'])
-falsy  flag('x', ['-c'])
 
-equal replaceInArray(['a','b','c'], {
-	b: 'x'
-	}), ['a','x','c']
+await civet2tsFile('sample', 'lib')
+
+truthy newerDestFileExists('src/test/base-utils/sample.lib.civet', '.ts')
 
 (() =>
 	hResult := await execCmd('echo', ['Hello'], {}, true)

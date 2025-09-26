@@ -23,6 +23,7 @@
 		"glob": "npm:glob@^11.0.3",
 		"@danielx/civet": "npm:@danielx/civet@^0.10.6",
 
+		"db":            "file:///C:/Users/johnd/utils/src/lib/db.lib.ts",
 		"base-utils":    "file:///C:/Users/johnd/utils/src/lib/base-utils.lib.ts",
 		"unicode":       "file:///C:/Users/johnd/utils/src/lib/unicode.lib.ts",
 		"datatypes":     "file:///C:/Users/johnd/utils/src/lib/datatypes.lib.ts",
@@ -38,6 +39,7 @@
 		"pll":           "file:///C:/Users/johnd/utils/src/lib/pll.lib.ts",
 		"pllfile":       "file:///C:/Users/johnd/utils/src/lib/pllfile.lib.ts",
 		"to-nice":       "file:///C:/Users/johnd/utils/src/lib/to-nice.lib.ts",
+		"extract":       "file:///C:/Users/johnd/utils/src/lib/extract.lib.ts",
 		"from-nice":     "file:///C:/Users/johnd/utils/src/lib/from-nice.lib.ts",
 		"fsys":          "file:///C:/Users/johnd/utils/src/lib/fsys.lib.ts",
 		"symbols":       "file:///C:/Users/johnd/utils/src/lib/symbols.lib.ts",

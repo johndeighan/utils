@@ -1,0 +1,112 @@
+{
+  "scriptId": "341",
+  "url": "file:///C:/Users/johnd/utils/src/lib/logger.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 36614, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 937, "endOffset": 1213, "count": 1 },
+        { "startOffset": 1027, "endOffset": 1061, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getLog",
+      "ranges": [{ "startOffset": 1319, "endOffset": 1783, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "clearLog",
+      "ranges": [{ "startOffset": 1888, "endOffset": 2435, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "output",
+      "ranges": [
+        { "startOffset": 4181, "endOffset": 5283, "count": 3064 },
+        { "startOffset": 4247, "endOffset": 5282, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "DBG",
+      "ranges": [{ "startOffset": 5383, "endOffset": 5436, "count": 3060 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "LOG",
+      "ranges": [{ "startOffset": 5457, "endOffset": 5509, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "WARN",
+      "ranges": [{ "startOffset": 5531, "endOffset": 5583, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "ERR",
+      "ranges": [{ "startOffset": 5604, "endOffset": 5657, "count": 4 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "LOGVALUE",
+      "ranges": [{ "startOffset": 5683, "endOffset": 5795, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "LOGLABELED",
+      "ranges": [{ "startOffset": 5823, "endOffset": 5941, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "DBGVALUE",
+      "ranges": [{ "startOffset": 5967, "endOffset": 6086, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "DBGLABELED",
+      "ranges": [{ "startOffset": 6114, "endOffset": 6232, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "removeLogFile",
+      "ranges": [{ "startOffset": 6342, "endOffset": 6382, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "<instance_members_initializer>",
+      "ranges": [{ "startOffset": 6433, "endOffset": 6483, "count": 0 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "TreeLogger",
+      "ranges": [{ "startOffset": 6504, "endOffset": 6676, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "start",
+      "ranges": [{ "startOffset": 6679, "endOffset": 6899, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "log",
+      "ranges": [{ "startOffset": 6902, "endOffset": 7093, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "succeed",
+      "ranges": [{ "startOffset": 7096, "endOffset": 7322, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "fail",
+      "ranges": [{ "startOffset": 7325, "endOffset": 7548, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

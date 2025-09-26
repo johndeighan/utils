@@ -12,7 +12,7 @@ import {
 	isString, char, isChar, isNonEmptyString, isBoolean,
 	isNumber, isPrimitive, isNonPrimitive, isInteger,
 	isArrayOfStrings, isArrayOfIntegers,
-	isFunction, isObject, isRegExp,
+	isFunction, isRegExp,
 	isEmpty, nonEmpty,
 	isClass, className, isPromise, isClassInstance, isIterable,
 	isSymbol, symbolName, functionName, functionDef,
@@ -206,7 +206,7 @@ DBG "isHash()"
 	falsy  isHash(undef)
 	falsy  isHash(null)
 	falsy  isHash(Symbol())
-	falsy  isHash(new TempClass('x'))
+	truthy isHash(new TempClass('x'))
 	)()
 
 DBG "type TObjCompareFunc"
@@ -344,13 +344,6 @@ DBG "isRegExp()"
 
 truthy isRegExp(/^abc$/)
 falsy  isRegExp('abc')
-
-DBG "isObject(x)"
-
-truthy isObject({})
-falsy  isObject(42)
-truthy isObject({a:1, b:2})
-falsy  isObject([1, 2])
 
 DBG "isFunction(x)"
 

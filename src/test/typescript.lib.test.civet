@@ -1,5 +1,6 @@
 # typescript.lib.test.civet
 
+import {stripAnsiCode} from "@std/fmt/colors"
 import {SourceFile} from 'npm:typescript'
 
 import {
@@ -46,75 +47,60 @@ truthy nonEmpty(typeCheckCode("let s: string = 42;"))
 DBG "ts2ast(tsCode)", "astAsString(ast)"
 
 ast := ts2ast(slurp('src/test/typescript/tstest2.ts'))
-equal astAsString(ast), s"""
-	kind: 308
-	kindStr: SourceFile
+equal stripAnsiCode(astAsString(ast)), s"""
+	kind: 308 (SourceFile)
 	statements:
 		-
-			kind: 244
-			kindStr: FirstStatement
+			kind: 244 (FirstStatement)
 			declarationList:
-				kind: 262
-				kindStr: VariableDeclarationList
+				kind: 262 (VariableDeclarationList)
 				declarations:
 					-
-						kind: 261
-						kindStr: VariableDeclaration
+						kind: 261 (VariableDeclaration)
 						name:
-							kind: 80
-							kindStr: Identifier
+							kind: 80 (Identifier)
 							escapedText: func1
 						initializer:
-							kind: 220
-							kindStr: ArrowFunction
+							kind: 220 (ArrowFunction)
 							parameters:
 								-
-									kind: 170
-									kindStr: Parameter
+									kind: 170 (Parameter)
 									name:
-										kind: 80
-										kindStr: Identifier
+										kind: 80 (Identifier)
 										escapedText: str
 									type:
-										kind: 154
-										kindStr: StringKeyword
+										kind: 154 (StringKeyword)
 							type:
-								kind: 136
-								kindStr: BooleanKeyword
+								kind: 136 (BooleanKeyword)
 							equalsGreaterThanToken:
-								kind: 39
-								kindStr: EqualsGreaterThanToken
+								kind: 39 (EqualsGreaterThanToken)
 							body:
-								kind: 242
-								kindStr: Block
+								kind: 242 (Block)
 								statements:
 									-
-										kind: 254
-										kindStr: ReturnStatement
+										kind: 254 (ReturnStatement)
 										expression:
-											kind: 112
-											kindStr: TrueKeyword
-								multiLine: .true.
+											kind: 112 (TrueKeyword)
+								multiLine: .true
 	endOfFileToken:
-		kind: 1
-		kindStr: EndOfFileToken
+		kind: 1 (EndOfFileToken)
 	text: const˳func1˳=˳(str:˳string):˳boolean˳=>↓→return˳true
 	fileName: temp.ts
 	scriptKind: 3
-	isDeclarationFile: .false.
+	isDeclarationFile: .false
 	nodeCount: 16
 	identifierCount: 3
 	symbolCount: 0
 	parseDiagnostics:
 		-
-			file: .REF /.
+			file: .ref /
 			start: 41
 			length: 6
 			messageText: '{'˳expected.
 			category: 1
 			code: 1005
 		-
-			file: .REF /.
+			file: .ref /
 			start: 52
 			length: 0
 			messageText: '}'˳expected.

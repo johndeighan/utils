@@ -1,0 +1,21 @@
+# db.lib.test.civet
+
+import {undef} from 'datatypes'
+import {projdb, setKV, getKV, delKV} from 'db'
+import {DBG} from 'logger'
+import {equal, succeeds} from 'unit-test'
+
+# ---------------------------------------------------------------------------
+
+key := '_____name_____'
+
+DBG "setKV(), getKV(), delKV()"
+
+succeeds () =>
+	setKV key, 'John Deighan'
+	val := getKV key
+	equal val, 'John Deighan'
+	delKV key
+	val2 := getKV key
+	equal val2, undef
+

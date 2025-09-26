@@ -1,38 +1,46 @@
 # dumpast.cmd.civet
 
 import {
-	undef, defined, notdefined, slurp,
+	undef, defined, notdefined, slurp, stdChecks,
 	LOG, DBG, flag, nonOption, assert, croak, findFile, fileExt,
 	} from 'base-utils'
-import {assertIsDefined} from 'datatypes'
+import {assertIsDefined, isString} from 'datatypes'
+import {hasKey} from 'llutils'
 import {getCmdArgs} from 'cmd-args'
 import {DUMP} from 'to-nice'
 import {ts2ast, astAsString} from 'typescript'
 import {civet2ast} from 'civet'
 
+stdChecks()
 [hArgs, lNonOptions] := getCmdArgs()
 
 # ---------------------------------------------------------------------------
 
-fileName := lNonOptions[0] || 'ast.civet'
-DBG "fileName = #{fileName}"
-
-path := findFile(fileName)
-DBG "path = #{path}"
+fileName := nonOption(0) || 'ast.civet'
+path := findFile(fileName) || croak("No such file: #{fileName}")
 assertIsDefined path
 
-ext := fileExt(path)
-hAst := switch ext
+LOG "-----  AST for #{path}  -----"
+
+hAst := switch fileExt(path)
 	when '.ts'
 		ts2ast slurp(path)
 	when '.civet'
 		civet2ast slurp(path)
 	else
 		croak "Bad path: #{path}"
+
+lInclude := (
+	if hasKey(hArgs, 'lInclude')
+		isString(hArgs.lInclude) ? hArgs.lInclude.split(',') : undef
+	else
+		undef
+	)
+
 if flag('g')
 	console.dir hAst, {depth: null}
 else if flag('f')
 	DUMP hAst, 'hAst'
 else
-	console.log astAsString(hAst)
+	console.log astAsString(hAst, {lInclude})
 

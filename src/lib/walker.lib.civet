@@ -1,43 +1,43 @@
 # walker.lib.civet
 
 import {
-	undef, defined, notdefined, integer, TConstructor,
-	isArray, isObject, isPrimitive, hash, croak, isEmpty,
+	undef, defined, notdefined, integer, hash, array,
+	isArray, isHash, isPrimitive, assert, croak, isEmpty,
 	assertIsString, assertIsArray,
 	} from 'datatypes'
-import {extract} from 'llutils'
+import {extract} from 'extract'
 import {OL} from 'to-nice'
 import {DBG} from 'logger'
 
 # ---------------------------------------------------------------------------
 
+hasChildren := (x: unknown) =>
+	return isHash(x) || isArray(x)
+
 export class Walker<T extends object = hash>
 
 	# --- Keep track of nodes visited to avoid infinite loops
-	setVisited: WeakSet<T> = new WeakSet<T>()
+	setVisited: WeakSet<hash | array> = new WeakSet<hash | array>()
 
 	lNodeStack: T[] = []
 
 	# ..........................................................
 
-	get level()
+	get level(): integer
 
-		return @lNodeStack.length - 1
-
-	# ..........................................................
-
-	parent(n: number = 1): T
-
-		if (n < 0)
-			croak "Bad index: #{n}"
-		pos := @lNodeStack.length - n - 1
-		if (pos < 0)
-			croak "Bad index: #{n}, stack has #{@lNodeStack.length} items"
-		return @lNodeStack[pos]
+		return @lNodeStack.length
 
 	# ..........................................................
 
-	isNode(x: object): x is T
+	parent(n: integer = 1): T
+
+		len := @lNodeStack.length
+		assert (n >= 0) && (n < len), "Bad index: #{n} of #{len}"
+		return @lNodeStack[len-n-1]
+
+	# ..........................................................
+
+	isNode(x: unknown): x is T
 
 		return true
 
@@ -45,7 +45,6 @@ export class Walker<T extends object = hash>
 
 	filter(node: T): boolean
 
-		# --- filter() is only called if isNode(node) is true
 		return true
 
 	# ..........................................................
@@ -82,24 +81,38 @@ export class Walker<T extends object = hash>
 	# ..........................................................
 	# GENERATOR
 
-	walk(item: unknown): Generator<T, void, void>
+	walk(x: unknown): Generator<T, void, void>
 
-		if isObject(item) && @isNode(item)
-			if @setVisited.has item
-				return
-			DBG "YIELD NODE: #{OL(item)}"
-			@lNodeStack.push item
-			yield item
-			@setVisited.add item
-			for x of Object.values(item)
-				yield* @walk x
+		if hasChildren(x)
+			@setVisited = new WeakSet<hash | array>()
+			yield* @walkItem x
+		return
+
+	# ..........................................................
+	# GENERATOR
+
+	walkItem(item: hash | array): Generator<T, void, void>
+
+		if @setVisited.has item
+			return
+
+		if @isNode(item)
+			# --- type narrowing ensures that item is a T
+			if @filter(item)
+				DBG "YIELD NODE: #{OL(item)}"
+				yield item
+				@setVisited.add item
+
+			@lNodeStack.push item    # --- item is parent of yielded items
+
+		if isArray item
+			for x,i of item
+				if isHash(x) || isArray(x)
+					yield* @walkItem x
+		else
+			for [key,x] of Object.entries(item)
+				if isHash(x) || isArray(x)
+					yield* @walkItem x
+		if @isNode(item)
 			@lNodeStack.pop()
-		else if isArray item
-			DBG "ARRAY"
-			for x of item
-				yield* @walk x
-		else if isObject(item)
-			DBG "OBJECT"
-			for x of Object.values(item)
-				yield* @walk x
 		return

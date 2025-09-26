@@ -1,8 +1,11 @@
 to do
 
-to-nice unit tests don't all pass
+combine 'kind' and 'kindstr' by changing how
+computed fields are displayed in toNice()
 
-implement OL() and ML() in nice.lib.civet
+use new 'db' library to implement adding/removing displayed
+fields in the dumpast command
+
 
 use 'runtemp typescript' to discover how to find all
 exports and imports in a *.ts file

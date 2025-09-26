@@ -1,10 +1,12 @@
 # to-nice.lib.civet
 
+import {cyan, blue} from "@std/fmt/colors"
+
 import {sep, centered} from 'base-utils'
 import {
 	assert, croak, undef, defined, notdefined, hash, hashof,
-	isString, isArray, isClass, isRegExp, isObject, isPrimitive,
-	isEmpty, nonEmpty,
+	isString, isArray, isClass, isRegExp, isPrimitive,
+	isEmpty, nonEmpty, assertIsHash,
 	symbolName, className, functionName, regexpDef,
 	} from 'datatypes'
 import {
@@ -12,7 +14,6 @@ import {
 	} from 'llutils'
 
 export type TCompareFunc = (a: string, b: string) => number
-export type TMapFunc = (key: string, x: unknown) => hashof<unknown>
 
 # ---------------------------------------------------------------------------
 
@@ -28,19 +29,15 @@ export alphaCompare: TCompareFunc := (
 
 export toNiceString := (str: string): string =>
 
-	# --- escape spaces and \t, \n or \r
+	# --- escape spaces and \t, \n or \r with unicode chars
 
 	str1 := escapeStr(str)
 
 	# --- precede with '\' if starts with digit, '.' or '-'
+	#                      or looks like a label
 
 	str2 := str1.match(/^[\d.-]/) ? "\\#{str1}" : str1
 	str3 := str2.match(/^[^˳\s]+:/) ? "\\#{str2}" : str2
-
-	# --- check for leading or trailing spaces
-	#     (TABs and NEWLINEs have already been escaped)
-	#     (regex always matches)
-
 	return str3
 
 # ---------------------------------------------------------------------------
@@ -96,6 +93,19 @@ indented := (block: string, oneIndent: string) =>
 
 # ---------------------------------------------------------------------------
 
+export type TMapFunc = (
+	key: string
+	value: unknown
+	hParent: hash
+	) => unknown
+
+export emptyMapFunc := (
+		key: string
+		value: unknown
+		hParent: hash
+		): unknown =>
+	return undef
+
 export toNice := (
 		x: unknown,
 		hOptions: hash={}
@@ -133,7 +143,7 @@ export toNice := (
 		ignoreEmptyValues: false
 		sortKeys: false
 		sortFunc: undef
-		mapFunc: (key: string, x: unknown) => return {[key]: x}
+		mapFunc: emptyMapFunc
 		lInclude: undef
 		lExclude: undef
 		oneIndent: spaces(3)
@@ -144,16 +154,16 @@ export toNice := (
 
 	switch typeof x
 		when 'undefined'
-			return '.undef.'
+			return '.undef'
 
 		when 'boolean'
-			return x ? '.true.' : '.false.'
+			return x ? '.true' : '.false'
 
 		when 'number'
 			return (
-				  Number.isNaN(x)    ? '.NaN.'
+				  Number.isNaN(x)    ? '.NaN'
 				: Number.isFinite(x) ? x.toString()
-				: ((x < 0) ? '.neginfinity.' : '.infinity.')
+				: ((x < 0) ? '.neginf' : '.inf')
 				)
 
 		when 'bigint'
@@ -164,29 +174,29 @@ export toNice := (
 
 		when 'symbol'
 			name := symbolName(x)
-			return name ? ".symbol #{name}." : '.symbol.'
+			return name ? ".symbol #{name}" : '.symbol'
 
 		when 'function'
 			if isClass(x)
-				return ".class #{className(x)}."
+				return ".class #{className(x)}"
 			else
-				return ".function #{functionName(x)}."
+				return ".function #{functionName(x)}"
 
 		when 'object'
 			if (x == null)
-				return '.null.'
+				return '.null'
 
 			if isRegExp(x)
-				return ".regexp #{escapeStr(regexpDef(x))}."
+				return ".regexp #{escapeStr(regexpDef(x))}"
 
 			# --- Check if object was previously visited
 			prevpath := mapVisited.get x
 			if prevpath
-				return ".REF #{prevpath}."
+				return ".ref #{prevpath}"
 
 			if isArray(x)
 				if (x.length == 0)
-					return '.[].'
+					return '[]'
 
 				mapVisited.set x, path
 				lLines := []
@@ -211,7 +221,7 @@ export toNice := (
 
 			lKeys := Object.keys(x)
 			if (lKeys.length == 0)
-				return '.{}.'
+				return '{}'
 
 			func: TCompareFunc? := (
 				  defined(sortFunc) ? sortFunc
@@ -231,22 +241,29 @@ export toNice := (
 
 			mapVisited.set x, path
 
+			assertIsHash x    # --- will allow us to index with any string
+
 			lLines := []
 			for key of (defined(func) ? lKeys.sort(func) : lKeys)
-				value := (x as hashof<unknown>)[key]
-				if useKey(key) && (not ignoreEmptyValues || nonEmpty(value))
-					hMapped := mapFunc(key, value)
-					for [newkey, val] of Object.entries(hMapped)
-						block := toNice(
-								val,
+				if useKey(key)
+					val := x[key]
+					if not ignoreEmptyValues || nonEmpty(val)
+						mapped := recoverable ? undef : mapFunc(key, val, x)
+						newval := mapped || val
+						block := isString(mapped) ? mapped : toNice(
+								newval,
 								hOptions,
 								mapVisited,
 								pathadd(path, key)
 								)
-						if compact || isPrimitive(val) || block.startsWith('.')
-							lLines.push "#{newkey}: #{block}"
+						if (
+								   compact
+								|| (defined(newval) && isPrimitive(newval))
+								|| block.startsWith('.')
+								)
+							lLines.push "#{key}: #{block}"
 						else
-							lLines.push "#{newkey}:"
+							lLines.push "#{key}:"
 							lLines.push indented(block, oneIndent)
 			if compact
 				return '{' + lLines.join(' ') + '}'

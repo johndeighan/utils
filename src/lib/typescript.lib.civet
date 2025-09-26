@@ -1,5 +1,6 @@
 # typescript.lib.civet
 
+import {cyan, blue} from "@std/fmt/colors"
 import {existsSync} from '@std/fs'
 import {statSync} from 'node:fs'
 import {
@@ -9,23 +10,25 @@ import {
 	getPreEmitDiagnostics, flattenDiagnosticMessageText,
 	getLineAndCharacterOfPosition, forEachChild,
 	} from "npm:typescript"
-import {blue} from "@std/fmt/colors"
 
 import {
 	undef, defined, notdefined, integer, TStringGenerator,
 	hash, hashof, isHash, TFilterFunc, isString,
-	isEmpty, nonEmpty, TConstructor,
+	isEmpty, nonEmpty, TConstructor, assert, croak,
 	} from 'datatypes'
 import {
 	truncStr, getOptions, spaces, o, words,
-	stringify, getString,
+	stringify, KeyedStringSet,
 	} from 'llutils'
+import {
+	getString,
+	} from 'extract'
 import {OL} from 'to-nice'
 import {indented} from 'indent'
 import {
 	LOG, DBG, LOGVALUE, INDENT, UNDENT, DBGVALUE,
 	} from 'logger'
-import {slurp, barf, barfTempFile} from 'fsys'
+import {slurp, barf, barfTempFile, fileExt} from 'fsys'
 import {toNice, TMapFunc} from 'to-nice'
 import {getCmdOutputSync} from 'exec'
 import {stripSrcMap} from 'source-map'
@@ -45,7 +48,7 @@ export kindStr := (i: number): string =>
 export ts2ast := (
 		tsCode: string,
 		hOptions: hash = {}
-		): SourceFile =>
+		): Node =>
 
 	type opt = {
 		fileName: string
@@ -67,10 +70,11 @@ export ts2ast := (
 
 # ---------------------------------------------------------------------------
 
-export ast2ts := (node: SourceFile): string =>
+export ast2ts := (node: Node): string =>
 
+	assert (node.kind == 308), "Not a SourceFile node"
 	printer := createPrinter {newLine: NewLineKind.LineFeed}
-	return printer.printNode EmitHint.Unspecified, node, node
+	return printer.printNode EmitHint.Unspecified, node, node as SourceFile
 
 # ---------------------------------------------------------------------------
 
@@ -102,27 +106,26 @@ export typeCheckFile = typeCheckFiles   # --- synonym
 
 export tsMapFunc: TMapFunc := (
 		key: string
-		val: unknown
-		): hashof<unknown> =>
+		value: unknown
+		hParent: hash
+		): unknown =>
 
-	if (key == 'kind') && (typeof val == 'number')
-		return {
-			kind: val
-			kindStr: kindStr(val)
-			}
-	else
-		return {[key]: val}
+	if (key == 'kind') && (typeof value == 'number')
+		desc := cyan(' (' + kindStr(value) + ')')
+		return value.toString() + desc
+	return undef
 
 # ---------------------------------------------------------------------------
 
 export astAsString := (
-		hAst: SourceFile
+		hAst: Node
 		hOptions: hash = {}
 		): string =>
 
 	return toNice hAst, {
 		ignoreEmptyValues: true
 		mapFunc: tsMapFunc
+		lInclude: hOptions.lInclude
 		lExclude: words(
 			'pos end id flags modifierFlagsCache'
 			'transformFlags hasExtendedUnicodeEscape'
@@ -365,67 +368,57 @@ hDefConfig: CompilerOptions := {
 
 # ---------------------------------------------------------------------------
 
+type TAstFilterFunc = (node: Node) => boolean
+
 export class AstWalker extends Walker<Node>
+
+	filterFunc: TAstFilterFunc?
+
+	# ..........................................................
+
+	constructor(@filterFunc: TAstFilterFunc? = undef)
+
+		super()
+
+	# ..........................................................
 
 	override isNode(x: object): x is Node
 
 		return Object.hasOwn x, 'kind'
 
-# ---------------------------------------------------------------------------
+	# ..........................................................
+
+	override filter(node: Node): boolean
+
+		return defined(@filterFunc) ? @filterFunc(node) : true
+
 # ---------------------------------------------------------------------------
 
-type TExportDesc = {
-	name: string
-	kind?: string
+export type TAnalysis = {
+	imports: KeyedStringSet
+	exports: KeyedStringSet
 	}
 
-# ---------------------------------------------------------------------------
+export analyze := (tsCode: string): TAnalysis =>
 
-export allExportsIn := (
-		tsCode: string
-		): Generator<TExportDesc, void, void> ->
+	imports := new KeyedStringSet()
+	exports := new KeyedStringSet()
 
-	yield {name: 'dummy'}
-	return
-
-# ---------------------------------------------------------------------------
-
-export allExportsInFile := (
-		path: string
-		): Generator<TExportDesc, void, void> ->
-
-	yield* allExportsIn(slurp(path))
-	return
-
-# ---------------------------------------------------------------------------
-# ---------------------------------------------------------------------------
-
-type TImportDesc = {
-	name: string
-	source: string
-	}
-
-# ---------------------------------------------------------------------------
-
-export allImportsIn := (
-		tsCode: string
-		): Generator<TImportDesc, void, void> ->
-
-	hAst := ts2ast tsCode
 	walker := new AstWalker()
-	for node of walker.walk(hAst)
+	hAst := ts2ast tsCode
+	DBG astAsString(hAst)
+	for node of walker.walk hAst
+		LOG "NODE KIND: #{node.kind}"
 		if (node.kind == 273)
 			source := walker.getString('.moduleSpecifier.text')
 			for h of walker.getArray('.importClause.namedBindings.elements')
 				name := getString h, '.name.escapedText'
-				yield {name, source}
-	return
-
-# ---------------------------------------------------------------------------
-
-export allImportsInFile := (
-		path: string
-		): Generator<TImportDesc, void, void> ->
-
-	yield* allImportsIn(slurp(path))
-	return
+				imports.add source, name
+		else if (node.kind == 95)
+			LOG "Found 95 node"
+			parent := walker.parent()
+			parentKind := parent.kind
+			lDeclarations := walker.getArray('^?.declarationList?.declarations')
+			if defined(lDeclarations)
+				LOG "found export"
+	return {imports, exports}

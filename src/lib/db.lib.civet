@@ -1,0 +1,56 @@
+# db.lib.civet
+
+import {Database} from "jsr:@db/sqlite"
+import {undef, defined, isString} from 'datatypes'
+
+# ---------------------------------------------------------------------------
+#      A project's standard database is named proj.db
+#      It's placed at the root of the project
+# ---------------------------------------------------------------------------
+
+export projdb := new Database('./proj.db')
+
+projdb.exec """
+	create table if not exists KeyValueStore (
+		key text primary key,
+		value text not null
+		)
+	"""
+
+# ---------------------------------------------------------------------------
+
+export setKV := (
+		key: string,
+		value: unknown
+		): void =>
+
+	projdb.exec """
+		insert or replace into KeyValueStore
+		(key, value)
+		values(?,?)
+		""", [key, JSON.stringify(value)]
+	return
+
+# ---------------------------------------------------------------------------
+
+export getKV := (key: string): unknown =>
+
+	using stmt = projdb.prepare """
+		select value
+		from KeyValueStore
+		where key = ?
+		"""
+
+	lRow := stmt.value<[string]>(key)
+	return defined(lRow) ? JSON.parse(lRow[0]) : undef
+
+# ---------------------------------------------------------------------------
+
+export delKV := (key: string): void =>
+
+	projdb.exec """
+		delete from KeyValueStore
+		where key = ?
+		""", [key]
+	return
+

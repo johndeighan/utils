@@ -1,0 +1,70 @@
+{
+  "scriptId": "725",
+  "url": "file:///C:/Users/johnd/utils/node_modules/.deno/source-map-sync@0.8.0-beta.2/node_modules/source-map-sync/lib/array-set.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 2624, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1, "endOffset": 2623, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 214, "endOffset": 2617, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "ArraySet",
+      "ranges": [{ "startOffset": 729, "endOffset": 797, "count": 252 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "fromArray",
+      "ranges": [
+        { "startOffset": 895, "endOffset": 1091, "count": 252 },
+        { "startOffset": 1020, "endOffset": 1071, "count": 168 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "size",
+      "ranges": [{ "startOffset": 1267, "endOffset": 1306, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "add",
+      "ranges": [
+        { "startOffset": 1390, "endOffset": 1641, "count": 168 },
+        { "startOffset": 1517, "endOffset": 1536, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "has",
+      "ranges": [{ "startOffset": 1733, "endOffset": 1780, "count": 168 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "indexOf",
+      "ranges": [{ "startOffset": 1882, "endOffset": 2040, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "at",
+      "ranges": [
+        { "startOffset": 2130, "endOffset": 2286, "count": 84 },
+        { "startOffset": 2228, "endOffset": 2285, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "toArray",
+      "ranges": [{ "startOffset": 2536, "endOffset": 2583, "count": 84 }],
+      "isBlockCoverage": true
+    }
+  ]
+}

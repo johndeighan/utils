@@ -1,18 +1,12 @@
 # temp.civet
 
-import {undef} from 'datatypes'
+import {projdb, setKV, getKV} from "db"
 import {toNice} from 'to-nice'
 
 # ---------------------------------------------------------------------------
 
-hAst := {
-	var: 'xyz'
-	}
+key := '_____name_____'
 
 debugger
-str := toNice(hAst)
-console.log str
-
-expected := """
-	ref: .REF /.
-	"""
+result := getKV key
+console.log result

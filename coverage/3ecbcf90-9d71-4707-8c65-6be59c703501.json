@@ -1,0 +1,76 @@
+{
+  "scriptId": "731",
+  "url": "file:///C:/Users/johnd/utils/node_modules/.deno/source-map-sync@0.8.0-beta.2/node_modules/source-map-sync/lib/source-node.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 14006, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1, "endOffset": 14005, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 214, "endOffset": 13999, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "SourceNode",
+      "ranges": [{ "startOffset": 1533, "endOffset": 1916, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "fromStringWithSourceMap",
+      "ranges": [{ "startOffset": 2256, "endOffset": 6752, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "add",
+      "ranges": [{ "startOffset": 6983, "endOffset": 7423, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "prepend",
+      "ranges": [{ "startOffset": 7671, "endOffset": 8102, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "walk",
+      "ranges": [{ "startOffset": 8392, "endOffset": 8771, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "join",
+      "ranges": [{ "startOffset": 8935, "endOffset": 9286, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "replaceRight",
+      "ranges": [{ "startOffset": 9562, "endOffset": 10017, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "setSourceContent",
+      "ranges": [{ "startOffset": 10278, "endOffset": 10402, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "walkSourceContents",
+      "ranges": [{ "startOffset": 10615, "endOffset": 11011, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "toString",
+      "ranges": [{ "startOffset": 11177, "endOffset": 11287, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "toStringWithSourceMap",
+      "ranges": [{ "startOffset": 11392, "endOffset": 13960, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

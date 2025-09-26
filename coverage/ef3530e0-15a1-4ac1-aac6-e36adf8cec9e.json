@@ -1,0 +1,14 @@
+{
+  "scriptId": "388",
+  "url": "file:///C:/Users/johnd/utils/node_modules/.deno/typescript@5.9.2/node_modules/typescript/lib/typescript.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 0, "endOffset": 151879, "count": 1 },
+        { "startOffset": 189, "endOffset": 347, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

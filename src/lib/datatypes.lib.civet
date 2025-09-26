@@ -33,10 +33,6 @@ export undef := undefined
 
 # ---------------------------------------------------------------------------
 
-export type TObject = {
-	[key: string]: unknown
-	[sym: symbol]: unknown
-	}
 export type TDefined = NonNullable<unknown>
 
 export defined := (x: unknown): x is TDefined =>
@@ -153,10 +149,10 @@ export isArray := (x: unknown): x is array =>
 
 # ---------------------------------------------------------------------------
 
-export interface hash
+export type hash
 	[key: string | symbol]: unknown
 
-export interface hashof<T>
+export type hashof<T>
 	[key: string | symbol]: T
 
 # ---------------------------------------------------------------------------
@@ -164,9 +160,10 @@ export interface hashof<T>
 export isHash := (x: unknown): x is hash =>
 
 	return (
-		   (x != null)
-		&& not Array.isArray(x)
-		&& (x?.constructor?.name == 'Object')
+		   (typeof x == 'object')
+		&& (x != null)
+		&& not isArray(x)
+		&& not isRegExp(x)
 		)
 
 # ---------------------------------------------------------------------------
@@ -218,21 +215,11 @@ export isNonEmptyString := (x: unknown): x is nonEmptyString =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * Test if something is a boolean
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isBoolean)
- */
-
 export isBoolean := (x: unknown): x is boolean =>
 
 	return (typeof x == 'boolean') || (x instanceof Boolean)
 
 # ---------------------------------------------------------------------------
-
-/**
- * Test if something is a number
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isNumber)
- */
 
 export isNumber := (x: unknown): x is number =>
 
@@ -244,38 +231,27 @@ export isNumber := (x: unknown): x is number =>
 
 # ---------------------------------------------------------------------------
 
+lPrimTypes := ['number','bigint','string','boolean','undefined','symbol']
+
 export isPrimitive := (x: unknown): boolean =>
 
-	return isString(x) || isNumber(x) || isBoolean(x) || isSymbol(x)
+	return (x == null) || lPrimTypes.includes(typeof x)
 
 # ---------------------------------------------------------------------------
 
 export isNonPrimitive := (x: unknown): boolean =>
 
-	return (typeof x == 'object') && (x != null)
+	return not isPrimitive(x)
 
 # ---------------------------------------------------------------------------
 
-/**
- * Type integer
- */
-
 export type integer = number
-
-/**
- * Test if something is an integer
- * [unit tests](../test/datatypes.test.civet#:~:text=DBG,isInteger)
- */
 
 export isInteger := (x: unknown): x is integer =>
 
 	return isNumber(x) && Number.isInteger(x.valueOf())
 
 # ---------------------------------------------------------------------------
-
-/**
- * Type intArray
- */
 
 export type intArray = integer[]
 
@@ -316,12 +292,6 @@ export type regexp = RegExp
 export isRegExp := (item: unknown): item is regexp =>
 
 	return (item instanceof RegExp)
-
-# ---------------------------------------------------------------------------
-
-export isObject := (x: unknown): x is TObject =>
-
-	return (typeof x == 'object') && (x != null) && not isArray(x)
 
 # ---------------------------------------------------------------------------
 
@@ -387,9 +357,7 @@ export unhide := (str: string): string =>
 
 export isClass := (x: unknown): boolean =>
 
-	if (typeof x != 'function')
-		return false
-	return x.toString().startsWith('class')
+	return (typeof x == 'function') && x.toString().startsWith('class ')
 
 # ---------------------------------------------------------------------------
 
@@ -551,9 +519,3 @@ export assertIsHash: (x: unknown) => asserts x is hash := (
 		): asserts x is hash =>
 
 	assert isHash(x), "Not a hash: #{typeof x}"
-
-export assertIsObject: (x: unknown) => asserts x is object := (
-		x: unknown
-		): asserts x is object =>
-
-	assert isObject(x), "Not an object: #{typeof x}"

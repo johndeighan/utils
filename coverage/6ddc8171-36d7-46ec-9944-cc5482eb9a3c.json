@@ -1,0 +1,119 @@
+{
+  "scriptId": "729",
+  "url": "file:///C:/Users/johnd/utils/node_modules/.deno/source-map-sync@0.8.0-beta.2/node_modules/source-map-sync/lib/wasm.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 3502, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1, "endOffset": 3501, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 214, "endOffset": 3495, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "Mapping",
+      "ranges": [{ "startOffset": 328, "endOffset": 539, "count": 84 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "wasm",
+      "ranges": [
+        { "startOffset": 582, "endOffset": 3491, "count": 84 },
+        { "startOffset": 618, "endOffset": 646, "count": 83 },
+        { "startOffset": 646, "endOffset": 3490, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "mapping_callback",
+      "ranges": [
+        { "startOffset": 842, "endOffset": 1859, "count": 84 },
+        { "startOffset": 1333, "endOffset": 1484, "count": 0 },
+        { "startOffset": 1736, "endOffset": 1782, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "start_all_generated_locations_for",
+      "ranges": [{ "startOffset": 1868, "endOffset": 1966, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "end_all_generated_locations_for",
+      "ranges": [{ "startOffset": 1974, "endOffset": 2073, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "start_compute_column_spans",
+      "ranges": [{ "startOffset": 2082, "endOffset": 2166, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "end_compute_column_spans",
+      "ranges": [{ "startOffset": 2174, "endOffset": 2259, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "start_generated_location_for",
+      "ranges": [{ "startOffset": 2268, "endOffset": 2356, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "end_generated_location_for",
+      "ranges": [{ "startOffset": 2364, "endOffset": 2453, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "start_original_location_for",
+      "ranges": [{ "startOffset": 2462, "endOffset": 2548, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "end_original_location_for",
+      "ranges": [{ "startOffset": 2556, "endOffset": 2643, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "start_parse_mappings",
+      "ranges": [{ "startOffset": 2652, "endOffset": 2724, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "end_parse_mappings",
+      "ranges": [{ "startOffset": 2732, "endOffset": 2805, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "start_sort_by_generated_location",
+      "ranges": [{ "startOffset": 2814, "endOffset": 2910, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "end_sort_by_generated_location",
+      "ranges": [{ "startOffset": 2918, "endOffset": 3015, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "start_sort_by_original_location",
+      "ranges": [{ "startOffset": 3024, "endOffset": 3118, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "end_sort_by_original_location",
+      "ranges": [{ "startOffset": 3126, "endOffset": 3221, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "withMappingCallback",
+      "ranges": [{ "startOffset": 3308, "endOffset": 3462, "count": 84 }],
+      "isBlockCoverage": true
+    }
+  ]
+}

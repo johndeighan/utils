@@ -1,0 +1,16 @@
+{
+  "scriptId": "382",
+  "url": "file:///C:/Users/johnd/utils/src/lib/unicode.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 10376, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "getPrefix",
+      "ranges": [{ "startOffset": 1023, "endOffset": 2170, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

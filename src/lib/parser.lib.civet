@@ -39,7 +39,11 @@ export class Rule
 		return @func(str, pos)
 
 # --- Anything that can be converted to a Rule
-export type TLaxRule = RegExp | string | TRuleFunc | TLaxRule[] | hashof<TLaxRule>
+export type TLaxRule = RegExp | string | TRuleFunc | TLaxRule[] | {[key: string|symbol]: TLaxRule}
+
+# --- This used to work
+#     I want to allow a TLaxRule to possibly be an array or hash of TLaxRules
+#     was: export type TLaxRule = RegExp | string | TRuleFunc | TLaxRule[] | hashof<TLaxRule>
 
 export type TCallback = (rule: Rule, lMatches: string[]) => void
 
@@ -60,7 +64,7 @@ export class ParseError extends Error
 export type TParser = (str: string) => void
 
 export function getParser(
-		laxRule: TLaxRule
+		laxRule: TLaxRule | TLaxRule[] | hashof<TLaxRule>
 		lCallbacks: TCallback[] = []
 		hOptions: hash = {}
 		): TParser
@@ -147,7 +151,7 @@ export function getParser(
 	# ..........................................................
 	# --- function that maps TLaxRule => Rule
 
-	getRule := (laxRule: TLaxRule): Rule =>
+	getRule := (laxRule: TLaxRule | TLaxRule[] | hashof<TLaxRule>): Rule =>
 
 		if isRegExp(laxRule)
 			return RegexMatcher(laxRule)

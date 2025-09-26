@@ -1,0 +1,46 @@
+{
+  "scriptId": "726",
+  "url": "file:///C:/Users/johnd/utils/node_modules/.deno/source-map-sync@0.8.0-beta.2/node_modules/source-map-sync/lib/mapping-list.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 2531, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1, "endOffset": 2530, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 214, "endOffset": 2524, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "generatedPositionAfter",
+      "ranges": [{ "startOffset": 557, "endOffset": 969, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "MappingList",
+      "ranges": [{ "startOffset": 1221, "endOffset": 1372, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "unsortedForEach",
+      "ranges": [{ "startOffset": 1566, "endOffset": 1654, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "add",
+      "ranges": [{ "startOffset": 1738, "endOffset": 1957, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "toArray",
+      "ranges": [{ "startOffset": 2320, "endOffset": 2483, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

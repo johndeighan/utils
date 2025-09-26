@@ -1,0 +1,31 @@
+{
+  "scriptId": "721",
+  "url": "file:///C:/Users/johnd/utils/node_modules/.deno/source-map-sync@0.8.0-beta.2/node_modules/source-map-sync/lib/base64-vlq.js",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 3704, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 1, "endOffset": 3703, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 214, "endOffset": 3697, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "toVLQSigned",
+      "ranges": [{ "startOffset": 3103, "endOffset": 3197, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "base64VLQ_encode",
+      "ranges": [{ "startOffset": 3266, "endOffset": 3693, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}

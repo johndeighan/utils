@@ -1,0 +1,51 @@
+{
+  "scriptId": "389",
+  "url": "file:///C:/Users/johnd/utils/src/lib/exec.lib.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 24200, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "mkstr",
+      "ranges": [{ "startOffset": 576, "endOffset": 781, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getCmdLine",
+      "ranges": [{ "startOffset": 965, "endOffset": 1235, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "execCmd",
+      "ranges": [{ "startOffset": 1348, "endOffset": 1760, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "execCmds",
+      "ranges": [{ "startOffset": 1786, "endOffset": 2015, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "execCmdSync",
+      "ranges": [{ "startOffset": 2123, "endOffset": 2532, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getCmdOutput",
+      "ranges": [{ "startOffset": 2650, "endOffset": 3137, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "getCmdOutputSync",
+      "ranges": [{ "startOffset": 3250, "endOffset": 3734, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "cmdSucceeds",
+      "ranges": [{ "startOffset": 3842, "endOffset": 4150, "count": 0 }],
+      "isBlockCoverage": false
+    }
+  ]
+}
