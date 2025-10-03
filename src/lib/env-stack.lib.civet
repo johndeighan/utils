@@ -1,0 +1,59 @@
+# env-stack.lib.civet
+
+import {undef, defined, notdefined, assert, hash} from 'datatypes'
+import {hasKey} from 'llutils'
+
+# ---------------------------------------------------------------------------
+
+export class CEnvStack
+
+	lEnvs: hash[]
+
+	# ..........................................................
+
+	constructor(h: hash = {})
+
+		@lEnvs = [h]
+
+	# ..........................................................
+
+	setVal(name: string, value: unknown): void
+
+		@lEnvs[@lEnvs.length-1][name] = value
+		return
+
+	# ..........................................................
+
+	getVal(name: string): unknown
+
+		for i of [@lEnvs.length-1..0]
+			if hasKey(@lEnvs[i], name)
+				return @lEnvs[i][name]
+		return undef
+
+	# ..........................................................
+
+	add(name: string): void
+
+		@setVal name, 1
+		return
+
+	# ..........................................................
+
+	has(name: string): boolean
+
+		return defined @getVal(name)
+
+	# ..........................................................
+
+	pushEnv(h: hash = {}): void
+
+		@lEnvs.push h
+		return
+
+	# ..........................................................
+
+	popEnv(): hash?
+
+		assert (@lEnvs.length > 0), "Empty env stack"
+		return @lEnvs.pop()

@@ -1,6 +1,5 @@
 # from-nice.lib.civet
 
-import {sep, centered} from 'base-utils'
 import {
 	undef, defined, notdefined, assert, croak, hash, hashof,
 	isArray, isFunction, isBoolean, isString, isNonPrimitive,

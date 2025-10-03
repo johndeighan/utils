@@ -1,4 +1,4 @@
-import {undef, functionName} from 'datatypes'
-import {Walker} from 'walker'
+func := (s: string): string =>
+	return s + t + '.txt'
+func('abc')
 
-export x := 42

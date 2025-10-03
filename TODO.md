@@ -1,13 +1,24 @@
 to do
 
-combine 'kind' and 'kindstr' by changing how
-computed fields are displayed in toNice()
+in typescript, use full power of Blockify()
+
+USE:
+	clear && buildlib -n typescript && runtemp
+TEST WITH:
+	utest ts2 !
+
+to develop new unit tests
+
+in typescript's analyze()
+	- function parameter names are not 'used', they're 'defined'
+
+continue with command analyze
 
 use new 'db' library to implement adding/removing displayed
 fields in the dumpast command
 
 
-use 'runtemp typescript' to discover how to find all
+use 'analyze' command to discover how to find all
 exports and imports in a *.ts file
 
 Find a way to display structures while ignoring/only using

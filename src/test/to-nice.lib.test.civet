@@ -5,7 +5,7 @@ import {o, s} from 'llutils'
 import {DBG} from 'logger'
 import {getCmdArgs} from 'cmd-args'
 import {
-	toNiceString, toNice, OL, ML,
+	toNiceString, toNice, OL, ML, buildPath, rotpos,
 	} from 'to-nice'
 import {
 	equal, iterEqual, iterLike, like,
@@ -32,6 +32,22 @@ equal toNiceString('label: 42'), '\\label:˳42'
 equal toNiceString(' xxx '), '˳xxx˳'
 equal toNiceString('  xxx  '), '˳˳xxx˳˳'
 equal toNiceString('func1 = (str: string)'), 'func1˳=˳(str:˳string)'
+
+# ---------------------------------------------------------------------------
+
+equal buildPath([]), 'root'
+equal buildPath([13]), 'root[13]'
+equal buildPath(['pos']), 'root.pos'
+equal buildPath([13, 'pos']), 'root[13].pos'
+equal buildPath(['pos', 13]), 'root.pos[13]'
+
+# ---------------------------------------------------------------------------
+
+equal rotpos([1,2,3], 0), 1
+equal rotpos([1,2,3], 2), 3
+equal rotpos([1,2,3], 3), 1
+equal rotpos([1,2,3], 4), 2
+equal rotpos([1,2,3], 5), 3
 
 # ---------------------------------------------------------------------------
 
@@ -158,7 +174,7 @@ equal toNice({a:1, b:2}), """
 
 	equal toNice(hAst), s"""
 		name: John
-		ref: .ref /
+		ref: .ref root
 		"""
 	)()
 
@@ -178,6 +194,20 @@ equal toNice({a: 1, b: {c: 3, d: 4}}), s"""
 	b:
 		c: 3
 		d: 4
+	"""
+
+# ---------------------------------------------------------------------------
+
+equal toNice(['a', []]), s"""
+	- a
+	- []
+	"""
+
+# ---------------------------------------------------------------------------
+
+equal toNice({a: 1, b: {}}), s"""
+	a: 1
+	b: {}
 	"""
 
 # ---------------------------------------------------------------------------

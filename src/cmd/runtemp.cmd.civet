@@ -2,7 +2,7 @@
 
 import {
 	undef, defined, SUCCEED, FAIL, flag, LOG,
-	buildFileName, sep, centered, stdChecks,
+	buildFileName, stdChecks,
 	findFile, tryCmd, civet2tsFile, doUnitTest, doRun,
 	} from 'base-utils'
 

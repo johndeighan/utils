@@ -1,0 +1,57 @@
+# env-stack.lib.test.civet
+
+import {undef, assert} from 'datatypes'
+import {getCmdArgs} from 'cmd-args'
+import {CEnvStack} from 'env-stack'
+import {
+	equal, truthy, falsy, succeeds, fails, codeLike,
+	isType, notType,
+	} from 'unit-test'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+(() =>
+	env := new CEnvStack()
+	env.setVal 'name', 'John'
+	env.setVal 'gender', 'male'
+
+	equal env.getVal('name'), 'John'
+	equal env.getVal('gender'), 'male'
+	equal env.getVal('dummy'), undef
+
+	succeeds () =>
+		env.pushEnv()
+		env.setVal('name', 'Julie')
+		assert env.getVal('name') == 'Julie'
+		env.popEnv()
+		assert env.getVal('name') == 'John'
+	)()
+
+(() =>
+	env := new CEnvStack {
+		name: 'John'
+		gender: 'male'
+		address: '1 Main St.'
+		}
+	equal env.getVal('name'), 'John'
+	equal env.getVal('gender'), 'male'
+	equal env.getVal('address'), '1 Main St.'
+	succeeds () =>
+
+		env.pushEnv()
+		env.setVal('name', 'Julie')
+		env.setVal('gender', 'female')
+
+		assert env.getVal('name') == 'Julie'
+		assert env.getVal('gender') == 'female'
+		assert env.getVal('address') == '1 Main St.'
+
+		env.popEnv()
+
+		assert env.getVal('name') == 'John'
+		assert env.getVal('gender') == 'male'
+		assert env.getVal('address') == '1 Main St.'
+	)()
+

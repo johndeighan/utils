@@ -130,3 +130,6 @@ equal splitPatterns([
 		['**/temp.txt', '*.test.ts'],
 		['**/temp*', '**/special.txt'],
 		]
+
+equal sep('label', '.', 15), '...  label  ...'
+equal centered('abcd', 12, '-'), '--  abcd  --'

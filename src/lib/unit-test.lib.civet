@@ -658,7 +658,7 @@ export setDirTree := (
 							lLines.push ''
 						else
 							if defined(tok.str)
-								line := indented(tok.str, level)
+								line := indented(tok.str, {level})
 								dbg line
 								lLines.push line
 

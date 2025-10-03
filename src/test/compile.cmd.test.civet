@@ -12,5 +12,5 @@ getCmdArgs()
 
 equal 2+2, 4
 
-hResult := getCmdOutputSync 'compile', ['-h']
-LOG ML(hResult)
+# hResult := getCmdOutputSync 'compile', ['-h']
+# LOG ML(hResult)

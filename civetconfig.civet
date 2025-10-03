@@ -7,6 +7,7 @@ export default
 
 		coffeeClasses: false
 		coffeeComment: true
+		coffeeRange: true
 		coffeeEq: true            // == means ===, != means !==
 		coffeeInterpolation: true // interpolate via "#{}"
 		objectIs: true

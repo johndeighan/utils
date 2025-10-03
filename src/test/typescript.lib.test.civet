@@ -13,8 +13,9 @@ import {slurp, withExt} from 'fsys'
 import {
 	typeCheckCode, splitFuncStr, getSymbolsFromType,
 	getImportCode, getTsCode, checkType,
-	ts2ast, ast2ts, typeCheckFiles, astAsString,
+	ts2ast, ast2ts, typeCheckFiles, astAsString, analyze,
 	} from 'typescript'
+import {civet2ts, a} from 'civet'
 import {
 	equal, like, succeeds, fails, truthy, falsy, isType, setDirTree,
 	} from 'unit-test'
@@ -51,37 +52,37 @@ equal stripAnsiCode(astAsString(ast)), s"""
 	kind: 308 (SourceFile)
 	statements:
 		-
-			kind: 244 (FirstStatement)
-			declarationList:
-				kind: 262 (VariableDeclarationList)
-				declarations:
-					-
-						kind: 261 (VariableDeclaration)
-						name:
-							kind: 80 (Identifier)
-							escapedText: func1
-						initializer:
-							kind: 220 (ArrowFunction)
-							parameters:
-								-
-									kind: 170 (Parameter)
-									name:
-										kind: 80 (Identifier)
-										escapedText: str
-									type:
-										kind: 154 (StringKeyword)
-							type:
-								kind: 136 (BooleanKeyword)
-							equalsGreaterThanToken:
-								kind: 39 (EqualsGreaterThanToken)
-							body:
-								kind: 242 (Block)
-								statements:
-									-
-										kind: 254 (ReturnStatement)
-										expression:
-											kind: 112 (TrueKeyword)
-								multiLine: .true
+		❘  kind: 244 (FirstStatement)
+		❘  declarationList:
+		❘     kind: 262 (VariableDeclarationList)
+		❘     declarations:
+		❘     ❘  -
+		❘     ❘     kind: 261 (VariableDeclaration)
+		❘     ❘     name:
+		❘     ❘     ❘  kind: 80 (Identifier)
+		❘     ❘     ❘  escapedText: func1
+		❘     ❘     initializer:
+		❘     ❘     ❘  kind: 220 (ArrowFunction)
+		❘     ❘     ❘  parameters:
+		❘     ❘     ❘     -
+		❘     ❘     ❘     ❘  kind: 170 (Parameter)
+		❘     ❘     ❘     ❘  name:
+		❘     ❘     ❘     ❘     kind: 80 (Identifier)
+		❘     ❘     ❘     ❘     escapedText: str
+		❘     ❘     ❘     ❘  type:
+		❘     ❘     ❘     ❘     kind: 154 (StringKeyword)
+		❘     ❘     ❘  type:
+		❘     ❘     ❘     kind: 136 (BooleanKeyword)
+		❘     ❘     ❘  equalsGreaterThanToken:
+		❘     ❘     ❘     kind: 39 (EqualsGreaterThanToken)
+		❘     ❘     ❘  body:
+		❘     ❘     ❘     kind: 242 (Block)
+		❘     ❘     ❘     statements:
+		❘     ❘     ❘     ❘  -
+		❘     ❘     ❘     ❘     kind: 254 (ReturnStatement)
+		❘     ❘     ❘     ❘     expression:
+		❘     ❘     ❘     ❘     ❘  kind: 112 (TrueKeyword)
+		❘     ❘     ❘     multiLine: .true
 	endOfFileToken:
 		kind: 1 (EndOfFileToken)
 	text: const˳func1˳=˳(str:˳string):˳boolean˳=>↓→return˳true
@@ -93,19 +94,19 @@ equal stripAnsiCode(astAsString(ast)), s"""
 	symbolCount: 0
 	parseDiagnostics:
 		-
-			file: .ref /
-			start: 41
-			length: 6
-			messageText: '{'˳expected.
-			category: 1
-			code: 1005
+		❘  file: .ref root
+		❘  start: 41
+		❘  length: 6
+		❘  messageText: '{'˳expected.
+		❘  category: 1
+		❘  code: 1005
 		-
-			file: .ref /
-			start: 52
-			length: 0
-			messageText: '}'˳expected.
-			category: 1
-			code: 1005
+		❘  file: .ref root
+		❘  start: 52
+		❘  length: 0
+		❘  messageText: '}'˳expected.
+		❘  category: 1
+		❘  code: 1005
 	"""
 DBG "getSymbolsFromType(typeStr)"
 
@@ -149,3 +150,77 @@ DBG "checkType(x, typeStr)"
 
 equal checkType(42, 'number'), []
 
+DBG "analyze(tsCode, hOptions)"
+
+equal a"""
+	x := y + z + func(min)
+	""", s"""
+	NEEDS: y z func min
+	"""
+
+equal a"""
+	import {defined, notdefined} from 'datatypes'
+	""", s"""
+	IMPORTS: datatypes: defined notdefined
+   """
+
+equal a"""
+	x := y + z + func(min)
+	""", s"""
+	NEEDS: y z func min
+	"""
+
+equal a"""
+	import {defined, notdefined} from 'datatypes'
+	""", s"""
+	IMPORTS: datatypes: defined notdefined
+   """
+
+equal a"""
+	export meaning := 42
+	""", s"""
+	EXPORTS: meaning
+	"""
+
+equal a"""
+	func "Hello"
+	""", s"""
+	NEEDS: func
+	"""
+
+equal a"""
+	func x, y+z
+	""", s"""
+	NEEDS: func x y z
+	"""
+
+# --- imports are not needed
+
+equal a"""
+	import {func} from 'willy'
+
+	func x, y+z
+	""", s"""
+	IMPORTS: willy: func
+	NEEDS: x y z
+	"""
+
+# --- Only t is needed, s is a parameter
+
+equal a"""
+	func := (s: string): string =>
+		return s + t + '.txt'
+	func('abc')
+	""", s"""
+	NEEDS: t
+	"""
+
+# --- Same, only using 'function' keyword
+
+equal a"""
+	function func(s: string): string
+		return s + t + '.txt'
+	func('abc')
+	""", s"""
+	NEEDS: t
+	"""

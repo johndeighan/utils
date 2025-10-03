@@ -43,6 +43,7 @@ export condClear := (
 
 export stdChecks := (): void =>
 
+	debugger
 	checkSetup()
 	condClear()
 	return
@@ -80,19 +81,40 @@ export flag := (
 
 # ---------------------------------------------------------------------------
 
+export mapNonOption := (str: string): string =>
+
+	if str.startsWith('=')
+		fileName := str.substring(1)
+		path := findFile fileName
+		assert defined(path), "No such file: #{fileName}"
+		return path
+	else
+		return str
+
+# ---------------------------------------------------------------------------
+
 export nonOption := (
 		pos: number,
 		lCmdArgs: string[] = Deno.args
 		): string? =>
 
 	for str of lCmdArgs
-		if not /^-/.test(str)
+		if not str.startsWith('-')
 			if (pos == 0)
-				return hasClear && (str == '!') ? undef : str
+				return hasClear && (str == '!') ? undef : mapNonOption(str)
 			else
 				pos -= 1
 	return undef
 
+# ---------------------------------------------------------------------------
+
+export allNonOptions := (
+		lCmdArgs: string[] = Deno.args
+		): Generator<string, void, void> ->
+
+	for str of lCmdArgs
+		if not str.startsWith('-') && ((str != '!') || not hasClear)
+			yield mapNonOption(str)
 
 # ---------------------------------------------------------------------------
 #             logger
@@ -451,7 +473,7 @@ export findFile := (fileName: string): string? =>
 	lPaths := Array.from allFilesMatching("**/#{fileName}")
 	switch lPaths.length
 		when 1
-			return lPaths[0]
+			return normalizePath(lPaths[0])
 		when 0
 			return undef
 		else
@@ -619,6 +641,7 @@ export doUnitTest := (
 		lArgs: string[] = []
 		): void =>
 
+	debugger
 	fileName := buildTestFileName stub, purpose, '.civet'
 	LLOG "UNIT TEST", fileName
 
@@ -633,12 +656,14 @@ export doUnitTest := (
 		{success} := await execCmd 'deno', [
 			'run'
 			'-A'
+			...(flag('d') ? ['--inspect-brk'] : [])
 			'npm:@danielx/civet'
 			'--inline-map'
 			'-o', '.ts'
 			'-c', testPath
 			]
-		assert success, "   Compile of #{testPath} failed"
+		if not success
+			croak "   Compile of #{testPath} failed!"
 
 	tsTestPath := relpath(withExt(testPath, '.ts'))
 	verbose := flag('v')
@@ -649,7 +674,7 @@ export doUnitTest := (
 		)
 
 	h := await execCmd 'deno', lCmdArgs
-	assert h.success, "   FAILED"
+	assert h.success, "   deno #{lCmdArgs.join(' ')} FAILED"
 	return
 
 # ---------------------------------------------------------------------------
@@ -688,7 +713,6 @@ export doRun := (
 		stub: string
 		purpose: string?
 		lArgs: string[] = []
-		hOptions: hash = {}
 		): void =>
 
 	fileName := buildFileName stub, purpose, '.ts'
@@ -697,35 +721,30 @@ export doRun := (
 	path := findFile fileName
 	assert path, "No such file: #{fileName}"
 
-	h := (
-		  getBooleanOption(hOptions, 'debug')
-		? await execCmd 'deno', [
-			'run'
-			'-A'
-			'--inspect-brk'
-			path
-			'--'
-			lArgs...
-			]
-		: await execCmd 'deno', [
-			'run'
-			'-A'
-			path
-			'--'
-			lArgs...
-			]
-		)
+	h := await execCmd 'deno', [
+		'run'
+		'-A'
+		...(flag('d') ? ['--inspect-brk'] : [])
+		path
+		'--'
+		lArgs...
+		]
+
 	assert h.success, "   FAILED"
 	return
 
 # ---------------------------------------------------------------------------
 
 export sep := (
-		width: number = 64
+		label: string? = undef
 		char: string = '-'
+		width: number = 64
 		): string =>
 
-	return char.repeat(width)
+	if defined(label)
+		return centered(label, width, char)
+	else
+		return char.repeat(width)
 
 # ---------------------------------------------------------------------------
 # --- valid options:
@@ -756,7 +775,8 @@ export centered := (
 
 export lAllLibs := [
 	'base-utils', 'datatypes', 'llutils', 'db', 'indent', 'unicode',
-	'to-nice', 'extract', 'log-levels', 'log-formatter', 'logger', 'text-table',
+	'to-nice', 'extract', 'log-levels', 'log-formatter', 'logger',
+	'text-table', 'env-stack',
 
 	'parser', 'cmd-args',
 	'walker', 'fsys', 'pll', 'exec', 'from-nice'

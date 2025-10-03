@@ -1,12 +1,13 @@
-# temp.civet
-
-import {projdb, setKV, getKV} from "db"
-import {toNice} from 'to-nice'
+import {LOG} from 'logger'
+import {getString} from 'extract'
+import {indented} from 'indent'
+import {analyze} from 'typescript'
+import {a, A} from 'civet'
 
 # ---------------------------------------------------------------------------
 
-key := '_____name_____'
+code := """
+	import {defined} from 'datatypes'
+	"""
 
-debugger
-result := getKV key
-console.log result
+LOG analyze(code).asString()

@@ -1,0 +1,29 @@
+# mapsrc.cmd.civet
+
+import {
+	undef, defined, notdefined, slurp, stdChecks,
+	LOG, DBG, DIR, flag, nonOption, assert, croak, findFile, fileExt,
+	} from 'base-utils'
+import {assertIsDefined} from 'datatypes'
+import {getCmdArgs} from 'cmd-args'
+import {DUMP} from 'to-nice'
+import {isFile} from 'fsys'
+import {ts2ast, astAsString, analyze} from 'typescript'
+import {civet2ast, civet2ts} from 'civet'
+import {mapSourcePos} from 'source-map'
+
+stdChecks()
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+line := nonOption(0)
+assertIsDefined line
+assert line.match(/^\d+$/), "Bad line number: #{line}"
+
+path := nonOption(1)
+assertIsDefined path
+assert isFile(path), "No such file: #{path}"
+
+hPos := mapSourcePos {path, line: parseInt(line), column: 1}
+console.dir hPos

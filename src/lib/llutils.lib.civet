@@ -5,6 +5,7 @@ import {createRequire} from "node:module"
 import {sprintf} from "@std/fmt/printf"
 import {relative} from '@std/path'
 
+import {sep} from 'base-utils'
 import {
 	undef, defined, notdefined, assert, char, deepEqual,
 	isHash, isArray, isNonEmptyString, isArrayOfStrings,
@@ -14,9 +15,7 @@ import {
 	assertIsString, assertIsNumber,
 	} from 'datatypes'
 
-/**
- * @module llutils - low level utilities
- */
+export {sep}
 
 llutilsLoadTime: integer := Date.now()
 
@@ -177,18 +176,10 @@ export o := (lStrings: TemplateStringsArray): hash =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * s - convert leading tabs to spaces
- */
-
 export s := (lStrings: TemplateStringsArray): string =>
 
-	console.log "calling function s"
 	replacer := (match: string): string =>
-		console.log "match = <#{escapeStr(match)}>"
-		result := '   '.repeat(match.length)
-		console.log "result = <#{escapeStr(result)}>"
-		return result
+		return '   '.repeat(match.length)
 	return lStrings[0].replaceAll(/^\t+/mg, replacer)
 
 # ---------------------------------------------------------------------------
@@ -206,12 +197,6 @@ export t := (lStrings: TemplateStringsArray): string =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * returns a hash of options with their values,
- * - adding any default values from hDefaults
- *   if they're missing
- */
-
 export getOptions := <T extends hash>(
 		hOptions: hash={},
 		hDefaults: T
@@ -220,11 +205,6 @@ export getOptions := <T extends hash>(
 	return {...hDefaults, ...hOptions}
 
 # ---------------------------------------------------------------------------
-
-/**
- * remove all keys from a hash that have either an empty name
- * or an empty value
- */
 
 export removeEmptyKeys := (h: hash): hash =>
 
@@ -236,26 +216,9 @@ export removeEmptyKeys := (h: hash): hash =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * return an array of all own keys in a hash
- * with possible exceptions
- */
+export keys := (obj: hash): string[] =>
 
-export keys := (obj: hash, hOptions: hash={}): string[] =>
-
-	type opt = {
-		lExcept: string | string[]
-		}
-	{lExcept} := getOptions<opt> hOptions, {
-		lExcept: []
-		}
-
-	lRealExcept := isString(lExcept) ? [lExcept] : lExcept
-	lKeys: string[] := []
-	for key of Object.keys(obj)
-		if not lRealExcept.includes(key)
-			lKeys.push key
-	return lKeys
+	return Object.keys(obj)
 
 # ---------------------------------------------------------------------------
 
@@ -735,31 +698,6 @@ export lpad := (str: string, len: number, ch: string=' '): string =>
 	return ch.repeat(extra) + str
 
 # ---------------------------------------------------------------------------
-# --- valid options:
-#        char - char to use on left and right
-#        buffer - num spaces around text when char <> ' '
-
-export centered := (
-	text: string,
-	width: number,
-	char: string = ' ',
-	numBuffer: number = 2
-	): string =>
-
-	totSpaces := width - text.length
-	if (totSpaces <= 0)
-		return text
-	numLeft := Math.floor(totSpaces / 2)
-	numRight := totSpaces - numLeft
-	if (char == ' ')
-		return spaces(numLeft) + text + spaces(numRight)
-	else
-		buf := ' '.repeat(numBuffer)
-		left := char.repeat(numLeft - numBuffer)
-		right := char.repeat(numRight - numBuffer)
-		return left + buf + text + buf + right
-
-# ---------------------------------------------------------------------------
 
 /**
  * pad a string on the left, right, or both
@@ -785,7 +723,7 @@ export alignString := (
 		when 'left', 'l'
 			return rpad(str, width)
 		when 'center', 'c'
-			return centered(str, width)
+			return sep(str, ' ', width)
 		when 'right', 'r'
 			return lpad(str, width)
 
@@ -885,10 +823,10 @@ export assertSameStr := (
 		): void =>
 
 	if (str1 != str2)
-		console.log centered("Strings Differ:", 64, '-')
-		console.log centered("string 1", 64, '-')
+		console.log sep("Strings Differ:")
+		console.log sep("string 1")
 		console.log str1
-		console.log centered("string 2", 64, '-')
+		console.log sep("string 2")
 		console.log str2
 		console.log '-'.repeat(64)
 
@@ -955,36 +893,111 @@ export getLineAndColumn := (text: string, pos: number) =>
 		]
 
 # ---------------------------------------------------------------------------
+# later? allow passing in string[] ???
 
-export class KeyedStringSet
+export widthOf := (block: string): number =>
 
-	hMap := new Map<string, Set<string>>
+	let width = 0
+	for line of allLinesInBlock(block)
+		if (line.length > width)
+			width = line.length
+	return width
+
+# ---------------------------------------------------------------------------
+
+export heightOf := (block: string): number =>
+
+	return (block == '') ? 0 : block.split('\n').length
+
+# ---------------------------------------------------------------------------
+
+export blockify := (
+		lStrings: string[]
+		hOptions: hash = {}
+		): string =>
+
+	type opt = {
+		sep: string
+		endsep: string
+		width: number
+		}
+	{sep, endsep, width,
+		} := getOptions<opt> hOptions, {
+		sep: ' '
+		endsep: ''
+		width: 64
+		}
+
+	lLines: string[] := []
+	lWords: string[] := []
+	let lineLen = endsep.length
+
+	for str of lStrings
+		# --- If adding the string makes the line too long,
+		#     output the line and clear the array of words
+		if (lineLen + str.length + sep.length > width)
+			lLines.push lWords.join(sep)
+			lWords.length = 0
+			lineLen = 0
+		lWords.push str
+		lineLen += str.length + sep.length
+	if (lWords.length > 0)
+		lLines.push lWords.join(sep)
+	return lLines.join('\n')
+
+# ---------------------------------------------------------------------------
+
+export class CStringSetMap<T = string> extends Map<T, Set<string>>
 
 	# ..........................................................
 
-	add(key: string, value: string): void
+	add(key: T, value: string): void
 
-		aSet := @hMap.get key
+		aSet := super.get key
 		if defined(aSet)
 			aSet.add value
 		else
 			newSet := new Set<string>()
 			newSet.add value
-			@hMap.set key, newSet
+			super.set key, newSet
 		return
 
 	# ..........................................................
 
-	allKeys(): Generator<string, void, void>
+	hasKey(key: T): boolean
 
-		yield* @hMap.keys()
+		return @has key
+
+	# ..........................................................
+
+	hasValue(val: string): boolean
+
+		for key of @allKeys()
+			set := @.get(key)
+			if defined(set) && set.has(val)
+				return true
+		return false
+
+	# ..........................................................
+
+	allKeys(): Generator<T, void, void>
+
+		yield* super.keys()
 		return
 
 	# ..........................................................
 
-	allValues(key: string): Generator<string, void, void>
+	allValues(key: T): Generator<string, void, void>
 
-		aSet := @hMap.get key
+		aSet := super.get key
 		if defined(aSet)
 			yield* aSet.values()
 		return
+
+	# ..........................................................
+
+	asString(): string
+
+		lLines := for key of @allKeys()
+			"#{key}: #{Array.from(@allValues(key)).join(' ')}"
+		return lLines.join('\n')

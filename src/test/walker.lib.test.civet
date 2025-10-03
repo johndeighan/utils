@@ -410,4 +410,51 @@ class PersonWalker extends Walker<Person>
 		'Bob is male'
 		'Jane is female'
 		]
+
+	# --- Try extended walking
+
+	lDesc2 := for [vkind, {name, gender}] of walker.walkEx(hAst)
+		when (vkind == 'enter')
+		"#{name} is #{gender}"
+
+	equal lDesc2, [
+		'John is male'
+		'Julie is female'
+		'Bob is male'
+		'Jane is female'
+		]
+	)()
+
+# ---------------------------------------------------------------------------
+# --- test extended walking
+
+(() =>
+	hAst := {
+		kind: 'top'
+		first: 'first'
+		next: {
+			kind: 'next'
+			a: 'one'
+			b: 'two'
+			c: 'three'
+			}
+		last: {
+			kind: 'last'
+			A: 'one'
+			B: 'two'
+			}
+		}
+
+
+	walker := new Walker()
+	lItems := for [vkind, item] of walker.walkEx(hAst)
+		"#{vkind} #{item.kind}"
+	equal lItems, [
+		'enter top'
+		'enter next'
+		'exit next'
+		'enter last'
+		'exit last'
+		'exit top'
+		]
 	)()

@@ -1,0 +1,14 @@
+# utest.cmd.civet
+
+import {
+	stdChecks, allNonOptions, tryCmd, doUnitTest,
+	} from 'base-utils'
+import {LOG, DBG} from 'logger'
+
+stdChecks()
+
+# ---------------------------------------------------------------------------
+
+for stub of allNonOptions()
+	await tryCmd doUnitTest, stub, 'lib'
+LOG "DONE"

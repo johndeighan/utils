@@ -17,7 +17,7 @@ import {
 	TCmdDesc, TExecResult, execCmdSync, execCmd, execCmds,
 	} from 'exec'
 import {stripSrcMap} from 'source-map'
-import {ts2ast} from 'typescript'
+import {ts2ast, analyze} from 'typescript'
 
 # ---------------------------------------------------------------------------
 # ASYNC
@@ -94,5 +94,15 @@ export civet2ast := (civetCode: string): Node =>
 
 	tsCode := civet2ts civetCode
 	return ts2ast tsCode
+
+# ---------------------------------------------------------------------------
+# --- template literals to simplify displaying
+#     the analysis of civet code
+
+export a := (lStrings: TemplateStringsArray): string =>
+	return analyze(civet2ts(lStrings[0])).asString()
+
+export A := (lStrings: TemplateStringsArray): string =>
+	return analyze(civet2ts(lStrings[0]), o'dump').asString()
 
 # ---------------------------------------------------------------------------

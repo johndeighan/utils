@@ -2,25 +2,18 @@
 
 import {
 	undef, defined, notdefined, assert, croak, array,
-	isString, isArray, isArrayOfStrings, hash, isHash,
+	isString, isArray, isArrayOfStrings, hash, hashof, isHash,
 	integer, isInteger,
 	} from 'datatypes'
 import {
 	rtrim, countChars, escapeStr, getOptions,
 	blockToArray, arrayToBlock, toArray, toBlock,
+	widthOf, heightOf, blockify, keys,
 	} from 'llutils'
-
-/**
- * @module indent - indent level utilities
- */
 
 export let oneIndent: string? = undef
 
 # ---------------------------------------------------------------------------
-
-/**
- * Reset the text for one indent level
- */
 
 export resetOneIndent := (str: string?=undef): void =>
 
@@ -28,11 +21,6 @@ export resetOneIndent := (str: string?=undef): void =>
 	return
 
 # ---------------------------------------------------------------------------
-
-/**
- * indentLevel - determine indent level of a string
- *               it's OK if the string is ONLY indentation
- */
 
 export indentLevel := (line: string): number =>
 
@@ -77,10 +65,6 @@ export indentLevel := (line: string): number =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * splitLine - separate a line into [level, line]
- */
-
 export type lineDesc = [
 	level: number
 	text: string
@@ -93,24 +77,16 @@ export splitLine := (line: string): lineDesc =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * indented - add indentation to each string in a block or array
- *          - returns the same type as input, i.e. array or string
- */
-
 export function indented(
 		input: string,
-		level?: number
 		hOptions?: hash
 		): string
 export function indented(
 		input: string[],
-		level?: number
 		hOptions?: hash
 		): string[]
 export function indented(
 		input: string | string[],
-		level: number = 1
 		hOptions: hash = {}
 		): string | string[] {
 
@@ -118,9 +94,11 @@ export function indented(
 	#     we have to put the option in a new variable, i.e. 'ind'
 	type opt = {
 		oneIndent: string?
+		level: integer
 		}
-	{oneIndent: ind} := getOptions<opt> hOptions, {
+	{oneIndent: ind, level} := getOptions<opt> hOptions, {
 		oneIndent: undef
+		level: 1
 		}
 
 	useIndent: string := (
@@ -136,11 +114,6 @@ export function indented(
 	}
 
 # ---------------------------------------------------------------------------
-
-/**
- * undented - string with 1st line indentation removed for each line
- *          - returns same type as input, i.e. either string or array
- */
 
 export undented := (input: string | string[]): string | string[] =>
 
@@ -165,8 +138,50 @@ export undented := (input: string | string[]): string | string[] =>
 				nToRemove = prefix.length
 				lNewLines.push rest
 		else
-			assert (line.indexOf(toRemove)==0),
+			assert (line.indexOf(toRemove) == 0),
 				"can't remove #{escapeStr(toRemove)} from #{escapeStr(line)}"
 			lNewLines.push trimmed.substr(nToRemove)
 
 	return isString(input) ? arrayToBlock(lNewLines) : lNewLines
+
+# ---------------------------------------------------------------------------
+
+export type TBlockDesc = string[] | {[key: string]: TBlockDesc}
+
+export Blockify := (
+		desc: TBlockDesc
+		hOptions: hash = {}
+		): string =>
+
+	type opt = {
+		sep: string
+		endsep: string
+		oneIndent: string
+		width: number
+		}
+	{sep, endsep, width, oneIndent,
+		} := getOptions<opt> hOptions, {
+		sep: ' '
+		endsep: ''
+		oneIndent: '   '
+		width: 64
+		}
+
+	if isArray(desc)
+		if (desc.length == 0)
+			return ''    # --- has 0 height
+		else
+			return blockify desc, hOptions
+	else
+		# --- width must be reduced since block will be indented
+		hOpts := {sep, endsep, oneIndent, width: width-3}
+
+		lParts := for label of keys(desc)
+			block := Blockify desc[label], hOpts
+			if (heightOf(block) == 0)
+				"#{label}: (none)"
+			else if (heightOf(block) == 1) && (label.length + widthOf(block) < width)
+				"#{label}: #{block}"
+			else
+				"#{label}:\n#{indented(block, {oneIndent})}"
+		return lParts.join('\n')

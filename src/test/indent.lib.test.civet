@@ -6,11 +6,11 @@ import {
 	undef, defined, notdefined, assert, deepEqual,
 	} from 'datatypes'
 import {
-	spaces, tabs, throwsError,
+	spaces, tabs, throwsError, s,
 	} from 'llutils'
 import {
 	oneIndent, resetOneIndent, indentLevel, splitLine,
-	indented, undented,
+	indented, undented, Blockify,
 	} from 'indent'
 import {
 	equal, truthy, falsy, like, succeeds, fails,
@@ -78,11 +78,11 @@ DBG "indented()"
 succeeds () =>
 	resetOneIndent()
 	assert indented('abc') == '\tabc'
-	assert indented('abc', 2) == '\t\tabc'
+	assert indented('abc', {level: 2}) == '\t\tabc'
 
 	assert indentLevel('\tabc') == 1
-	assert indented('abc', 2) == (tabs(2) + 'abc')
-	assert indented('abc', 2) == "#{tabs(2)}abc"
+	assert indented('abc', {level: 2}) == (tabs(2) + 'abc')
+	assert indented('abc', {level: 2}) == "#{tabs(2)}abc"
 
 # --- Test with blocks
 
@@ -102,7 +102,7 @@ succeeds () =>
 		first line
 		\tsecond line
 		\t\tthird line
-		""", 2) == """
+		""", {level: 2}) == """
 		\t\tfirst line
 		\t\t\tsecond line
 		\t\t\t\tthird line
@@ -126,7 +126,7 @@ succeeds () =>
 		'first line'
 		'\tsecond line'
 		'\t\tthird line'
-		], 2), [
+		], {level: 2}), [
 		'\t\tfirst line'
 		'\t\t\tsecond line'
 		'\t\t\t\tthird line'
@@ -212,11 +212,11 @@ DBG "indented()"
 
 succeeds () =>
 	resetOneIndent('   ')
-	assert (indented('abc', 2) == '      abc')
+	assert (indented('abc', {level: 2}) == '      abc')
 	assert (indented('abc') == '   abc')
 
 	assert (indentLevel('   abc') == 1)
-	assert (indented('abc', 2) == spaces(6) + 'abc')
+	assert (indented('abc', {level: 2}) == spaces(6) + 'abc')
 
 # --- Test with blocks
 
@@ -236,7 +236,7 @@ succeeds () =>
 		first line
 		#{spaces(3)}second line
 		#{spaces(6)}third line
-		""", 2) == """
+		""", {level: 2}) == """
 		#{spaces(6)}first line
 		#{spaces(9)}second line
 		#{spaces(12)}third line
@@ -260,7 +260,7 @@ succeeds () =>
 		'first line'
 		'   second line'
 		'      third line'
-		], 2), [
+		], {level: 2}), [
 		'      first line'
 		'         second line'
 		'            third line'
@@ -278,4 +278,68 @@ equal undented("""
 	abc
 	#{spaces(3)}def
 	#{spaces(6)}ghi
+	"""
+
+# ---------------------------------------------------------------------------
+
+DBG "Blockify()"
+
+equal Blockify(['abc', 'def', 'ghi']), """
+	abc def ghi
+	"""
+
+equal Blockify(['abc', 'def', 'ghi'], {width: 8}), """
+	abc def
+	ghi
+	"""
+
+equal Blockify(['abc', 'def', 'ghi'], {width: 5}), """
+	abc
+	def
+	ghi
+	"""
+
+equal Blockify({names: ['abc','def','ghi']}, {width: 8}), s"""
+	names:
+		abc
+		def
+		ghi
+	"""
+
+equal Blockify({
+	EXPORTS: ['abc','def','ghi']
+	IMPORTS: ['mno','xyz']
+	}, {width: 12}), s"""
+	EXPORTS:
+		abc def
+		ghi
+	IMPORTS:
+		mno xyz
+	"""
+
+equal Blockify({
+	EXPORTS: ['abc','def','ghi']
+	IMPORTS: []
+	}, {width: 12}), s"""
+	EXPORTS:
+		abc def
+		ghi
+	IMPORTS: (none)
+	"""
+
+equal Blockify({
+	EXPORTS: ['abc','def']
+	IMPORTS: {
+		datatypes: ['isString', 'isArray', 'hash']
+		llutils:   ['o', 's', 'widthOf']
+		}
+	}, {width: 18}), s"""
+	EXPORTS: abc def
+	IMPORTS:
+		datatypes:
+			isString
+			isArray
+			hash
+		llutils:
+			o s widthOf
 	"""

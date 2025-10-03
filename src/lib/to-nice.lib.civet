@@ -2,11 +2,11 @@
 
 import {cyan, blue} from "@std/fmt/colors"
 
-import {sep, centered} from 'base-utils'
+import {sep} from 'base-utils'
 import {
 	assert, croak, undef, defined, notdefined, hash, hashof,
 	isString, isArray, isClass, isRegExp, isPrimitive,
-	isEmpty, nonEmpty, assertIsHash,
+	isEmpty, nonEmpty, assertIsHash, integer,
 	symbolName, className, functionName, regexpDef,
 	} from 'datatypes'
 import {
@@ -42,20 +42,6 @@ export toNiceString := (str: string): string =>
 
 # ---------------------------------------------------------------------------
 
-pathadd := (
-		path: string
-		key: string | number
-		): string =>
-
-	newkey := (
-		  (typeof key == 'number')
-		? "[#{key.toString()}]"
-		: "/#{key}"
-		)
-	return (path == '/') ? newkey : "#{path}#{newkey}"
-
-# ---------------------------------------------------------------------------
-
 # --- Returns a function that:
 #        compares 2 strings based on their position in lSortKeys
 #        else compares alphabetically
@@ -87,9 +73,29 @@ getCompareFunc := (
 
 # ---------------------------------------------------------------------------
 
+export rotpos := <T>(lArray: T[], i: integer): T =>
+
+	return lArray[i % lArray.length]
+
+# ---------------------------------------------------------------------------
+
 indented := (block: string, oneIndent: string) =>
 
 	return mapEachLine(block, (line) => oneIndent + line)
+
+# ---------------------------------------------------------------------------
+
+export type TPathIndex = string | number
+
+export buildPath := (lPath: TPathIndex[]): string =>
+
+	let str = 'root'
+	for item of lPath
+		if isString(item)
+			str += ".#{item}"
+		else
+			str += "[#{item.toString()}]"
+	return str
 
 # ---------------------------------------------------------------------------
 
@@ -110,7 +116,7 @@ export toNice := (
 		x: unknown,
 		hOptions: hash={}
 		mapVisited: Map<object, string> = new Map<object, string>()
-		path: string = '/'
+		lPath: TPathIndex[] = []
 		): string =>
 
 	# --- When recoverable, classes and functions
@@ -126,7 +132,7 @@ export toNice := (
 		mapFunc: TMapFunc
 		lInclude: string[]?
 		lExclude: string[]?
-		oneIndent: string
+		lIndents: string[]
 		}
 	{		compact
 			recoverable
@@ -136,7 +142,7 @@ export toNice := (
 			mapFunc
 			lInclude
 			lExclude
-			oneIndent
+			lIndents
 		} := getOptions<opt> hOptions, {
 		compact: false
 		recoverable: false
@@ -146,7 +152,7 @@ export toNice := (
 		mapFunc: emptyMapFunc
 		lInclude: undef
 		lExclude: undef
-		oneIndent: spaces(3)
+		lIndents: ['   ', '❘  ']
 		}
 
 	# --- You can provide sortKeys or a sortFunc, but not both
@@ -198,21 +204,22 @@ export toNice := (
 				if (x.length == 0)
 					return '[]'
 
-				mapVisited.set x, path
+				mapVisited.set x, buildPath(lPath)
 				lLines := []
 				for val,i of x
 					block := toNice(
 							val,
 							hOptions,
 							mapVisited,
-							pathadd(path, i)
+							[lPath..., i]
 							)
 					if compact
 						lLines.push block
-					else if isPrimitive(val) || block.startsWith('.')
+					else if isPrimitive(val) || block.startsWith('.') || isEmpty(val)
 						lLines.push "- #{block}"
 					else
 						lLines.push '-'
+						oneIndent := rotpos<string>(lIndents, lPath.length)
 						lLines.push indented(block, oneIndent)
 				if compact
 					return '[' + lLines.join(' ') + ']'
@@ -239,32 +246,33 @@ export toNice := (
 					return false
 				return true
 
-			mapVisited.set x, path
+			mapVisited.set x, buildPath(lPath)
 
 			assertIsHash x    # --- will allow us to index with any string
 
 			lLines := []
-			for key of (defined(func) ? lKeys.sort(func) : lKeys)
-				if useKey(key)
-					val := x[key]
-					if not ignoreEmptyValues || nonEmpty(val)
-						mapped := recoverable ? undef : mapFunc(key, val, x)
-						newval := mapped || val
-						block := isString(mapped) ? mapped : toNice(
-								newval,
-								hOptions,
-								mapVisited,
-								pathadd(path, key)
-								)
-						if (
-								   compact
-								|| (defined(newval) && isPrimitive(newval))
-								|| block.startsWith('.')
-								)
-							lLines.push "#{key}: #{block}"
-						else
-							lLines.push "#{key}:"
-							lLines.push indented(block, oneIndent)
+			for key of (defined(func) ? lKeys.sort(func) : lKeys).filter(useKey)
+				val := x[key]
+				if not ignoreEmptyValues || nonEmpty(val)
+					mapped := recoverable ? undef : mapFunc(key, val, x)
+					newval := mapped || val
+					block := isString(mapped) ? mapped : toNice(
+							newval,
+							hOptions,
+							mapVisited,
+							[lPath..., key]
+							)
+					if (
+								compact
+							|| (defined(newval) && isPrimitive(newval))
+							|| block.startsWith('.')
+							|| isEmpty(newval)
+							)
+						lLines.push "#{key}: #{block}"
+					else
+						lLines.push "#{key}:"
+						oneIndent := rotpos<string>(lIndents, lPath.length)
+						lLines.push indented(block, oneIndent)
 			if compact
 				return '{' + lLines.join(' ') + '}'
 			else
@@ -290,16 +298,22 @@ export DUMP := (
 		x: unknown
 		label: string? = undef
 		hOptions: hash = {}
-		width: number = 64
 		): void =>
 
-	if isEmpty label
-		console.log sep(width)
-	else if defined label
-		console.log centered(label, width, '-')
-	if isString(x)
-		console.log x
+	type opt = {
+		width: number
+		char: string
+		}
+	{width, char} := getOptions<opt> hOptions, {
+		width: 64
+		char: '-'
+		}
+
+	console.log sep(label, char, width)
+	if isString x
+		if nonEmpty x
+			console.log x
 	else
 		console.log toNice(x, hOptions)
-	console.log sep(width)
+	console.log sep(undef, char, width)
 	return

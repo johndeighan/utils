@@ -1,5 +1,6 @@
 # cmd-args.lib.civet
 
+import {mapNonOption} from 'base-utils'
 import {
 	undef, defined, notdefined, assert, croak,
 	hash, hashof,
@@ -8,11 +9,12 @@ import {
 import {
 	keys, getOptions, o, spaces,
 	} from 'llutils'
-import {OL} from 'to-nice'
+import {OL, DUMP} from 'to-nice'
 import {
 	TLogLevel, setLogLevel,
 	} from 'log-levels'
 import {LOG, DBG} from 'logger'
+import {execCmd} from 'base-utils'
 
 # ---------------------------------------------------------------------------
 
@@ -45,63 +47,6 @@ export logLevelFromArgs := (lArgs: string[]): TLogLevel? =>
 
 # ---------------------------------------------------------------------------
 
-/**
- * Parse command line arguments, optionally specifying which
- * options to expect and/or the expected number of non-options
- *
- * There are 3 kinds of items allowed on the command line:
- *
- * 1. flags, e.g.
- * 	`-fnx` - sets flags `f`, 'n' and `x` to true
- *    flags must be upper or lower case letters
- *
- * 2. an option with a value, e.g.
- * 	`-label=mylabel` - sets option `label` to `'mylabel'`
- * 	if the value contains a space char, it must be quoted
- * 	if the value looks like a number, it's set to a number
- *
- * 3. anything else is a non-option, e.g.
- * 	c:/temp/temp.txt
- * 	if it includes a space char or starts with `-`,
- * 		it must be quoted
- *
- * the 1st argument to getCmdArgs() is optional, and is a hash
- * of information about the expected arguments.
- *
- * If key '_' is present, it must be a hash possibly including keys:
- *    'range' - either an integer specifying the exact number of
- *              non-options expected, or an array of 2 integers
- *              specifying the minimum and maximum number of
- *              non-options expected.
- *    'desc' - a text description of what non-options are
- *
- * All other keys are names of options allowed
- *    the associated value
- * must be a hash with possibly these keys:
- *    type - the type of value expected (defaults to 'boolean')
- *    desc - a text description of the option (used on help screens)
- *
- * the 2nd argument to getCmdArgs() is an array of string arguments
- * from the command line (defaults to Deno.args)
- *
- * the 3rd argument to getCmdArgs() is a hash of possible options:
- *    doSetLogger - defaults to true - if false, then options
- *                  -P, -D, -Q, -I and -S no longer set logging options
- *                  and may therefore be used for other purposes
- *
- * By default, the following flags are recognized, and therefore
- * cannot be included in hDesc (this behavior can be
- * disabled by setting hOptions.doSetLogger to false):
- *
- * `-P` - set the current log level to 'profile'
- * `-D` - set the current log level to 'debug'
- * `-Q` - set the current log level to 'warn'
- * `-I` - set the current log level to 'info'
- * `-S` - set the current log level to 'silent'
- *
- * (see library @jdeighan/logger)
- */
-
 type TCmdArgs = {
 	[key: string]: unknown
 	}
@@ -121,6 +66,10 @@ export getCmdArgs := (
 		doSetLogger: true
 		}
 
+	if (lArgs.at(-1) == '!')
+		execCmd 'clear'
+		lArgs.pop()
+
 	if doSetLogger && defined(hDesc)
 		# --- Make sure hDesc does NOT include any of:
 		#        P, D, Q, I, S
@@ -135,9 +84,7 @@ export getCmdArgs := (
 		DBG "hDesc is: #{OL(hDesc)}"
 	DBG "lArgs is: #{OL(lArgs)}"
 
-	if ((lArgs.length == 1)
-			&& ['-h','--h','-help','--help'].includes(lArgs[0])
-			)
+	if lArgs.includes('-h')
 		if defined(hDesc)
 			LOG helpStr(hDesc)
 		else
@@ -184,7 +131,7 @@ export getCmdArgs := (
 
 	addNonOption := (str: string) =>
 		DBG "addNonOption(#{OL(str)})"
-		lNonOptions.push str
+		lNonOptions.push mapNonOption(str)
 
 	for str of lArgs
 		# --- ignore '--'
@@ -219,8 +166,8 @@ export getCmdArgs := (
 	if defined(hDesc)
 		# --- Fill in missing keys with default values
 		DBG "Filling in missing keys with default values"
-		for name of keys(hDesc, o'except=_')
-			if notdefined(hResult[name])
+		for name of keys(hDesc)
+			if (name != '_') && notdefined(hResult[name])
 				{defaultVal} := getOptionInfo(hDesc, name)
 				if defined(defaultVal)
 					hResult[name] = defaultVal
@@ -324,12 +271,15 @@ cntStr := (n: number, str: string): string =>
 export helpStr := (hDesc: hash): string =>
 
 	lLines := ["Available options:"]
+
+	# --- define a utility function
 	push := (str: string, level: number=0): void =>
 		lLines.push spaces(3*level) + str
 
-	for name of keys(hDesc, {lExcept: '_'})
-		{type, desc} := getOptionInfo(hDesc, name)
-		push "-#{name}: #{type} - #{desc}", 1
+	for name of keys(hDesc)
+		if (name != '_')
+			{type, desc} := getOptionInfo(hDesc, name)
+			push "-#{name}: #{type} - #{desc}", 1
 	if defined(hDesc._)
 		push "Non-options:"
 		hInfo := getNonOptionInfo(hDesc)
@@ -344,5 +294,6 @@ export helpStr := (hDesc: hash): string =>
 				if (max < Number.MAX_SAFE_INTEGER)
 					push "There must be at most #{cntStr(max, 'non-option')}", 1
 		else
+			DUMP hDesc._
 			croak "Bad descriptor for '_'"
 	return lLines.join('\n')

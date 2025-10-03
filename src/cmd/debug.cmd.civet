@@ -1,0 +1,29 @@
+# debug.cmd.civet
+
+import {
+	stdChecks, nonOption, FAIL, assert, allNonOptions,
+	flag, LOG, execCmd,
+	} from 'base-utils'
+
+stdChecks()
+path := nonOption(0) || FAIL("USAGE: debug <path> ...args")
+assert path.endsWith('.ts'), "Only TypeScript files allowed"
+lArgs := Array.from(allNonOptions()).slice(1)
+
+# ---------------------------------------------------------------------------
+
+if flag('d')
+	LOG "path = '#{path}'"
+	for arg,i of lArgs
+		LOG "arg[#{i}] = '#{arg}'"
+
+h := await execCmd 'deno', [
+	'run'
+	'-A'
+	'--inspect-brk'
+	path
+	'--'
+	lArgs...
+	]
+
+LOG h.success ? 'OK' : 'FAILED'

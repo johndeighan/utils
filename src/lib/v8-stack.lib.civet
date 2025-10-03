@@ -2,12 +2,13 @@
 
 import {sprintf} from '@std/fmt/printf'
 
+import {sep} from 'base-utils'
 import {
 	undef, defined, notdefined, assert, croak,
 	isEmpty, nonEmpty, hash,
 	isString, isNonEmptyString, isInteger,
 	} from 'datatypes'
-import {rpad, centered} from 'llutils'
+import {rpad} from 'llutils'
 import {OL, ML} from 'to-nice'
 import {DBG, LOG, WARN, ERR, INDENT, UNDENT} from 'logger'
 import {
@@ -81,7 +82,7 @@ export getV8Stack := (): TStackFrame[] =>
 				isConstructor    := frame.isConstructor()
 				typeName         := frame.getTypeName()
 
-				DBG centered('from V8', width, '-')
+				DBG sep('from V8', '-', width)
 				DBG "fileName = #{OL(fileName)}"
 				DBG "functionName = #{OL(functionName)}"
 				DBG "defined(functionObj) = #{OL(defined(functionObj))}"
@@ -135,7 +136,7 @@ export getV8Stack := (): TStackFrame[] =>
 						tos.type = 'function'
 						tos.name = '<anon>'
 
-				DBG centered('return frame', width, '-')
+				DBG sep('return frame', '-', width)
 				DBG ML(h)
 				DBG '-'.repeat(width)
 
