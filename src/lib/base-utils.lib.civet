@@ -776,7 +776,7 @@ export centered := (
 export lAllLibs := [
 	'base-utils', 'datatypes', 'llutils', 'db', 'indent', 'unicode',
 	'to-nice', 'extract', 'log-levels', 'log-formatter', 'logger',
-	'text-table', 'env-stack',
+	'text-table', 'scope-stack',
 
 	'parser', 'cmd-args',
 	'walker', 'fsys', 'pll', 'exec', 'from-nice'

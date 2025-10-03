@@ -1,0 +1,56 @@
+# scope-stack.lib.test.civet
+
+import {undef, assert} from 'datatypes'
+import {getCmdArgs} from 'cmd-args'
+import {CScopeStack} from 'scope-stack'
+import {
+	equal, truthy, falsy, succeeds, fails, codeLike,
+	isType, notType,
+	} from 'unit-test'
+
+getCmdArgs()
+
+# ---------------------------------------------------------------------------
+
+(() =>
+	ss := new CScopeStack()
+	ss.addDefined 'name'
+	ss.addDefined 'gender'
+
+	truthy ss.isDefined('name')
+	truthy ss.isDefined('gender')
+	falsy  ss.isDefined('dummy')
+
+	succeeds () =>
+		ss.newScope()
+		ss.addDefined('name')
+		truthy ss.isDefined('name')
+		ss.endScope()
+		falsy ss.isDefined('name')
+	)()
+
+(() =>
+	ss := new CScopeStack()
+	ss.addDefined 'name'
+	ss.addDefined 'gender'
+
+	truthy ss.isDefined('name')
+	truthy ss.isDefined('gender')
+	falsy  ss.isDefined('address')
+	succeeds () =>
+
+		ss.newScope()
+		ss.addDefined('name')
+		ss.addDefined('gender')
+		ss.addDefined('address')
+
+		truthy ss.isDefined('name')
+		truthy ss.isDefined('gender')
+		truthy ss.isDefined('address')
+
+		ss.endScope()
+
+		truthy ss.isDefined('name')
+		truthy ss.isDefined('gender')
+		falsy  ss.isDefined('address')
+	)()

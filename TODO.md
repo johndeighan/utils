@@ -1,6 +1,6 @@
 to do
 
-in typescript, use full power of Blockify()
+check usage of CScopeStack in typescript.lib.civet
 
 USE:
 	clear && buildlib -n typescript && runtemp

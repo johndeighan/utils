@@ -34,7 +34,7 @@ import {getCmdOutputSync} from 'exec'
 import {stripSrcMap} from 'source-map'
 import {getNeededImportStmts} from 'symbols'
 import {Walker, TVisitKind} from 'walker'
-import {CEnvStack} from 'env-stack'
+import {CScopeStack} from 'scope-stack'
 
 decoder := new TextDecoder("utf-8")
 
@@ -442,14 +442,14 @@ export class CAnalysis
 	mImports: CStringSetMap = new CStringSetMap()
 	hExports: hashof<string> = {}
 	sNeeded: Set<string> = new Set<string>()
-	env: CEnvStack = new CEnvStack()
+	ss: CScopeStack = new CScopeStack()
 
 	# ..........................................................
 
 	constructor()
 
 		for name of words('console string number ')
-			@env.add name
+			@ss.addDefined name
 
 	# ..........................................................
 
@@ -469,7 +469,7 @@ export class CAnalysis
 
 	addNeeds(name: string): void
 
-		if not @env.has(name) && not @mImports.hasValue(name)
+		if not @ss.isDefined(name) && not @mImports.hasValue(name)
 			@sNeeded.add name
 		return
 
@@ -549,7 +549,7 @@ export analyze := (
 		}
 
 	analysis := new CAnalysis()
-	env := new CEnvStack()
+	ss := new CScopeStack()
 
 	walker := new AstWalker()
 	hAst := ts2ast tsCode
@@ -583,32 +583,32 @@ export analyze := (
 		if (vkind == 'exit')
 			switch kind
 				when 220, 263   # --- ArrowFunction, FunctionDeclaration
-					analysis.env.popEnv()
+					analysis.ss.endScope()
 
 		else if (vkind == 'enter')
 			switch kind
 
 				when 220   # --- ArrowFunction
 
-					analysis.env.pushEnv()
+					analysis.ss.newScope()
 					for parm of getArray node, '.parameters'
 						name := getString parm, '.name.escapedText'
-						analysis.env.add name
+						analysis.ss.addDefined name
 
 				when 261   # --- Variable Declaration
 
 					try
 						varName := getString node, '.name.escapedText'
-						analysis.env.add varName
+						analysis.ss.addDefined varName
 
 				when 263   # --- FunctionDeclaration
 
 					funcName := getString node, '.name.escapedText'
-					analysis.env.add funcName
-					analysis.env.pushEnv()
+					analysis.ss.addDefined funcName
+					analysis.ss.newScope()
 					for parm of getArray node, '.parameters'
 						name := getString parm, '.name.escapedText'
-						analysis.env.add name
+						analysis.ss.addDefined name
 
 				when 227   # --- BinaryExpression
 
