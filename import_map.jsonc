@@ -31,7 +31,7 @@
 		"log-levels":    "file:///C:/Users/johnd/utils/src/lib/log-levels.lib.ts",
 		"log-formatter": "file:///C:/Users/johnd/utils/src/lib/log-formatter.lib.ts",
 		"logger":        "file:///C:/Users/johnd/utils/src/lib/logger.lib.ts",
-		"scope-stack":   "file:///C:/Users/johnd/utils/src/lib/scope-stack.lib.ts",
+		"scope":         "file:///C:/Users/johnd/utils/src/lib/scope.lib.ts",
 		"indent":        "file:///C:/Users/johnd/utils/src/lib/indent.lib.ts",
 		"text-table":    "file:///C:/Users/johnd/utils/src/lib/text-table.lib.ts",
 		"walker":        "file:///C:/Users/johnd/utils/src/lib/walker.lib.ts",

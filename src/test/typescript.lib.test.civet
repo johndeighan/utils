@@ -155,25 +155,29 @@ DBG "analyze(tsCode, hOptions)"
 equal a"""
 	x := y + z + func(min)
 	""", s"""
-	NEEDS: y z func min
+	MISSING: y z func min
+	EXTRA: x
 	"""
 
 equal a"""
 	import {defined, notdefined} from 'datatypes'
 	""", s"""
 	IMPORTS: datatypes: defined notdefined
+	EXTRA: defined notdefined
    """
 
 equal a"""
 	x := y + z + func(min)
 	""", s"""
-	NEEDS: y z func min
+	MISSING: y z func min
+	EXTRA: x
 	"""
 
 equal a"""
 	import {defined, notdefined} from 'datatypes'
 	""", s"""
 	IMPORTS: datatypes: defined notdefined
+	EXTRA: defined notdefined
    """
 
 equal a"""
@@ -185,13 +189,13 @@ equal a"""
 equal a"""
 	func "Hello"
 	""", s"""
-	NEEDS: func
+	MISSING: func
 	"""
 
 equal a"""
 	func x, y+z
 	""", s"""
-	NEEDS: func x y z
+	MISSING: func x y z
 	"""
 
 # --- imports are not needed
@@ -202,7 +206,7 @@ equal a"""
 	func x, y+z
 	""", s"""
 	IMPORTS: willy: func
-	NEEDS: x y z
+	MISSING: x y z
 	"""
 
 # --- Only t is needed, s is a parameter
@@ -212,7 +216,7 @@ equal a"""
 		return s + t + '.txt'
 	func('abc')
 	""", s"""
-	NEEDS: t
+	MISSING: t
 	"""
 
 # --- Same, only using 'function' keyword
@@ -222,5 +226,5 @@ equal a"""
 		return s + t + '.txt'
 	func('abc')
 	""", s"""
-	NEEDS: t
+	MISSING: t
 	"""

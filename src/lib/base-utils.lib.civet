@@ -776,10 +776,10 @@ export centered := (
 export lAllLibs := [
 	'base-utils', 'datatypes', 'llutils', 'db', 'indent', 'unicode',
 	'to-nice', 'extract', 'log-levels', 'log-formatter', 'logger',
-	'text-table', 'scope-stack',
+	'text-table',
 
-	'parser', 'cmd-args',
-	'walker', 'fsys', 'pll', 'exec', 'from-nice'
+	'walker', 'scope', 'parser', 'fsys', 'pll', 'from-nice',
+	'exec', 'cmd-args',
 
 	'source-map', 'symbols', 'typescript', 'civet', 'cielo',
 	'automate', 'v8-stack', 'unit-test',

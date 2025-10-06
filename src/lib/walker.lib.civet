@@ -24,14 +24,14 @@ export class Walker<T extends object = hash>
 
 	# ..........................................................
 
-	pushNode(item: T): void
+	protected pushNode(item: T): void
 
 		@lNodeStack.push item
 		return
 
 	# ..........................................................
 
-	popNode(): T?
+	protected popNode(): T?
 
 		return @lNodeStack.pop()
 		return

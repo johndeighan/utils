@@ -226,6 +226,21 @@ export toNice := (
 				else
 					return toBlock(lLines)
 
+			# --- It's an object
+			if (x instanceof Set)
+				lKeys := for key of x.keys()
+					toNice key
+				return (
+					  (lKeys.length == 0)
+					? ".emptySet"
+					: ".set #{lKeys.join(' ')}"
+					)
+
+			if (x instanceof Map)
+				lLines := for [key, val] of x.entries()
+					"#{toNice(key)}:: #{toNice(val)}"
+				return lLines.join('\n')
+
 			lKeys := Object.keys(x)
 			if (lKeys.length == 0)
 				return '{}'

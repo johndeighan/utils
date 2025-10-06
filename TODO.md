@@ -1,6 +1,12 @@
 to do
 
-check usage of CScopeStack in typescript.lib.civet
+typescript.lib.civet unit tests fail
+
+write function to calculate needed/not needed symbols
+from a CScope object
+
+use temp.civet to analyze progressively more complex
+typescript code
 
 USE:
 	clear && buildlib -n typescript && runtemp

@@ -1,13 +1,15 @@
 import {LOG} from 'logger'
-import {getString} from 'extract'
-import {indented} from 'indent'
 import {analyze} from 'typescript'
-import {a, A} from 'civet'
+import {a, A, civet2ts} from 'civet'
 
 # ---------------------------------------------------------------------------
 
 code := """
-	import {defined} from 'datatypes'
+	func := (s: string): string =>
+		return s + t + '.txt'
+	func('abc')
 	"""
-
-LOG analyze(code).asString()
+tsCode := civet2ts(code)
+analysis := analyze(civet2ts(code))
+block := analysis.asString()
+LOG block

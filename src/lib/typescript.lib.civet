@@ -34,7 +34,7 @@ import {getCmdOutputSync} from 'exec'
 import {stripSrcMap} from 'source-map'
 import {getNeededImportStmts} from 'symbols'
 import {Walker, TVisitKind} from 'walker'
-import {CScopeStack} from 'scope-stack'
+import {CMainScope, CScope} from 'scope'
 
 decoder := new TextDecoder("utf-8")
 
@@ -440,37 +440,46 @@ export class AstWalker extends Walker<Node>
 export class CAnalysis
 
 	mImports: CStringSetMap = new CStringSetMap()
-	hExports: hashof<string> = {}
-	sNeeded: Set<string> = new Set<string>()
-	ss: CScopeStack = new CScopeStack()
+	mExports: Map<string,string> = new Map<string,string>()
+
+	mainScope: CMainScope = new CMainScope()
+	curScope: CScope
+	finished: boolean = false
 
 	# ..........................................................
 
 	constructor()
 
-		for name of words('console string number ')
-			@ss.addDefined name
+		@curScope = @mainScope
 
 	# ..........................................................
 
-	addImport(name: string, lib: string): void
+	define(name: string): void
+
+		@curScope.define name
+		return
+
+	# ..........................................................
+
+	use(name: string): void
+
+		if not hasKey(globalThis, name)
+			@curScope.use name
+		return
+
+	# ..........................................................
+
+	addImport(lib: string, name: string): void
 
 		@mImports.add lib, name
+		@define name
 		return
 
 	# ..........................................................
 
-	addExport(name: string, kind: string): void
+	addExport(name: string, type: string): void
 
-		@hExports[name]  = kind
-		return
-
-	# ..........................................................
-
-	addNeeds(name: string): void
-
-		if not @ss.isDefined(name) && not @mImports.hasValue(name)
-			@sNeeded.add name
+		@mExports.set name, type
 		return
 
 	# ..........................................................
@@ -486,31 +495,77 @@ export class CAnalysis
 
 	getExports(): TBlockDesc
 
-		return keys(@hExports)
+		return Array.from @mExports.keys()
 
 	# ..........................................................
 
-	getNeeds(): TBlockDesc
+	newScope(name: string?, lArgs: string[]): void
 
-		return Array.from(@sNeeded.values())
+		@curScope = @mainScope.newScope name, lArgs
+		return
+
+	# ..........................................................
+
+	endScope(): void
+
+		scope := @mainScope.endScope @curScope
+		if defined scope
+			@curScope = scope
+		else
+			@finished = true
+		return
+
+	# ..........................................................
+
+	getMissing(): string[]
+
+		walker := new Walker<CScope>()
+		walker.isNode = (x: unknown) => return (x instanceof CScope)
+
+		# --- Find all names that are used, but not defined
+		sNames := new Set<string>()
+		for scope of walker.walk(@mainScope)
+			for name of scope.allUsed()
+				if not scope.isDefined name
+					sNames.add name
+		return Array.from(sNames.values())
+
+	# ..........................................................
+
+	getExtra(): string[]
+
+		walker := new Walker<CScope>()
+		walker.isNode = (x: unknown) => return (x instanceof CScope)
+
+		# --- Find all names that are defined, but never used or exported
+		sNames := new Set<string>()
+		for scope of walker.walk(@mainScope)
+			for name of scope.allDefined()
+				if not scope.isUsed(name) && not @mExports.has(name)
+					sNames.add name
+		return Array.from(sNames.values())
 
 	# ..........................................................
 
 	asString(width: integer = 64): string
 
 		h: TBlockDesc := {
-			IMPORTS: @getImports()
-			EXPORTS: @getExports()
-			NEEDS:  @getNeeds()
+			IMPORTS:  @getImports()
+			EXPORTS:  @getExports()
+			MISSING:  @getMissing()
+			EXTRA:    @getExtra()
 			}
 		if isEmpty h.IMPORTS
 			delete h.IMPORTS
 		if isEmpty h.EXPORTS
 			delete h.EXPORTS
-		if isEmpty h.NEEDS
-			delete h.NEEDS
+		if isEmpty h.MISSING
+			delete h.MISSING
+		if isEmpty h.EXTRA
+			delete h.EXTRA
 		return Blockify h
 
+# ---------------------------------------------------------------------------
 # ---------------------------------------------------------------------------
 
 export assertIsNode: (x: unknown) => asserts x is Node := (
@@ -549,7 +604,6 @@ export analyze := (
 		}
 
 	analysis := new CAnalysis()
-	ss := new CScopeStack()
 
 	walker := new AstWalker()
 	hAst := ts2ast tsCode
@@ -571,7 +625,8 @@ export analyze := (
 			assertIsNode node
 
 		if (node.kind == 80)
-			analysis.addNeeds getString(node, '.escapedText')
+			name := getString node, '.escapedText'
+			analysis.use name
 		return
 
 	# ..........................................................
@@ -583,32 +638,32 @@ export analyze := (
 		if (vkind == 'exit')
 			switch kind
 				when 220, 263   # --- ArrowFunction, FunctionDeclaration
-					analysis.ss.endScope()
+					analysis.endScope()
 
 		else if (vkind == 'enter')
 			switch kind
 
 				when 220   # --- ArrowFunction
 
-					analysis.ss.newScope()
-					for parm of getArray node, '.parameters'
-						name := getString parm, '.name.escapedText'
-						analysis.ss.addDefined name
+					lParms := for parm of getArray node, '.parameters'
+						getString parm, '.name.escapedText'
+
+					analysis.newScope(undef, lParms)
 
 				when 261   # --- Variable Declaration
 
 					try
 						varName := getString node, '.name.escapedText'
-						analysis.ss.addDefined varName
+						analysis.define varName
 
 				when 263   # --- FunctionDeclaration
 
 					funcName := getString node, '.name.escapedText'
-					analysis.ss.addDefined funcName
-					analysis.ss.newScope()
-					for parm of getArray node, '.parameters'
-						name := getString parm, '.name.escapedText'
-						analysis.ss.addDefined name
+					lParms := for parm of getArray node, '.parameters'
+						getString parm, '.name.escapedText'
+
+					analysis.define funcName
+					analysis.newScope funcName, lParms
 
 				when 227   # --- BinaryExpression
 
@@ -628,7 +683,7 @@ export analyze := (
 						name := getString h, '.name.escapedText'
 						if trace
 							console.log "NAME: '#{name}' in '#{lib}'"
-						analysis.addImport name, lib
+						analysis.addImport lib, name
 
 				when 280   # --- NamedExports
 

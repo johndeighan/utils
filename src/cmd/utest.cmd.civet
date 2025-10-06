@@ -1,5 +1,6 @@
 # utest.cmd.civet
 
+import {undef} from 'datatypes'
 import {
 	stdChecks, allNonOptions, tryCmd, doUnitTest,
 	} from 'base-utils'
@@ -10,5 +11,6 @@ stdChecks()
 # ---------------------------------------------------------------------------
 
 for stub of allNonOptions()
-	await tryCmd doUnitTest, stub, 'lib'
+	purpose := (stub == 'temp') ? undef : 'lib'
+	await tryCmd doUnitTest, stub, purpose
 LOG "DONE"
